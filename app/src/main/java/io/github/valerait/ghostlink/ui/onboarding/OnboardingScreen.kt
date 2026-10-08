@@ -1,0 +1,136 @@
+package io.github.valerait.ghostlink.ui.onboarding
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.ui.common.DemoModeBanner
+import io.github.valerait.ghostlink.ui.common.GhostLogo
+import io.github.valerait.ghostlink.ui.common.requestGoogleIdToken
+import io.github.valerait.ghostlink.ui.theme.LogoTextStyle
+import kotlinx.coroutines.launch
+
+@Composable
+fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(
+            modifier = Modifier
+                .safeDrawingPadding()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (state.demoMode) DemoModeBanner()
+            Spacer(Modifier.height(48.dp))
+            GhostLogo(size = 96.dp)
+            Spacer(Modifier.height(16.dp))
+            Text("GHOSTLINK", style = LogoTextStyle, color = MaterialTheme.colorScheme.onBackground)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.onboarding_tagline),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(40.dp))
+            OutlinedTextField(
+                value = state.name,
+                onValueChange = viewModel::onNameChange,
+                label = { Text(stringResource(R.string.onboarding_name_label)) },
+                supportingText = { Text(stringResource(R.string.onboarding_name_hint)) },
+                singleLine = true,
+                enabled = !state.busy,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { viewModel.submit() }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            state.error?.let {
+                Text(
+                    text = stringResource(it),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = viewModel::submit,
+                enabled = state.canSubmit,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                if (state.busy) {
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.onboarding_start))
+                }
+            }
+            val clientId = viewModel.webClientId
+            if (state.googleAvailable && clientId != null) {
+                Spacer(Modifier.height(8.dp))
+                TextButton(
+                    enabled = !state.busy,
+                    onClick = {
+                        scope.launch {
+                            val token = runCatching { requestGoogleIdToken(context, clientId) }.getOrNull()
+                            if (token != null) viewModel.signInWithGoogle(token)
+                        }
+                    },
+                ) { Text(stringResource(R.string.onboarding_restore_google)) }
+            }
+            Spacer(Modifier.height(24.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Feature(stringResource(R.string.onboarding_feature_no_phone))
+                Feature(stringResource(R.string.onboarding_feature_qr))
+                Feature(stringResource(R.string.onboarding_feature_realtime))
+            }
+        }
+    }
+}
+
+@Composable
+private fun Feature(text: String) {
+    Text(
+        text = "•  $text",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}

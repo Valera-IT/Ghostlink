@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Ghostlink</string>
+
+    <!-- Общие действия -->
+    <string name="action_back">Назад</string>
+    <string name="action_cancel">Отмена</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_send">Отправить</string>
+    <string name="action_settings">Настройки</string>
+    <string name="action_my_code">Мой код</string>
+    <string name="action_scan">Сканировать код</string>
+    <string name="action_scan_friend">Сканировать код друга</string>
+
+    <string name="demo_mode_banner">Демо-режим: Firebase не подключён, данные живут только на этом устройстве.</string>
+    <string name="error_generic">Что-то пошло не так. Проверьте интернет и попробуйте ещё раз.</string>
+    <string name="error_sign_in">Не удалось войти. Проверьте интернет и попробуйте ещё раз.</string>
+    <string name="error_google_already_linked">Этот Google-аккаунт уже привязан к другому профилю Ghostlink.</string>
+
+    <!-- Онбординг -->
+    <string name="onboarding_tagline">Мессенджер без номера и почты. Друзей добавляют только при встрече — по QR-коду.</string>
+    <string name="onboarding_name_label">Как вас зовут?</string>
+    <string name="onboarding_name_hint">Это имя увидят ваши друзья</string>
+    <string name="onboarding_start">Начать</string>
+    <string name="onboarding_restore_google">Уже есть аккаунт? Войти через Google</string>
+    <string name="onboarding_feature_no_phone">Без номера телефона и почты</string>
+    <string name="onboarding_feature_qr">Друзья — только по QR при встрече</string>
+    <string name="onboarding_feature_realtime">Сообщения в реальном времени со статусом прочтения</string>
+
+    <!-- Чаты -->
+    <string name="chats_empty_title">Пока здесь пусто</string>
+    <string name="chats_empty_body">Встретьтесь с другом и отсканируйте его код — или покажите ему свой.</string>
+    <string name="chats_no_messages">Нет сообщений — напишите первым</string>
+    <string name="chats_you_prefix">Вы: %1$s</string>
+
+    <string name="chat_empty">Скажите привет 👋</string>
+    <string name="chat_input_hint">Сообщение</string>
+    <string name="status_sending">Отправляется</string>
+    <string name="status_sent">Отправлено</string>
+    <string name="status_read">Прочитано</string>
+
+    <string name="day_today">Сегодня</string>
+    <string name="day_yesterday">Вчера</string>
+
+    <string name="presence_online">в сети</string>
+    <string name="presence_last_seen_today">был(а) в сети в %1$s</string>
+    <string name="presence_last_seen_date">был(а) в сети %1$s</string>
+    <string name="presence_long_ago">был(а) в сети давно</string>
+
+    <!-- Мой код -->
+    <string name="my_code_title">Мой код</string>
+    <string name="my_code_hint">Покажите этот код другу — пусть отсканирует его в Ghostlink, и вы окажетесь в общем чате.</string>
+    <string name="my_code_qr_description">QR-код для добавления в друзья</string>
+    <string name="my_code_share">Поделиться ссылкой</string>
+    <string name="my_code_share_text">Добавь меня в Ghostlink: %1$s</string>
+
+    <!-- Сканер -->
+    <string name="scan_hint">Наведите камеру на код Ghostlink друга</string>
+    <string name="scan_not_ghostlink">Это не код Ghostlink</string>
+    <string name="scan_permission_denied">Чтобы сканировать коды друзей, Ghostlink нужен доступ к камере.</string>
+    <string name="scan_open_settings">Открыть настройки</string>
+
+    <!-- Добавление друга -->
+    <string name="connect_body">Добавить в друзья? Вы сразу сможете переписываться.</string>
+    <string name="connect_action">Добавить и написать</string>
+    <string name="connect_self_title">Это ваш собственный код</string>
+    <string name="connect_self_body">Покажите его другу — а сами отсканируйте его код.</string>
+    <string name="connect_not_found_title">Код не найден</string>
+    <string name="connect_not_found_body">Похоже, этот пользователь удалил аккаунт или код устарел.</string>
+
+    <!-- Настройки -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_rename">Изменить имя</string>
+    <string name="settings_tap_to_rename">Нажмите, чтобы изменить имя</string>
+    <string name="settings_account">Аккаунт</string>
+    <string name="settings_anonymous_title">Аккаунт только на этом устройстве</string>
+    <string name="settings_anonymous_body">Если удалить приложение или сменить телефон, переписка пропадёт. Привяжите Google — он нужен только для восстановления, друзья его не увидят.</string>
+    <string name="settings_link_google">Привязать Google</string>
+    <string name="settings_google_unavailable">Вход через Google не настроен в этой сборке.</string>
+    <string name="settings_google_linked">Google-аккаунт привязан</string>
+    <string name="settings_google_linked_title">Привязан Google-аккаунт</string>
+    <string name="settings_sign_out">Выйти</string>
+    <string name="settings_sign_out_title">Выйти из Ghostlink?</string>
+    <string name="settings_sign_out_body">Чтобы вернуться, войдите через тот же Google-аккаунт.</string>
+    <string name="settings_sign_out_anonymous_warning">Аккаунт не привязан к Google, поэтому после выхода восстановить его будет невозможно — все чаты и друзья пропадут.</string>
+    <string name="settings_version">Ghostlink %1$s</string>
+</resources>

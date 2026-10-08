@@ -1,0 +1,14 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+*.keystore
+*.jks
+
+# Конфиг своего Firebase-проекта: без него приложение запускается в демо-режиме
+app/google-services.json
