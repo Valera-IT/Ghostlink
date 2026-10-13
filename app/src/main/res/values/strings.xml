@@ -11,6 +11,7 @@
     <string name="action_my_code">Мой код</string>
     <string name="action_scan">Сканировать код</string>
     <string name="action_scan_friend">Сканировать код друга</string>
+    <string name="action_done">Готово</string>
 
     <string name="demo_mode_banner">Демо-режим: Firebase не подключён, данные живут только на этом устройстве.</string>
     <string name="error_generic">Что-то пошло не так. Проверьте интернет и попробуйте ещё раз.</string>
@@ -22,7 +23,10 @@
     <string name="onboarding_name_label">Как вас зовут?</string>
     <string name="onboarding_name_hint">Это имя увидят ваши друзья</string>
     <string name="onboarding_start">Начать</string>
-    <string name="onboarding_restore_google">Уже есть аккаунт? Войти через Google</string>
+    <string name="onboarding_have_account">Уже пользуетесь Ghostlink?</string>
+    <string name="onboarding_link_device">Войти с другого устройства</string>
+    <string name="onboarding_recovery_key">Ввести ключ восстановления</string>
+    <string name="onboarding_restore_google">Восстановить через Google</string>
     <string name="onboarding_feature_no_phone">Без номера телефона и почты</string>
     <string name="onboarding_feature_qr">Друзья — только по QR при встрече</string>
     <string name="onboarding_feature_realtime">Сообщения в реальном времени со статусом прочтения</string>
@@ -55,7 +59,7 @@
     <string name="my_code_share_text">Добавь меня в Ghostlink: %1$s</string>
 
     <!-- Сканер -->
-    <string name="scan_hint">Наведите камеру на код Ghostlink друга</string>
+    <string name="scan_hint">Наведите камеру на код друга или на код входа с другого устройства</string>
     <string name="scan_not_ghostlink">Это не код Ghostlink</string>
     <string name="scan_permission_denied">Чтобы сканировать коды друзей, Ghostlink нужен доступ к камере.</string>
     <string name="scan_open_settings">Открыть настройки</string>
@@ -73,15 +77,72 @@
     <string name="settings_rename">Изменить имя</string>
     <string name="settings_tap_to_rename">Нажмите, чтобы изменить имя</string>
     <string name="settings_account">Аккаунт</string>
-    <string name="settings_anonymous_title">Аккаунт только на этом устройстве</string>
-    <string name="settings_anonymous_body">Если удалить приложение или сменить телефон, переписка пропадёт. Привяжите Google — он нужен только для восстановления, друзья его не увидят.</string>
+    <string name="settings_devices">Устройства</string>
+    <string name="settings_devices_hint">Войти на компьютере или другом телефоне</string>
+    <string name="settings_recovery_key">Ключ восстановления</string>
+    <string name="settings_recovery_key_hint">Вернёт аккаунт, если потерять все устройства</string>
     <string name="settings_link_google">Привязать Google</string>
-    <string name="settings_google_unavailable">Вход через Google не настроен в этой сборке.</string>
+    <string name="settings_link_google_hint">Ещё один способ восстановления. Друзья его не увидят.</string>
     <string name="settings_google_linked">Google-аккаунт привязан</string>
     <string name="settings_google_linked_title">Привязан Google-аккаунт</string>
     <string name="settings_sign_out">Выйти</string>
     <string name="settings_sign_out_title">Выйти из Ghostlink?</string>
-    <string name="settings_sign_out_body">Чтобы вернуться, войдите через тот же Google-аккаунт.</string>
-    <string name="settings_sign_out_anonymous_warning">Аккаунт не привязан к Google, поэтому после выхода восстановить его будет невозможно — все чаты и друзья пропадут.</string>
+    <string name="settings_sign_out_body">Чтобы вернуться, войдите с другого своего устройства или по ключу восстановления. Без них аккаунт будет не восстановить.</string>
     <string name="settings_version">Ghostlink %1$s</string>
+
+    <!-- Ключ восстановления -->
+    <string name="recovery_code_body">Сохраните ключ в менеджере паролей или запишите. С ним можно войти в аккаунт, даже если потерять все устройства.</string>
+    <string name="recovery_code_warning">Никому не показывайте ключ: с ним можно читать вашу переписку.</string>
+    <string name="recovery_code_copy">Скопировать</string>
+    <string name="recovery_code_copied">Скопировано</string>
+    <string name="recovery_title">Ключ восстановления</string>
+    <string name="recovery_body">Введите ключ из 40 символов. Его можно найти на любом своём устройстве: «Настройки» → «Ключ восстановления». Регистр и дефисы не важны.</string>
+    <string name="recovery_label">Ключ</string>
+    <string name="recovery_submit">Войти</string>
+    <string name="recovery_error_format">Похоже, в ключе опечатка: проверьте, что все 40 символов на месте.</string>
+    <string name="recovery_error_wrong">Ключ не подошёл. Возможно, его сменили через «Выйти на всех других устройствах».</string>
+
+    <!-- Вход на новом устройстве -->
+    <string name="link_receive_title">Вход с другого устройства</string>
+    <string name="link_receive_qr_description">QR-код для входа на этом устройстве</string>
+    <string name="link_receive_countdown">Код действует ещё %1$d:%2$02d</string>
+    <string name="link_receive_steps_title">Как войти</string>
+    <string name="link_receive_step_1">1. Откройте Ghostlink на телефоне, где вы уже вошли.</string>
+    <string name="link_receive_step_2">2. «Настройки» → «Устройства» → «Привязать устройство».</string>
+    <string name="link_receive_step_3">3. Наведите камеру на этот код и подтвердите вход.</string>
+    <string name="link_receive_signing_in">Входим в аккаунт…</string>
+    <string name="link_receive_expired">Код устарел</string>
+    <string name="link_receive_failed">Не удалось войти. Проверьте интернет и попробуйте ещё раз.</string>
+    <string name="link_receive_new_code">Показать новый код</string>
+
+    <string name="link_approve_title">Вход на новом устройстве</string>
+    <string name="link_approve_question">Войти в ваш аккаунт на устройстве</string>
+    <string name="link_approve_warning">Сканируйте только код со своего экрана. Если код прислал кто-то другой, он получит доступ ко всей вашей переписке.</string>
+    <string name="link_approve_action">Разрешить вход</string>
+    <string name="link_approve_done_title">Готово</string>
+    <string name="link_approve_done_body">Через пару секунд на новом устройстве откроются ваши чаты.</string>
+    <string name="link_approve_invalid_title">Код больше не действует</string>
+    <string name="link_approve_invalid_body">Код живёт две минуты и работает один раз. Попросите новое устройство показать новый код.</string>
+
+    <!-- Устройства -->
+    <string name="devices_title">Устройства</string>
+    <string name="devices_add_body">Чтобы войти на компьютере или другом телефоне, откройте там Ghostlink, выберите «Войти с другого устройства» и отсканируйте показанный код.</string>
+    <string name="devices_add">Привязать устройство</string>
+    <string name="devices_this">Это устройство</string>
+    <string name="devices_others">Другие устройства</string>
+    <string name="devices_active_now">активно сейчас</string>
+    <string name="devices_last_active">активно %1$s</string>
+    <string name="devices_remove">Удалить устройство</string>
+    <string name="devices_remove_title">Удалить «%1$s»?</string>
+    <string name="devices_remove_body">Приложение на этом устройстве выйдет из аккаунта, как только подключится к интернету. Если устройство украли, лучше выйти на всех других устройствах.</string>
+    <string name="devices_removed">Устройство удалено</string>
+    <string name="devices_sign_out_others">Выйти на всех других устройствах</string>
+    <string name="devices_sign_out_others_hint">Если устройство потеряно или украдено</string>
+    <string name="devices_sign_out_others_title">Выйти на всех других устройствах?</string>
+    <string name="devices_sign_out_others_body">Ключ аккаунта сменится: все остальные устройства выйдут, а старый ключ восстановления перестанет работать. Новый ключ покажем сразу.</string>
+    <string name="devices_sign_out_others_confirm">Выйти везде</string>
+    <string name="devices_new_key_title">Новый ключ восстановления</string>
+
+    <string name="platform_web">Браузер</string>
+    <string name="platform_unknown">Устройство</string>
 </resources>

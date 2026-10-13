@@ -25,6 +25,13 @@ android {
         versionName = "0.1.0"
     }
 
+    buildTypes.configureEach {
+        // ./gradlew installDebug -Pghostlink.emulatorHost=10.0.2.2 — работать с локальным Firebase Emulator
+        // (см. README). В обычной сборке пусто.
+        val emulatorHost = if (name == "debug") providers.gradleProperty("ghostlink.emulatorHost").orNull else null
+        buildConfigField("String", "FIREBASE_EMULATOR_HOST", emulatorHost?.let { "\"$it\"" } ?: "null")
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true

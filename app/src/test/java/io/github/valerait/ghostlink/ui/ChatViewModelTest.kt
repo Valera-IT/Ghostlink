@@ -28,7 +28,7 @@ class ChatViewModelTest {
 
     private suspend fun TestScope.setUp(): Triple<InMemoryBackend, String, ChatViewModel> {
         val backend = InMemoryBackend(backgroundScope, clock = { now }, seedDemoData = false)
-        val me = backend.signInAnonymously().id
+        val me = backend.createAccount().id
         backend.saveProfile(me, "Я")
         backend.saveProfile(FRIEND, "Друг")
         val chatId = backend.startChat(me, FRIEND)

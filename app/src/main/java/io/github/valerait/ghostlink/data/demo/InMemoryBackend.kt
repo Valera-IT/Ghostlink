@@ -1,13 +1,20 @@
 package io.github.valerait.ghostlink.data.demo
 
 import io.github.valerait.ghostlink.data.model.Account
+import io.github.valerait.ghostlink.data.model.AccountKey
 import io.github.valerait.ghostlink.data.model.Chat
 import io.github.valerait.ghostlink.data.model.ChatIds
+import io.github.valerait.ghostlink.data.model.Device
+import io.github.valerait.ghostlink.data.model.LINK_TTL_MS
 import io.github.valerait.ghostlink.data.model.LastMessage
+import io.github.valerait.ghostlink.data.model.LinkRequest
 import io.github.valerait.ghostlink.data.model.Message
 import io.github.valerait.ghostlink.data.model.User
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
+import io.github.valerait.ghostlink.data.repository.DeviceRepository
+import io.github.valerait.ghostlink.data.repository.InvalidAccountKeyException
+import io.github.valerait.ghostlink.data.repository.LinkRepository
 import io.github.valerait.ghostlink.data.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -29,9 +36,14 @@ class InMemoryBackend(
     private val scope: CoroutineScope,
     private val clock: () -> Long = System::currentTimeMillis,
     private val seedDemoData: Boolean = true,
-) : AuthRepository, UserRepository, ChatRepository {
+) : AuthRepository, UserRepository, ChatRepository, DeviceRepository, LinkRepository {
 
     private val _account = MutableStateFlow<Account?>(null)
+    private val _accountKey = MutableStateFlow<AccountKey?>(null)
+    /** «Сервер» аккаунтов: служебная почта -> (пароль, uid). Переживает выход, как настоящий Firebase. */
+    private val accounts = mutableMapOf<String, Pair<String, String>>()
+    private val devices = MutableStateFlow<Map<String, Map<String, Device>>>(emptyMap())
+    private val linkRequests = MutableStateFlow<Map<String, LinkRequest>>(emptyMap())
     private val users = MutableStateFlow<Map<String, User>>(emptyMap())
     private val chats = MutableStateFlow<Map<String, Chat>>(emptyMap())
     private val messages = MutableStateFlow<Map<String, List<Message>>>(emptyMap())
@@ -42,9 +54,31 @@ class InMemoryBackend(
 
     override val account: StateFlow<Account?> = _account.asStateFlow()
 
-    override suspend fun signInAnonymously(): Account {
-        val account = Account(id = ME, isAnonymous = true, email = null)
+    override val accountKey: StateFlow<AccountKey?> = _accountKey.asStateFlow()
+
+    override suspend fun createAccount(): Account {
+        // В демо пользователь один, в тестах можно завести несколько.
+        val id = if (accounts.isEmpty()) ME else "user-${nextId.incrementAndGet()}"
+        val key = AccountKey.generate()
+        accounts[key.email] = key.password to id
+        val account = Account(id = id, isAnonymous = false, googleEmail = null)
         if (seedDemoData) seed(account.id)
+        _accountKey.value = key
+        _account.value = account
+        return account
+    }
+
+    override suspend fun signInWithKey(key: AccountKey): Account {
+        val (password, id) = accounts[key.email] ?: throw InvalidAccountKeyException()
+        if (password != key.password) throw InvalidAccountKeyException()
+        val account = Account(id = id, isAnonymous = false, googleEmail = null)
+        _accountKey.value = key
+        _account.value = account
+        return account
+    }
+
+    override suspend fun signInAnonymously(): Account {
+        val account = Account(id = "temp-${nextId.incrementAndGet()}", isAnonymous = true, googleEmail = null)
         _account.value = account
         return account
     }
@@ -55,11 +89,31 @@ class InMemoryBackend(
     override suspend fun linkGoogle(idToken: String) =
         throw UnsupportedOperationException("Google sign-in is not available in demo mode")
 
+    override suspend fun ensureAccountKey(): AccountKey {
+        val account = checkNotNull(_account.value) { "Not signed in" }
+        _accountKey.value?.let { return it }
+        val key = AccountKey.generate()
+        accounts[key.email] = key.password to account.id
+        _accountKey.value = key
+        _account.value = account.copy(isAnonymous = false)
+        return key
+    }
+
+    override suspend fun rotateKey(): AccountKey {
+        val current = checkNotNull(_accountKey.value) { "No account key" }
+        val next = current.rotated()
+        accounts[next.email] = next.password to accounts.getValue(current.email).second
+        _accountKey.value = next
+        return next
+    }
+
     override suspend fun signOut() {
         _account.value = null
+        _accountKey.value = null
         users.value = emptyMap()
         chats.value = emptyMap()
         messages.value = emptyMap()
+        devices.value = emptyMap()
     }
 
     // endregion
@@ -132,6 +186,51 @@ class InMemoryBackend(
 
     // endregion
 
+    // region DeviceRepository
+
+    override fun observeDevices(userId: String): Flow<List<Device>> =
+        devices.map { it[userId].orEmpty().values.sortedByDescending { d -> d.lastActiveAt } }.distinctUntilChanged()
+
+    override fun observeDevice(userId: String, deviceId: String): Flow<Device?> =
+        devices.map { it[userId]?.get(deviceId) }.distinctUntilChanged()
+
+    override suspend fun registerDevice(userId: String, device: Device) {
+        devices.update { all -> all + (userId to all[userId].orEmpty() + (device.id to device.copy(lastActiveAt = clock()))) }
+    }
+
+    override suspend fun removeDevice(userId: String, deviceId: String) {
+        devices.update { all -> all + (userId to all[userId].orEmpty() - deviceId) }
+    }
+
+    // endregion
+
+    // region LinkRepository
+
+    override suspend fun createLinkRequest(deviceName: String, platform: String): String {
+        checkNotNull(_account.value) { "Not signed in" }
+        val id = "link${nextId.incrementAndGet()}".padEnd(20, '0')
+        linkRequests.update { it + (id to LinkRequest(id, deviceName, platform, expiresAt = clock() + LINK_TTL_MS)) }
+        return id
+    }
+
+    override suspend fun getLinkRequest(id: String): LinkRequest? = linkRequests.value[id]
+
+    override fun observeLinkRequest(id: String): Flow<LinkRequest?> = linkRequests.map { it[id] }.distinctUntilChanged()
+
+    override suspend fun approveLinkRequest(id: String, payload: ByteArray) {
+        linkRequests.update { all ->
+            val request = checkNotNull(all[id]) { "No such link request" }
+            check(request.payload == null && !request.isExpired(clock())) { "Link request is no longer valid" }
+            all + (id to request.copy(payload = payload))
+        }
+    }
+
+    override suspend fun deleteLinkRequest(id: String) {
+        linkRequests.update { it - id }
+    }
+
+    // endregion
+
     private fun post(chatId: String, senderId: String, text: String, at: Long) {
         val message = Message("m${nextId.incrementAndGet()}", senderId, text, at)
         messages.update { it + (chatId to it[chatId].orEmpty() + message) }
@@ -168,6 +267,7 @@ class InMemoryBackend(
         post(anyaChat, me, "Конечно, вечером пришлю", now - 3 * HOUR)
         markRead(anyaChat, ANYA_ID)
         post(anyaChat, ANYA_ID, "Жду 👀", now - 2 * HOUR)
+        devices.value = mapOf(me to mapOf(DEMO_LAPTOP to Device(DEMO_LAPTOP, "MacBook Air", "macos", now - 3 * HOUR)))
         post(botChat, BOT_ID, "Бу! Я Призрак — собеседник для демо-режима. Напиши мне что-нибудь 👻", now - 10 * MINUTE)
     }
 
@@ -175,6 +275,7 @@ class InMemoryBackend(
         const val ME = "demo-me"
         const val BOT_ID = "ghost-bot"
         const val ANYA_ID = "demo-anya"
+        private const val DEMO_LAPTOP = "demo-laptop"
         private const val MINUTE = 60_000L
         private const val HOUR = 60 * MINUTE
         private const val DAY = 24 * HOUR

@@ -10,5 +10,8 @@ captures/
 *.keystore
 *.jks
 
+# Логи Firebase Emulator
+*-debug.log
+
 # Конфиг своего Firebase-проекта: без него приложение запускается в демо-режиме
 app/google-services.json

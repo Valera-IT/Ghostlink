@@ -46,12 +46,13 @@ class OnboardingViewModel @Inject constructor(
         _state.update { it.copy(name = value.take(MAX_NAME_LENGTH), error = null) }
     }
 
-    /** Создаёт анонимный аккаунт (если его ещё нет) и профиль; дальше корень сам переключится на чаты. */
+    /** Создаёт аккаунт с ключом (если его ещё нет) и профиль; дальше корень сам переключится на чаты. */
     fun submit() {
         val name = _state.value.name.trim()
         if (name.isEmpty() || _state.value.busy) return
         runBusy {
-            val account = auth.account.value ?: auth.signInAnonymously()
+            // Аккаунт уже может быть: временный, оставшийся от брошенного входа по QR. Ключ ему выдаст реестр устройств.
+            val account = auth.account.value ?: auth.createAccount()
             users.saveProfile(account.id, name)
         }
     }

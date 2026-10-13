@@ -10,16 +10,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -30,7 +30,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -55,11 +54,12 @@ import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.DemoModeBanner
 import io.github.valerait.ghostlink.ui.common.requestGoogleIdToken
 import io.github.valerait.ghostlink.ui.onboarding.MAX_NAME_LENGTH
+import io.github.valerait.ghostlink.ui.recovery.RecoveryCodeDialog
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onBack: () -> Unit, onDevices: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -132,17 +132,31 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp),
             )
-            if (state.isAnonymous) {
-                AnonymousAccountCard(
-                    googleAvailable = state.googleAvailable,
-                    busy = state.busy,
-                    onLinkGoogle = linkGoogle,
-                )
-            } else {
+            ListItem(
+                leadingContent = { Icon(Icons.Outlined.Devices, contentDescription = null) },
+                headlineContent = { Text(stringResource(R.string.settings_devices)) },
+                supportingContent = { Text(stringResource(R.string.settings_devices_hint)) },
+                modifier = Modifier.clickable(onClick = onDevices),
+            )
+            ListItem(
+                leadingContent = { Icon(Icons.Outlined.Key, contentDescription = null) },
+                headlineContent = { Text(stringResource(R.string.settings_recovery_key)) },
+                supportingContent = { Text(stringResource(R.string.settings_recovery_key_hint)) },
+                modifier = Modifier.clickable(enabled = !state.busy, onClick = viewModel::showRecoveryKey),
+            )
+            val googleEmail = state.googleEmail
+            if (googleEmail != null) {
                 ListItem(
                     leadingContent = { Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     headlineContent = { Text(stringResource(R.string.settings_google_linked_title)) },
-                    supportingContent = { state.email?.let { Text(it) } },
+                    supportingContent = { Text(googleEmail) },
+                )
+            } else if (state.googleAvailable) {
+                ListItem(
+                    leadingContent = { Icon(Icons.Outlined.AccountCircle, contentDescription = null) },
+                    headlineContent = { Text(stringResource(R.string.settings_link_google)) },
+                    supportingContent = { Text(stringResource(R.string.settings_link_google_hint)) },
+                    modifier = Modifier.clickable(enabled = !state.busy, onClick = linkGoogle),
                 )
             }
 
@@ -162,6 +176,13 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
         }
     }
 
+    state.recoveryCode?.let { code ->
+        RecoveryCodeDialog(
+            code = code,
+            title = stringResource(R.string.settings_recovery_key),
+            onDismiss = viewModel::onRecoveryKeyShown,
+        )
+    }
     if (renaming) {
         RenameDialog(
             initial = state.name,
@@ -177,11 +198,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
             onDismissRequest = { confirmSignOut = false },
             title = { Text(stringResource(R.string.settings_sign_out_title)) },
             text = {
-                Text(
-                    stringResource(
-                        if (state.isAnonymous) R.string.settings_sign_out_anonymous_warning else R.string.settings_sign_out_body,
-                    ),
-                )
+                Text(stringResource(R.string.settings_sign_out_body))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -193,41 +210,6 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewMo
                 TextButton(onClick = { confirmSignOut = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
-    }
-}
-
-@Composable
-private fun AnonymousAccountCard(googleAvailable: Boolean, busy: Boolean, onLinkGoogle: () -> Unit) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.settings_anonymous_title), style = MaterialTheme.typography.titleMedium)
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = stringResource(R.string.settings_anonymous_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(12.dp))
-            Button(onClick = onLinkGoogle, enabled = googleAvailable && !busy) {
-                Text(stringResource(R.string.settings_link_google))
-            }
-            if (!googleAvailable) {
-                Text(
-                    text = stringResource(R.string.settings_google_unavailable),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-            }
-        }
     }
 }
 

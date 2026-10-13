@@ -5,9 +5,34 @@ const val ONLINE_TIMEOUT_MS = 150_000L
 
 data class Account(
     val id: String,
+    /** Анонимный — временный аккаунт нового устройства или аккаунт из версии до привязки устройств. */
     val isAnonymous: Boolean,
-    val email: String?,
+    /** Почта привязанного Google-аккаунта; служебная почта ключа сюда не попадает. */
+    val googleEmail: String?,
 )
+
+/** Сколько живёт заявка на вход с нового устройства. */
+const val LINK_TTL_MS = 120_000L
+
+/** Устройство из реестра users/{uid}/devices. */
+data class Device(
+    val id: String,
+    val name: String,
+    val platform: String,
+    val lastActiveAt: Long? = null,
+)
+
+/** Заявка нового устройства на вход: linkRequests/{id}. */
+data class LinkRequest(
+    val id: String,
+    val deviceName: String,
+    val platform: String,
+    val expiresAt: Long,
+    /** Зашифрованный ключ аккаунта; появляется, когда другое устройство подтвердило вход. */
+    val payload: ByteArray? = null,
+) {
+    fun isExpired(now: Long): Boolean = now >= expiresAt
+}
 
 data class User(
     val id: String,

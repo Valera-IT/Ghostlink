@@ -2,6 +2,8 @@ rules_version = '2';
 
 // Правила для Ghostlink. Модель данных:
 //   users/{uid}                    name, online, lastSeen
+//   users/{uid}/devices/{id}       name, platform, lastActiveAt — реестр устройств аккаунта
+//   linkRequests/{id}              owner, deviceName, platform, createdAt, expiresAt, payload, approvedBy
 //   chats/{a_b}                    members [a, b] (отсортированы), lastMessage, updatedAt, lastRead.{uid}
 //   chats/{a_b}/messages/{id}      senderId, text, sentAt
 service cloud.firestore {
@@ -15,6 +17,15 @@ service cloud.firestore {
       return name is string && name.size() > 0 && name.size() <= 40;
     }
 
+    function shortString(value, max) {
+      return value is string && value.size() > 0 && value.size() <= max;
+    }
+
+    // Временный аккаунт нового устройства анонимный; настоящие аккаунты входят по ключу (email/password).
+    function hasAccountKey() {
+      return request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
     // Профили видны любому вошедшему: иначе нельзя показать имя по отсканированному коду.
     // Менять можно только свой.
     match /users/{uid} {
@@ -23,6 +34,48 @@ service cloud.firestore {
         && request.auth.uid == uid
         && validName(request.resource.data.name)
         && request.resource.data.keys().hasOnly(['name', 'online', 'lastSeen']);
+
+      // Реестр устройств видит и меняет только сам аккаунт.
+      match /devices/{deviceId} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['name', 'platform', 'lastActiveAt'])
+          && shortString(request.resource.data.name, 60)
+          && shortString(request.resource.data.platform, 20)
+          && request.resource.data.lastActiveAt == request.time;
+      }
+    }
+
+    // Заявка на вход с нового устройства. Новое устройство создаёт её под временным анонимным
+    // аккаунтом, устройство с аккаунтом кладёт в неё ключ, зашифрованный публичным ключом из QR.
+    match /linkRequests/{requestId} {
+      // id случайный и известен только из QR, а payload без закрытого ключа бесполезен.
+      allow get: if signedIn();
+      allow list: if false;
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['owner', 'deviceName', 'platform', 'createdAt', 'expiresAt'])
+        && request.resource.data.owner == request.auth.uid
+        && shortString(request.resource.data.deviceName, 60)
+        && shortString(request.resource.data.platform, 20)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(3, 'm');
+
+      // Подтвердить можно один раз, пока заявка жива, и только с настоящего аккаунта.
+      allow update: if signedIn()
+        && hasAccountKey()
+        && request.auth.uid != resource.data.owner
+        && !('payload' in resource.data)
+        && request.time < resource.data.expiresAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payload', 'approvedBy'])
+        && request.resource.data.payload is bytes
+        && request.resource.data.payload.size() <= 512
+        && request.resource.data.approvedBy == request.auth.uid;
+
+      allow delete: if signedIn() && request.auth.uid == resource.data.owner;
     }
 
     match /chats/{chatId} {

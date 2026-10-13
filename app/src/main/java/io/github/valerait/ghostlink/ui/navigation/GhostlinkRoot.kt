@@ -15,9 +15,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import io.github.valerait.ghostlink.ui.chat.ChatScreen
 import io.github.valerait.ghostlink.ui.chats.ChatListScreen
+import io.github.valerait.ghostlink.data.model.ScannedCode
 import io.github.valerait.ghostlink.ui.connect.ConnectScreen
+import io.github.valerait.ghostlink.ui.devices.DevicesScreen
+import io.github.valerait.ghostlink.ui.link.LinkApproveScreen
+import io.github.valerait.ghostlink.ui.link.LinkReceiveScreen
 import io.github.valerait.ghostlink.ui.mycode.MyCodeScreen
 import io.github.valerait.ghostlink.ui.onboarding.OnboardingScreen
+import io.github.valerait.ghostlink.ui.recovery.RecoveryScreen
 import io.github.valerait.ghostlink.ui.scan.ScanScreen
 import io.github.valerait.ghostlink.ui.settings.SettingsScreen
 import kotlinx.serialization.Serializable
@@ -28,6 +33,13 @@ import kotlinx.serialization.Serializable
 @Serializable data object ScanRoute
 @Serializable data class ConnectRoute(val userId: String)
 @Serializable data object SettingsRoute
+@Serializable data object DevicesRoute
+/** code — отсканированная ссылка ghostlink://link/…; разбирает её LinkApproveViewModel. */
+@Serializable data class LinkApproveRoute(val code: String)
+
+@Serializable data object WelcomeRoute
+@Serializable data object LinkReceiveRoute
+@Serializable data object RecoveryRoute
 
 @Composable
 fun GhostlinkRoot(viewModel: RootViewModel) {
@@ -37,8 +49,28 @@ fun GhostlinkRoot(viewModel: RootViewModel) {
     Crossfade(targetState = state, label = "root") { current ->
         when (current) {
             RootState.Loading -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
-            RootState.Onboarding -> OnboardingScreen()
+            RootState.Onboarding -> OnboardingNavHost()
             is RootState.Ready -> MainNavHost(pendingInvite, viewModel::onInviteHandled)
+        }
+    }
+}
+
+/** До входа: новый аккаунт, вход с другого устройства по QR или по ключу восстановления. */
+@Composable
+private fun OnboardingNavHost() {
+    val nav = rememberNavController()
+    NavHost(navController = nav, startDestination = WelcomeRoute) {
+        composable<WelcomeRoute> {
+            OnboardingScreen(
+                onLinkDevice = { nav.navigate(LinkReceiveRoute) },
+                onRecover = { nav.navigate(RecoveryRoute) },
+            )
+        }
+        composable<LinkReceiveRoute> {
+            LinkReceiveScreen(onBack = { nav.navigateUp() })
+        }
+        composable<RecoveryRoute> {
+            RecoveryScreen(onBack = { nav.navigateUp() })
         }
     }
 }
@@ -72,8 +104,12 @@ private fun MainNavHost(pendingInvite: String?, onInviteHandled: () -> Unit) {
         composable<ScanRoute> {
             ScanScreen(
                 onBack = { nav.navigateUp() },
-                onScanned = { userId ->
-                    nav.navigate(ConnectRoute(userId)) { popUpTo<ScanRoute> { inclusive = true } }
+                onScanned = { code ->
+                    val route: Any = when (code) {
+                        is ScannedCode.Invite -> ConnectRoute(code.userId)
+                        is ScannedCode.Link -> LinkApproveRoute(code.code.toUri())
+                    }
+                    nav.navigate(route) { popUpTo<ScanRoute> { inclusive = true } }
                 },
             )
         }
@@ -86,7 +122,13 @@ private fun MainNavHost(pendingInvite: String?, onInviteHandled: () -> Unit) {
             )
         }
         composable<SettingsRoute> {
-            SettingsScreen(onBack = { nav.navigateUp() })
+            SettingsScreen(onBack = { nav.navigateUp() }, onDevices = { nav.navigate(DevicesRoute) })
+        }
+        composable<DevicesRoute> {
+            DevicesScreen(onBack = { nav.navigateUp() }, onScan = { nav.navigate(ScanRoute) })
+        }
+        composable<LinkApproveRoute> {
+            LinkApproveScreen(onClose = { nav.navigateUp() })
         }
     }
 }

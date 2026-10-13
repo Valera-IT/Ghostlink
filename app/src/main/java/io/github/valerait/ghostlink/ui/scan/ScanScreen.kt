@@ -69,12 +69,12 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import io.github.valerait.ghostlink.R
-import io.github.valerait.ghostlink.data.model.InviteLink
+import io.github.valerait.ghostlink.data.model.ScannedCode
 import kotlinx.coroutines.delay
 import java.util.concurrent.Executors
 
 @Composable
-fun ScanScreen(onBack: () -> Unit, onScanned: (String) -> Unit) {
+fun ScanScreen(onBack: () -> Unit, onScanned: (ScannedCode) -> Unit) {
     val context = LocalContext.current
     var granted by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
@@ -111,17 +111,17 @@ fun ScanScreen(onBack: () -> Unit, onScanned: (String) -> Unit) {
 }
 
 @Composable
-private fun Scanner(onScanned: (String) -> Unit) {
+private fun Scanner(onScanned: (ScannedCode) -> Unit) {
     val currentOnScanned by rememberUpdatedState(onScanned)
     var done by remember { mutableStateOf(false) }
     var foreignCodeAt by remember { mutableLongStateOf(0L) }
 
     CameraPreview { raw ->
         if (done) return@CameraPreview
-        val userId = InviteLink.parse(raw)
-        if (userId != null) {
+        val code = ScannedCode.parse(raw)
+        if (code != null) {
             done = true
-            currentOnScanned(userId)
+            currentOnScanned(code)
         } else {
             foreignCodeAt = System.currentTimeMillis()
         }

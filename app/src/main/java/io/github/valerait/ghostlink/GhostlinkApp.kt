@@ -8,9 +8,11 @@ import javax.inject.Inject
 class GhostlinkApp : Application() {
 
     @Inject lateinit var presence: PresenceTracker
+    @Inject lateinit var deviceRegistry: DeviceRegistry
 
     override fun onCreate() {
         super.onCreate()
         presence.start()
+        deviceRegistry.start()
     }
 }

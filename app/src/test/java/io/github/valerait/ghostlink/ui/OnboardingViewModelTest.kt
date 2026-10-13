@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
@@ -20,7 +21,7 @@ class OnboardingViewModelTest {
     private val config = AppConfig(demoMode = true, webClientId = null)
 
     @Test
-    fun `submit creates an anonymous account with a profile`() = runTest {
+    fun `submit creates an account with a key and a profile`() = runTest {
         val backend = InMemoryBackend(backgroundScope, seedDemoData = false)
         val vm = OnboardingViewModel(backend, backend, config)
 
@@ -28,7 +29,8 @@ class OnboardingViewModelTest {
         vm.submit()
 
         val account = backend.account.value!!
-        assertEquals(true, account.isAnonymous)
+        assertEquals(false, account.isAnonymous)
+        assertNotNull(backend.accountKey.value)
         assertEquals("Валера", backend.observeUser(account.id).first()?.name)
     }
 

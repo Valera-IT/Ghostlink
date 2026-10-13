@@ -14,7 +14,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -42,7 +47,11 @@ import io.github.valerait.ghostlink.ui.theme.LogoTextStyle
 import kotlinx.coroutines.launch
 
 @Composable
-fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel()) {
+fun OnboardingScreen(
+    onLinkDevice: () -> Unit,
+    onRecover: () -> Unit,
+    viewModel: OnboardingViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -103,9 +112,23 @@ fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel()) {
                     Text(stringResource(R.string.onboarding_start))
                 }
             }
+            Spacer(Modifier.height(20.dp))
+            Text(
+                text = stringResource(R.string.onboarding_have_account),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onLinkDevice, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.QrCode2, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.onboarding_link_device))
+            }
+            TextButton(onClick = onRecover, enabled = !state.busy) {
+                Text(stringResource(R.string.onboarding_recovery_key))
+            }
             val clientId = viewModel.webClientId
             if (state.googleAvailable && clientId != null) {
-                Spacer(Modifier.height(8.dp))
                 TextButton(
                     enabled = !state.busy,
                     onClick = {
