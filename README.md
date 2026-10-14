@@ -90,7 +90,7 @@ QR  ghostlink://link/{id}.{publicKey}
 2. Положить `google-services.json` в `app/`. Файл в `.gitignore`: у каждого свой проект.
 3. В разделе **Authentication → Sign-in method** включить **Email/Password** и **Anonymous**; **Google** — по желанию. Для Google нужно добавить SHA-1 debug-ключа: его выводит `./gradlew signingReport`.
 4. Создать базу **Firestore** и вставить содержимое `firestore.rules` во вкладку **Rules**.
-5. По желанию: в Firestore → **TTL** добавить политику для коллекции `linkRequests` по полю `expiresAt`, чтобы брошенные заявки удалялись сами.
+5. Только на Blaze: в Firestore → **TTL** добавить политику для коллекции `linkRequests` по полю `expiresAt`, чтобы брошенные заявки удалялись сами. На Spark TTL недоступен, но это не страшно: приложение удаляет свои заявки само, а просроченную заявку правила не дают подтвердить.
 
 Бесплатного тарифа Spark для всего этого достаточно.
 
