@@ -34,6 +34,8 @@ data/demo      InMemoryBackend — демо-режим и фейк для тес
 di/            Hilt: выбирает Firebase или демо в зависимости от наличия конфига
 ```
 
+Целевая модульная архитектура (KMP, Clean Architecture, модели по слоям) описана в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), план — в [docs/ROADMAP.md](docs/ROADMAP.md).
+
 UI зависит только от интерфейсов репозиториев. Поэтому ViewModel тестируются на `InMemoryBackend` без моков и эмулятора, а бэкенд можно заменить, не трогая экраны.
 
 **Модель данных Firestore:**

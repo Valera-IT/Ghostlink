@@ -3,87 +3,89 @@
 Цель — один аккаунт на любом наборе устройств: **Android, iPhone, macOS, Windows**.
 Ограничения: только бесплатный тариф Firebase **Spark** (без Cloud Functions), без телефона и почты пользователя.
 
-## Целевая архитектура
+Как устроен проект — в [ARCHITECTURE.md](ARCHITECTURE.md), почему так — в [adr/](adr/).
 
-```
-ghostlink/
-├── shared/            Kotlin Multiplatform: модели, репозитории, ViewModel, крипто, Firebase
-│   ├── commonMain     вся логика + Compose Multiplatform UI
-│   ├── androidMain    Keystore, CameraX + ML Kit, FCM
-│   ├── iosMain        Keychain, AVFoundation-сканер, APNs
-│   └── desktopMain    Keychain macOS / Credential Manager Windows, трей, уведомления
-├── androidApp/        Activity, манифест, google-services.json
-├── iosApp/            Xcode-проект (SwiftUI-обёртка над Compose), GoogleService-Info.plist
-├── desktopApp/        main(), упаковка .dmg / .msi
-└── push-worker/       Cloudflare Worker → FCM HTTP v1 (этап 6)
-```
+**Как читать план.** Этап — это GitHub Milestone, пункт `N.M` — Issue и один PR (ветка `feat/N.M-…`). У каждого этапа есть критерий «готово, когда»: этап закрыт, только когда он выполнен и CI зелёный.
 
-| Слой | Решение |
-|---|---|
-| UI | Compose Multiplatform (один UI на все 4 платформы) |
-| DI | Koin (вместо Hilt — Hilt только для Android) |
-| Навигация | Navigation Compose Multiplatform |
-| Firebase | GitLive `firebase-kotlin-sdk` (Auth + Firestore) |
-| Крипто | `cryptography-kotlin` (ECDH P-256, HKDF, AES-GCM) |
-| QR | генерация — общий код; сканирование — только телефоны |
-| Хранение ключа аккаунта | Keystore / Keychain / Credential Manager через `expect/actual` |
+## Этап 1. Привязка устройств на Android — ✅ готово
 
-Mac и Windows — **одна сборка** Compose Desktop (JVM), отличаются только упаковкой и хранилищем секрета.
+Скрытый аккаунт, привязка по QR, экран «Устройства», ключ восстановления, миграция анонимных аккаунтов (`4ccd305`). Проверено на Firebase Emulator и на настоящем проекте `ghostlink-7ffc8`: два устройства привязываются, удаление устройства выкидывает второе, переписка идёт в реальном времени.
 
-## Этапы
+Хвосты переходят в этап 2: подтверждение входа камерой реального телефона, бейдж непрочитанного, вход через Google.
 
-### Этап 1. Привязка устройств на Android — *в рабочем дереве, не закоммичено*
-Скрытый email/password-аккаунт, передача ключа по QR (ECDH → HKDF → AES-GCM), экраны «Устройства» и «Войти на другом устройстве», ключ восстановления, правила Firestore.
+## Этап 2. Инженерный фундамент и разведка
 
-**Готово, когда:** два эмулятора против Firebase Emulator — второй входит в аккаунт по QR, видит те же чаты; удаление устройства и «выйти везде» работают; тесты зелёные; коммит.
+Сначала делаем из проекта «настоящий» репозиторий, пока он маленький. Потом проверяем главный риск миграции.
 
-### Этап 2. Разведка рисков (1–2 дня, до миграции)
-Самый большой риск — GitLive на **JVM-десктопе**: там он работает поверх неофициального `firebase-java-sdk`. Минимальный KMP-прототип: вход по паролю + слушатель коллекции Firestore на Android, iOS-симуляторе и JVM против эмулятора.
+**2a. Фундамент (на текущем Android-модуле)**
+1. GitHub-репозиторий, защита `main`, шаблоны Issue и PR, Milestones 2–7, доска Projects.
+2. CI: сборка, unit-тесты, Android lint на каждый PR.
+3. Статический анализ: spotless + ktlint, detekt с baseline; обязательны в CI.
+4. Тесты правил Firestore (`firebase/test`, `@firebase/rules-unit-testing`) на эмуляторе в CI. Они заменяют ручной `approve.js`.
+5. Окружения: второй Spark-проект `ghostlink-dev`, флейворы `demo` / `dev` / `prod`, конфиги из секретов CI.
+6. Renovate, Kover-отчёт покрытия, Conventional Commits + CHANGELOG.
+7. Хвосты этапа 1: подтверждение входа камерой реального телефона, проверка бейджа непрочитанного, решение по Google-входу (включить с SHA-1 или убрать).
 
-**Готово, когда:** realtime-слушатель работает на всех трёх таргетах. Если JVM не тянет — запасной путь для десктопа: Firestore REST + короткий polling только в `desktopMain` (интерфейсы репозиториев это позволяют).
+**2b. Разведка KMP (1–2 дня, отдельная ветка, в main не сливается)**
+8. Минимальный KMP-прототип: вход по паролю и слушатель коллекции Firestore на Android, iOS-симуляторе и JVM против эмулятора.
+9. Тот же прототип: `cryptography-kotlin` ECDH/HKDF/AES-GCM, шифротекст от текущего Android-кода расшифровывается на JVM и iOS.
+10. Итог — ADR 0006: GitLive на JVM подходит, или десктоп уходит на REST + polling.
 
-### Этап 3. Миграция на Kotlin Multiplatform (Android остаётся рабочим)
-1. Структура модулей `shared` / `androidApp`, Gradle-плагины KMP + Compose Multiplatform.
-2. Модели, `InviteLink`, `LinkCode`, `AccountKey` → `commonMain` (чистый Kotlin, переносятся почти без изменений).
-3. Hilt → Koin; `ViewModel` и `StateFlow` → multiplatform lifecycle-viewmodel.
-4. Firebase Android SDK → GitLive; `callbackFlow` заменяются на готовые `Flow` из GitLive.
-5. Крипто `java.security` → `cryptography-kotlin`; тест совместимости: шифротекст с Android расшифровывается на JVM и наоборот.
-6. Экраны → `commonMain`; ресурсы `strings.xml` → Compose Resources.
-7. `expect/actual`: хранилище ключа, сканер QR, присутствие (lifecycle), открытие deep link.
-8. Демо-режим (`InMemoryBackend`) — в `commonMain`, работает на всех платформах.
+**Готово, когда:** любой PR в `main` проходит lint, тесты и тесты правил; есть dev-проект; ADR 0006 принят.
 
-**Готово, когда:** Android-приложение работает как до миграции, все тесты переехали в `commonTest` и проходят.
+## Этап 3. Модули и Kotlin Multiplatform (Android остаётся рабочим)
 
-### Этап 4. Десктоп — macOS и Windows
-- `desktopApp`: окно, адаптивная раскладка (список чатов слева, чат справа при ширине > 840 dp).
-- Вход только через привязку: десктоп показывает QR, телефон сканирует. Своего сканера нет.
-- Добавление друга с десктопа: показать свой QR или вставить ссылку `ghostlink://add/…`.
-- Секрет аккаунта: macOS Keychain, Windows Credential Manager (`java-keyring`).
-- Трей, системные уведомления о новых сообщениях, пока приложение запущено.
-- Регистрация схемы `ghostlink://` в ОС.
-- Упаковка: `.dmg` (macOS, arm64 + x64) и `.msi` (Windows) через `compose.desktop.nativeDistributions`.
+Порядок выбран так, чтобы после каждого PR приложение собиралось и работало. Сначала разделяем на модули внутри Android, потом переводим модули на KMP.
 
-**Готово, когда:** Mac и Windows-машина (или VM) привязываются к телефону и переписываются в реальном времени.
+1. `build-logic` с convention-плагинами, обновление Kotlin, AGP и Compose до актуальных версий.
+2. `core:model`: перенос моделей; `value class` для id, `Instant` вместо `Long`, `Platform` enum, `GhostlinkError`.
+3. `core:domain`: интерфейсы репозиториев и use case из ARCHITECTURE.md. ViewModel переходят на use case.
+4. `core:testing` (фейки из `InMemoryBackend`) и `core:demo` (бот). Тесты ViewModel работают на фейках.
+5. `core:crypto` на `cryptography-kotlin` + общие test vectors; старый `java.security`-код удаляется.
+6. `core:firebase` + `core:data`: DTO, мапперы, реализации на GitLive, перевод ошибок в `GhostlinkError`, интеграционные тесты против эмулятора.
+7. Hilt → Koin, `KoinModulesTest`.
+8. `core:designsystem`, `core:ui`; ресурсы → Compose Resources.
+9. `feature:*`: экраны по модулям, UiState/Action/Effect, навигация через `NavGraphBuilder`-расширения.
+10. `core:platform`: `expect/actual` для `SecureStore`, `DeviceInfo`, `AppLifecycle`, `QrScanner`, `DeepLinks`.
+11. Проверка графа модулей в CI; `app` → `apps:android`.
 
-### Этап 5. iOS
-- `iosApp` на Xcode, `ComposeUIViewController`, Firebase через CocoaPods/SPM.
-- Сканер QR на AVFoundation (`actual`), разрешение камеры, Keychain.
-- Universal link / URL-схема `ghostlink://`.
-- Безопасные отступы, клавиатура, жесты «назад» — проверка на симуляторе и реальном iPhone.
+**Готово, когда:** Android работает как до миграции (прогон Maestro-сценариев: регистрация, привязка, друг, чат); все тесты в `commonTest`; `feature:*` не зависят от `core:data`.
 
-**Готово, когда:** iPhone в одном аккаунте с Android и десктопом; добавление друга и привязка устройства по камере работают.
+## Этап 4. Десктоп — macOS и Windows
 
-### Этап 6. Push-уведомления (Cloudflare Worker, бесплатно)
-- Устройства регистрируют FCM-токены в `users/{uid}/devices/{id}`.
-- Клиент после отправки сообщения дёргает Worker; Worker проверяет Firebase ID-токен, читает токены получателя и шлёт FCM HTTP v1. Ключ сервис-аккаунта хранится только в секретах Worker.
-- Android — FCM напрямую; iOS — FCM поверх APNs (нужен ключ APNs); десктоп — без push, уведомления из трея.
-- Лимит частоты на Worker, чтобы его нельзя было использовать для спама.
+1. `apps:desktop`: окно, адаптивная раскладка (список слева, чат справа при ширине > 840 dp).
+2. Вход только через привязку: десктоп показывает QR, телефон сканирует.
+3. `SecureStore` на `java-keyring` (macOS Keychain, Windows Credential Manager).
+4. Друзья: показать свой QR или вставить ссылку `ghostlink://add/…`; регистрация схемы `ghostlink://` в ОС.
+5. Трей и системные уведомления, пока приложение запущено.
+6. Упаковка `.dmg` (arm64 + x64) и `.msi` через `nativeDistributions`, сборка в CI.
 
-### Этап 7. Релиз и CI
-- GitHub Actions: тесты `shared` + Android-сборка (ubuntu), `.dmg` (macos), `.msi` (windows), iOS-сборка (macos).
-- Firebase-проект: включить Anonymous + Email/Password, задеплоить `firestore.rules`.
-- Дистрибуция: APK/AAB → GitHub Releases или Google Play; iOS → TestFlight; десктоп → GitHub Releases.
-- README: скриншоты всех платформ, схема архитектуры, описание протокола привязки.
+**Готово, когда:** Mac и Windows (или VM) привязываются к телефону и переписываются в реальном времени.
+
+## Этап 5. iOS
+
+1. `apps:ios`: Xcode-проект, `ComposeUIViewController`, Firebase через SPM, shared-фреймворк.
+2. `QrScanner` на AVFoundation, разрешение камеры; `SecureStore` на Keychain.
+3. URL-схема `ghostlink://`, безопасные отступы, клавиатура, жест «назад».
+4. Maestro-сценарии на iOS-симуляторе в CI.
+
+**Готово, когда:** iPhone в одном аккаунте с Android и десктопом; камера добавляет друга и подтверждает вход.
+
+## Этап 6. Push-уведомления (Cloudflare Worker, бесплатно)
+
+1. `DeviceDto.pushToken` + правила + тесты правил.
+2. `push-worker`: проверяет Firebase ID-токен, читает токены получателя, шлёт FCM HTTP v1. Ключ сервис-аккаунта лежит только в секретах Worker. Лимит частоты против спама.
+3. `SendMessageUseCase` вызывает Worker; ошибка Worker не мешает отправке сообщения.
+4. Android — FCM; iOS — FCM поверх APNs (нужен ключ APNs); десктоп — без push.
+
+**Готово, когда:** сообщение будит закрытое приложение на Android (и на iOS, если есть Apple Developer).
+
+## Этап 7. Релиз
+
+1. CI по тегу `v*`: AAB/APK, `.dmg`, `.msi`, iOS-сборка → GitHub Releases.
+2. Crashlytics на Android и iOS, логи в файл на десктопе.
+3. Дистрибуция: GitHub Releases, по желанию Google Play и TestFlight.
+4. README: скриншоты всех платформ, схема архитектуры, протокол привязки, видео.
 
 ## Что понадобится вне кода
 
