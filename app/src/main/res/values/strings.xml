@@ -88,6 +88,20 @@
     <string name="settings_sign_out">Выйти</string>
     <string name="settings_sign_out_title">Выйти из Ghostlink?</string>
     <string name="settings_sign_out_body">Чтобы вернуться, войдите с другого своего устройства или по ключу восстановления. Без них аккаунт будет не восстановить.</string>
+    <string name="settings_appearance">Оформление</string>
+    <string name="settings_theme">Тема</string>
+
+    <!-- Темы -->
+    <string name="theme_title">Тема оформления</string>
+    <string name="theme_selected">Выбрана</string>
+    <string name="theme_preview_incoming">привет, как дела?</string>
+    <string name="theme_preview_outgoing">на связи 👻</string>
+    <string name="theme_toxic_yellow" translatable="false">Toxic Yellow</string>
+    <string name="theme_neon_sunset" translatable="false">Neon Sunset</string>
+    <string name="theme_icewire" translatable="false">Icewire</string>
+    <string name="theme_acid_circuit" translatable="false">Acid Circuit</string>
+    <string name="theme_amber_alert" translatable="false">Amber Alert</string>
+    <string name="theme_custom_spectrum" translatable="false">Custom Spectrum</string>
     <string name="settings_version">Ghostlink %1$s</string>
 
     <!-- Ключ восстановления -->

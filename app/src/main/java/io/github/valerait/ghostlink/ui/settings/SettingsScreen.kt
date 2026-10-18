@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -55,11 +56,16 @@ import io.github.valerait.ghostlink.ui.common.DemoModeBanner
 import io.github.valerait.ghostlink.ui.common.requestGoogleIdToken
 import io.github.valerait.ghostlink.ui.onboarding.MAX_NAME_LENGTH
 import io.github.valerait.ghostlink.ui.recovery.RecoveryCodeDialog
+import io.github.valerait.ghostlink.ui.theme.LocalThemeId
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onDevices: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    onBack: () -> Unit,
+    onDevices: () -> Unit,
+    onTheme: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -125,6 +131,19 @@ fun SettingsScreen(onBack: () -> Unit, onDevices: () -> Unit, viewModel: Setting
                 Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.settings_rename))
             }
             HorizontalDivider()
+
+            Text(
+                text = stringResource(R.string.settings_appearance),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp),
+            )
+            ListItem(
+                leadingContent = { Icon(Icons.Outlined.Palette, contentDescription = null) },
+                headlineContent = { Text(stringResource(R.string.settings_theme)) },
+                supportingContent = { Text(stringResource(LocalThemeId.current.title)) },
+                modifier = Modifier.clickable(onClick = onTheme),
+            )
 
             Text(
                 text = stringResource(R.string.settings_account),

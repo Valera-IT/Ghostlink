@@ -1,5 +1,6 @@
 package io.github.valerait.ghostlink.ui.chat
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +48,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -59,6 +62,7 @@ import io.github.valerait.ghostlink.ui.common.dayLabel
 import io.github.valerait.ghostlink.ui.common.formatTime
 import io.github.valerait.ghostlink.ui.common.presenceText
 import io.github.valerait.ghostlink.ui.common.rememberNow
+import io.github.valerait.ghostlink.ui.theme.LocalChatStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -138,10 +142,11 @@ fun ChatScreen(onBack: () -> Unit, viewModel: ChatViewModel = hiltViewModel()) {
 @Composable
 private fun DayHeader(text: String) {
     Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = RoundedCornerShape(50)) {
+        val chatStyle = LocalChatStyle.current
+        Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = chatStyle.chipShape) {
             Text(
-                text = text,
-                style = MaterialTheme.typography.labelMedium,
+                text = text.uppercase(),
+                style = MaterialTheme.typography.labelMedium.mono(),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
             )
@@ -152,20 +157,16 @@ private fun DayHeader(text: String) {
 @Composable
 private fun MessageBubble(item: MessageItem) {
     val mine = item.mine
-    val bubbleShape = RoundedCornerShape(
-        topStart = 18.dp,
-        topEnd = 18.dp,
-        bottomEnd = if (mine) 4.dp else 18.dp,
-        bottomStart = if (mine) 18.dp else 4.dp,
-    )
+    val chatStyle = LocalChatStyle.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
     ) {
         Surface(
-            color = if (mine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = if (mine) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-            shape = bubbleShape,
+            color = if (mine) chatStyle.outgoing else chatStyle.incoming,
+            contentColor = if (mine) chatStyle.onOutgoing else chatStyle.onIncoming,
+            shape = if (mine) chatStyle.outgoingShape else chatStyle.incomingShape,
+            border = if (mine) null else BorderStroke(1.dp, chatStyle.incomingBorder),
             modifier = Modifier.widthIn(max = 300.dp),
         ) {
             Column(Modifier.padding(start = 12.dp, end = 10.dp, top = 8.dp, bottom = 6.dp)) {
@@ -177,7 +178,7 @@ private fun MessageBubble(item: MessageItem) {
                     item.message.sentAt?.let {
                         Text(
                             text = formatTime(it),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelSmall.mono(),
                             color = mutedContentColor(),
                         )
                     }
@@ -195,6 +196,8 @@ private fun MessageBubble(item: MessageItem) {
 private fun mutedContentColor(): Color =
     LocalContentColor.current.copy(alpha = 0.6f)
 
+private fun TextStyle.mono(): TextStyle = copy(fontFamily = FontFamily.Monospace)
+
 @Composable
 private fun StatusIcon(status: MessageStatus) {
     val (icon, description) = when (status) {
@@ -205,7 +208,7 @@ private fun StatusIcon(status: MessageStatus) {
     Icon(
         imageVector = icon,
         contentDescription = stringResource(description),
-        tint = if (status == MessageStatus.READ) MaterialTheme.colorScheme.primary else mutedContentColor(),
+        tint = if (status == MessageStatus.READ) LocalChatStyle.current.readTick else mutedContentColor(),
         modifier = Modifier.size(16.dp),
     )
 }

@@ -25,6 +25,7 @@ import io.github.valerait.ghostlink.ui.onboarding.OnboardingScreen
 import io.github.valerait.ghostlink.ui.recovery.RecoveryScreen
 import io.github.valerait.ghostlink.ui.scan.ScanScreen
 import io.github.valerait.ghostlink.ui.settings.SettingsScreen
+import io.github.valerait.ghostlink.ui.settings.ThemeScreen
 import kotlinx.serialization.Serializable
 
 @Serializable data object ChatsRoute
@@ -34,6 +35,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class ConnectRoute(val userId: String)
 @Serializable data object SettingsRoute
 @Serializable data object DevicesRoute
+@Serializable data object ThemeRoute
 /** code — отсканированная ссылка ghostlink://link/…; разбирает её LinkApproveViewModel. */
 @Serializable data class LinkApproveRoute(val code: String)
 
@@ -122,7 +124,14 @@ private fun MainNavHost(pendingInvite: String?, onInviteHandled: () -> Unit) {
             )
         }
         composable<SettingsRoute> {
-            SettingsScreen(onBack = { nav.navigateUp() }, onDevices = { nav.navigate(DevicesRoute) })
+            SettingsScreen(
+                onBack = { nav.navigateUp() },
+                onDevices = { nav.navigate(DevicesRoute) },
+                onTheme = { nav.navigate(ThemeRoute) },
+            )
+        }
+        composable<ThemeRoute> {
+            ThemeScreen(onBack = { nav.navigateUp() })
         }
         composable<DevicesRoute> {
             DevicesScreen(onBack = { nav.navigateUp() }, onScan = { nav.navigate(ScanRoute) })
