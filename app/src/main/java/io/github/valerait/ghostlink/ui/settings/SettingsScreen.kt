@@ -14,8 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Key
@@ -39,12 +37,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -53,11 +49,9 @@ import io.github.valerait.ghostlink.BuildConfig
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.DemoModeBanner
-import io.github.valerait.ghostlink.ui.common.requestGoogleIdToken
 import io.github.valerait.ghostlink.ui.onboarding.MAX_NAME_LENGTH
 import io.github.valerait.ghostlink.ui.recovery.RecoveryCodeDialog
 import io.github.valerait.ghostlink.ui.theme.LocalThemeId
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,8 +62,6 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var renaming by rememberSaveable { mutableStateOf(false) }
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
@@ -79,15 +71,6 @@ fun SettingsScreen(
         if (messageText != null) {
             snackbar.showSnackbar(messageText)
             viewModel.onMessageShown()
-        }
-    }
-
-    val linkGoogle: () -> Unit = {
-        viewModel.webClientId?.let { clientId ->
-            scope.launch {
-                val token = runCatching { requestGoogleIdToken(context, clientId) }.getOrNull()
-                if (token != null) viewModel.linkGoogle(token)
-            }
         }
     }
 
@@ -165,27 +148,6 @@ fun SettingsScreen(
                 supportingContent = { Text(stringResource(R.string.settings_recovery_key_hint)) },
                 modifier = Modifier.clickable(enabled = !state.busy, onClick = viewModel::showRecoveryKey),
             )
-            val googleEmail = state.googleEmail
-            if (googleEmail != null) {
-                ListItem(
-                    leadingContent = {
-                        Icon(
-                            Icons.Outlined.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    },
-                    headlineContent = { Text(stringResource(R.string.settings_google_linked_title)) },
-                    supportingContent = { Text(googleEmail) },
-                )
-            } else if (state.googleAvailable) {
-                ListItem(
-                    leadingContent = { Icon(Icons.Outlined.AccountCircle, contentDescription = null) },
-                    headlineContent = { Text(stringResource(R.string.settings_link_google)) },
-                    supportingContent = { Text(stringResource(R.string.settings_link_google_hint)) },
-                    modifier = Modifier.clickable(enabled = !state.busy, onClick = linkGoogle),
-                )
-            }
 
             Spacer(Modifier.height(8.dp))
             ListItem(

@@ -46,7 +46,7 @@ class AccountKey(
 
         fun generate(random: SecureRandom = SecureRandom()): AccountKey = AccountKey(ByteArray(SIZE).also(random::nextBytes))
 
-        /** Новый секрет для аккаунта, у которого уже есть служебная почта (например, после входа через Google). */
+        /** Новый секрет для аккаунта, у которого уже есть служебная почта (ключ на устройстве потерян). */
         fun forEmail(
             email: String,
             random: SecureRandom = SecureRandom(),

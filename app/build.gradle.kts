@@ -134,10 +134,6 @@ dependencies {
     implementation(libs.mlkit.barcode.scanning)
     implementation(libs.zxing.core)
 
-    implementation(libs.androidx.credentials)
-    implementation(libs.androidx.credentials.play.services)
-    implementation(libs.googleid)
-
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }

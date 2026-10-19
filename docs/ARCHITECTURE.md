@@ -37,7 +37,7 @@ feature/
   devices                  список устройств, удаление, «выйти на всех»
   link                     вход на новом устройстве: показать QR / подтвердить
   recovery                 ключ восстановления: показать / ввести
-  settings                 профиль, Google-восстановление, о приложении
+  settings                 профиль, ключ восстановления, о приложении
 apps/
   android                  Activity, манифест, google-services.json, Koin start
   desktop                  main(), окно, трей, упаковка .dmg / .msi
@@ -71,7 +71,7 @@ core:model  → ничего
 | Модель | Поля | Заметки |
 |---|---|---|
 | `UserId`, `ChatId`, `DeviceId`, `MessageId`, `LinkRequestId` | `value: String` | `ChatId.of(a, b)` — отсортированная пара |
-| `Account` | `id`, `kind: Anonymous \| Keyed`, `googleEmail?` | `Anonymous` — временный аккаунт нового устройства |
+| `Account` | `id`, `kind: Anonymous \| Keyed` | `Anonymous` — временный аккаунт нового устройства |
 | `AccountKey` | `login: ByteArray(8)`, `secret: ByteArray(17)` | → служебная почта и пароль; `rotateSecret()` |
 | `RecoveryCode` | `value: String` (40 символов base32) | `parse()` с проверкой формата, `toAccountKey()` |
 | `Profile` | `id`, `name: DisplayName` | `DisplayName` проверяет длину 1–40 |
@@ -97,7 +97,6 @@ sealed interface GhostlinkError {
     data object LinkExpired : GhostlinkError
     data object LinkAlreadyApproved : GhostlinkError
     data object PermissionDenied : GhostlinkError
-    data object GoogleAlreadyLinked : GhostlinkError
     data class Unexpected(val cause: Throwable) : GhostlinkError
 }
 ```

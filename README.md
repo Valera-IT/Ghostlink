@@ -14,12 +14,11 @@
   - разделители по дням;
   - непрочитанные в списке чатов.
 - **Присутствие:** «в сети» и «был(а) в сети в 14:05» через heartbeat, с истечением статуса, если приложение убили.
-- **Google как запасной способ восстановления** (Credential Manager): по желанию, друзья его не видят.
 - **Демо-режим.** Флейвор `demo` (и любая сборка без `google-services.json`) работает на бэкенде в памяти с ботом-собеседником, поэтому проект можно склонировать и сразу запустить.
 
 ## Стек
 
-Kotlin · Jetpack Compose · Material 3 · MVVM (ViewModel + StateFlow) · Hilt · Coroutines/Flow · Navigation Compose (типобезопасные маршруты) · Firebase Auth + Firestore · CameraX · ML Kit Barcode · ZXing · Credential Manager · JUnit + kotlinx-coroutines-test
+Kotlin · Jetpack Compose · Material 3 · MVVM (ViewModel + StateFlow) · Hilt · Coroutines/Flow · Navigation Compose (типобезопасные маршруты) · Firebase Auth + Firestore · CameraX · ML Kit Barcode · ZXing · JUnit + kotlinx-coroutines-test
 
 ## Архитектура
 
@@ -98,7 +97,7 @@ QR  ghostlink://link/{id}.{publicKey}
 
 1. Создать проект в [Firebase Console](https://console.firebase.google.com) и добавить Android-приложение с пакетом `io.github.valerait.ghostlink` (для `dev` — `io.github.valerait.ghostlink.dev`).
 2. Положить `google-services.json` в `app/src/prod/` (или `app/src/dev/`). Файлы в `.gitignore`: у каждого свой проект. В CI конфиг `dev` берётся из секрета `GOOGLE_SERVICES_DEV`.
-3. В разделе **Authentication → Sign-in method** включить **Email/Password** и **Anonymous**; **Google** — по желанию. Для Google нужно добавить SHA-1 debug-ключа: его выводит `./gradlew signingReport`.
+3. В разделе **Authentication → Sign-in method** включить **Email/Password** и **Anonymous**. Других способов входа нет: потерянный аккаунт возвращает только ключ восстановления.
 4. Создать базу **Firestore** и вставить содержимое `firestore.rules` во вкладку **Rules**.
 5. Только на Blaze: в Firestore → **TTL** добавить политику для коллекции `linkRequests` по полю `expiresAt`, чтобы брошенные заявки удалялись сами. На Spark TTL недоступен, но это не страшно: приложение удаляет свои заявки само, а просроченную заявку правила не дают подтвердить.
 

@@ -66,7 +66,7 @@ class InMemoryBackend(
         val id = if (accounts.isEmpty()) ME else "user-${nextId.incrementAndGet()}"
         val key = AccountKey.generate()
         accounts[key.email] = key.password to id
-        val account = Account(id = id, isAnonymous = false, googleEmail = null)
+        val account = Account(id = id, isAnonymous = false)
         if (seedDemoData) seed(account.id)
         _accountKey.value = key
         _account.value = account
@@ -76,22 +76,17 @@ class InMemoryBackend(
     override suspend fun signInWithKey(key: AccountKey): Account {
         val (password, id) = accounts[key.email] ?: throw InvalidAccountKeyException()
         if (password != key.password) throw InvalidAccountKeyException()
-        val account = Account(id = id, isAnonymous = false, googleEmail = null)
+        val account = Account(id = id, isAnonymous = false)
         _accountKey.value = key
         _account.value = account
         return account
     }
 
     override suspend fun signInAnonymously(): Account {
-        val account = Account(id = "temp-${nextId.incrementAndGet()}", isAnonymous = true, googleEmail = null)
+        val account = Account(id = "temp-${nextId.incrementAndGet()}", isAnonymous = true)
         _account.value = account
         return account
     }
-
-    override suspend fun signInWithGoogle(idToken: String): Account =
-        throw UnsupportedOperationException("Google sign-in is not available in demo mode")
-
-    override suspend fun linkGoogle(idToken: String) = throw UnsupportedOperationException("Google sign-in is not available in demo mode")
 
     override suspend fun ensureAccountKey(): AccountKey {
         val account = checkNotNull(_account.value) { "Not signed in" }
