@@ -28,10 +28,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -42,9 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.ui.common.DemoModeBanner
 import io.github.valerait.ghostlink.ui.common.GhostLogo
-import io.github.valerait.ghostlink.ui.common.requestGoogleIdToken
 import io.github.valerait.ghostlink.ui.theme.LogoTextStyle
-import kotlinx.coroutines.launch
 
 @Composable
 fun OnboardingScreen(
@@ -53,8 +49,6 @@ fun OnboardingScreen(
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -128,18 +122,6 @@ fun OnboardingScreen(
             }
             TextButton(onClick = onRecover, enabled = !state.busy) {
                 Text(stringResource(R.string.onboarding_recovery_key))
-            }
-            val clientId = viewModel.webClientId
-            if (state.googleAvailable && clientId != null) {
-                TextButton(
-                    enabled = !state.busy,
-                    onClick = {
-                        scope.launch {
-                            val token = runCatching { requestGoogleIdToken(context, clientId) }.getOrNull()
-                            if (token != null) viewModel.signInWithGoogle(token)
-                        }
-                    },
-                ) { Text(stringResource(R.string.onboarding_restore_google)) }
             }
             Spacer(Modifier.height(24.dp))
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

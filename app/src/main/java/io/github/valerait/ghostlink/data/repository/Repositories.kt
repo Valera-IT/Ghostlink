@@ -26,14 +26,9 @@ interface AuthRepository {
     /** Временный аккаунт нового устройства: нужен только чтобы создать заявку на вход. */
     suspend fun signInAnonymously(): Account
 
-    suspend fun signInWithGoogle(idToken: String): Account
-
-    /** Превращает анонимный аккаунт в постоянный: uid и вся переписка сохраняются. */
-    suspend fun linkGoogle(idToken: String)
-
     /**
      * Выдаёт ключ аккаунту, у которого его нет на этом устройстве:
-     * анонимным аккаунтам из старой версии и аккаунтам, восстановленным через Google.
+     * анонимным аккаунтам из старой версии и аккаунтам, чей ключ на устройстве потерян.
      */
     suspend fun ensureAccountKey(): AccountKey
 
@@ -48,9 +43,6 @@ interface AuthRepository {
 class InvalidAccountKeyException(
     cause: Throwable? = null,
 ) : Exception(cause)
-
-/** Google-аккаунт уже привязан к другому профилю Ghostlink. */
-class AccountAlreadyLinkedException : Exception()
 
 fun AuthRepository.requireUserId(): String = checkNotNull(account.value) { "Not signed in" }.id
 

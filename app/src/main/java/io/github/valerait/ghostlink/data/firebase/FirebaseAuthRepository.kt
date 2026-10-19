@@ -4,13 +4,10 @@ import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
-import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.GoogleAuthProvider
 import io.github.valerait.ghostlink.data.device.AccountKeyStore
 import io.github.valerait.ghostlink.data.model.Account
 import io.github.valerait.ghostlink.data.model.AccountKey
-import io.github.valerait.ghostlink.data.repository.AccountAlreadyLinkedException
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.InvalidAccountKeyException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,22 +64,6 @@ class FirebaseAuthRepository(
 
     override suspend fun signInAnonymously(): Account = checkNotNull(refresh(checkNotNull(auth.signInAnonymously().await().user)))
 
-    override suspend fun signInWithGoogle(idToken: String): Account {
-        val credential = GoogleAuthProvider.getCredential(idToken, null)
-        return checkNotNull(refresh(checkNotNull(auth.signInWithCredential(credential).await().user)))
-    }
-
-    override suspend fun linkGoogle(idToken: String) {
-        val user = requireUser()
-        try {
-            user.linkWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await()
-        } catch (e: FirebaseAuthUserCollisionException) {
-            throw AccountAlreadyLinkedException()
-        }
-        // AuthStateListener не срабатывает на привязку, обновляем вручную.
-        refresh()
-    }
-
     override suspend fun ensureAccountKey(): AccountKey =
         keyMutex.withLock {
             val user = requireUser()
@@ -91,14 +72,14 @@ class FirebaseAuthRepository(
             val serviceEmail = user.email?.takeIf(AccountKey::isServiceEmail)
             val key =
                 if (serviceEmail == null) {
-                    // Анонимный аккаунт из старой версии или аккаунт только с Google: добавляем пароль, uid не меняется.
+                    // Анонимный аккаунт из старой версии: добавляем пароль, uid не меняется.
                     AccountKey.generate().also {
                         user.linkWithCredential(EmailAuthProvider.getCredential(it.email, it.password)).await()
                     }
                 } else {
-                    // Пароль у аккаунта есть, но этому устройству он неизвестен (вошли через Google).
+                    // Пароль у аккаунта есть, но ключ на этом устройстве потерян (например, сброшен Keystore).
                     // Задаём новый: остальные устройства выйдут, зато ключ снова под контролем.
-                    // Firebase требует свежий вход — сразу после входа через Google он есть.
+                    // Если вход был давно, Firebase попросит свежий вход и выбросит ошибку.
                     checkNotNull(AccountKey.forEmail(serviceEmail)).also { user.updatePassword(it.password).await() }
                 }
             keys.put(user.uid, key)
@@ -138,5 +119,4 @@ private fun FirebaseUser.toAccount() =
     Account(
         id = uid,
         isAnonymous = isAnonymous,
-        googleEmail = providerData.firstOrNull { it.providerId == GoogleAuthProvider.PROVIDER_ID }?.email,
     )

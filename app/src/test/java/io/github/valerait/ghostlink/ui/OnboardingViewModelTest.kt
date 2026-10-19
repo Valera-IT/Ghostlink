@@ -17,7 +17,7 @@ import org.junit.Test
 class OnboardingViewModelTest {
     @get:Rule val mainRule = MainDispatcherRule()
 
-    private val config = AppConfig(demoMode = true, webClientId = null)
+    private val config = AppConfig(demoMode = true)
 
     @Test
     fun `submit creates an account with a key and a profile`() =

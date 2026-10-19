@@ -1,6 +1,5 @@
 package io.github.valerait.ghostlink.di
 
-import android.annotation.SuppressLint
 import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
@@ -33,8 +32,6 @@ import javax.inject.Singleton
 data class AppConfig(
     /** Нет google-services.json — работаем на InMemoryBackend. */
     val demoMode: Boolean,
-    /** OAuth client id для входа через Google; null, если Google не настроен. */
-    val webClientId: String?,
 )
 
 class Backend(
@@ -48,7 +45,6 @@ class Backend(
 @Module
 @InstallIn(SingletonComponent::class)
 object BackendModule {
-    @SuppressLint("DiscouragedApi") // ресурс генерирует google-services, и его может не быть
     @Provides
     @Singleton
     fun provideAppConfig(
@@ -56,11 +52,9 @@ object BackendModule {
     ): AppConfig {
         BuildConfig.FIREBASE_EMULATOR_HOST?.let { host ->
             connectToEmulator(context, host)
-            return AppConfig(demoMode = false, webClientId = null)
+            return AppConfig(demoMode = false)
         }
-        if (FirebaseApp.getApps(context).isEmpty()) return AppConfig(demoMode = true, webClientId = null)
-        val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
-        return AppConfig(demoMode = false, webClientId = if (resId != 0) context.getString(resId) else null)
+        return AppConfig(demoMode = FirebaseApp.getApps(context).isEmpty())
     }
 
     /** Локальный Firebase Emulator: проект demo-* не требует ни google-services.json, ни настоящего проекта. */

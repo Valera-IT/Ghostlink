@@ -23,7 +23,6 @@ data class OnboardingState(
     val busy: Boolean = false,
     @StringRes val error: Int? = null,
     val demoMode: Boolean = false,
-    val googleAvailable: Boolean = false,
 ) {
     val canSubmit: Boolean get() = name.isNotBlank() && !busy
 }
@@ -37,12 +36,8 @@ class OnboardingViewModel
         private val config: AppConfig,
     ) : ViewModel() {
         private val _state =
-            MutableStateFlow(
-                OnboardingState(demoMode = config.demoMode, googleAvailable = config.webClientId != null),
-            )
+            MutableStateFlow(OnboardingState(demoMode = config.demoMode))
         val state: StateFlow<OnboardingState> = _state.asStateFlow()
-
-        val webClientId: String? get() = config.webClientId
 
         fun onNameChange(value: String) {
             _state.update { it.copy(name = value.take(MAX_NAME_LENGTH), error = null) }
@@ -58,14 +53,6 @@ class OnboardingViewModel
                 users.saveProfile(account.id, name)
             }
         }
-
-        /** Вход в уже привязанный к Google аккаунт — так переписка восстанавливается на новом телефоне. */
-        fun signInWithGoogle(idToken: String) =
-            runBusy {
-                auth.signInWithGoogle(idToken)
-                // Профиль не нашёлся (Google ещё ни к чему не привязан) — корень останется на онбординге.
-                _state.update { it.copy(busy = false) }
-            }
 
         private fun runBusy(block: suspend () -> Unit) {
             _state.update { it.copy(busy = true, error = null) }

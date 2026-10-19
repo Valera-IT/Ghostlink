@@ -15,7 +15,6 @@
     <string name="demo_mode_banner">Демо-режим: Firebase не подключён, данные живут только на этом устройстве.</string>
     <string name="error_generic">Что-то пошло не так. Проверьте интернет и попробуйте ещё раз.</string>
     <string name="error_sign_in">Не удалось войти. Проверьте интернет и попробуйте ещё раз.</string>
-    <string name="error_google_already_linked">Этот Google-аккаунт уже привязан к другому профилю Ghostlink.</string>
 
     <!-- Онбординг -->
     <string name="onboarding_tagline">Мессенджер без номера и почты. Друзей добавляют только при встрече — по QR-коду.</string>
@@ -25,7 +24,6 @@
     <string name="onboarding_have_account">Уже пользуетесь Ghostlink?</string>
     <string name="onboarding_link_device">Войти с другого устройства</string>
     <string name="onboarding_recovery_key">Ввести ключ восстановления</string>
-    <string name="onboarding_restore_google">Восстановить через Google</string>
     <string name="onboarding_feature_no_phone">Без номера телефона и почты</string>
     <string name="onboarding_feature_qr">Друзья — только по QR при встрече</string>
     <string name="onboarding_feature_realtime">Сообщения в реальном времени со статусом прочтения</string>
@@ -84,10 +82,6 @@
     <string name="settings_devices_hint">Войти на компьютере или другом телефоне</string>
     <string name="settings_recovery_key">Ключ восстановления</string>
     <string name="settings_recovery_key_hint">Вернёт аккаунт, если потерять все устройства</string>
-    <string name="settings_link_google">Привязать Google</string>
-    <string name="settings_link_google_hint">Ещё один способ восстановления. Друзья его не увидят.</string>
-    <string name="settings_google_linked">Google-аккаунт привязан</string>
-    <string name="settings_google_linked_title">Привязан Google-аккаунт</string>
     <string name="settings_sign_out">Выйти</string>
     <string name="settings_sign_out_title">Выйти из Ghostlink?</string>
     <string name="settings_sign_out_body">Чтобы вернуться, войдите с другого своего устройства или по ключу восстановления. Без них аккаунт будет не восстановить.</string>
