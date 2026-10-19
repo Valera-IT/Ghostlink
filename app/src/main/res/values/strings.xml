@@ -40,6 +40,15 @@
     <string name="chat_reply_you">Вы</string>
     <string name="chat_reply_cancel">Отменить ответ</string>
     <string name="chat_reply_original_unavailable">Исходное сообщение слишком старое</string>
+    <string name="chat_actions">Действия с сообщением</string>
+    <string name="chat_copy">Копировать</string>
+    <string name="chat_edit">Изменить</string>
+    <string name="chat_editing">Редактирование</string>
+    <string name="chat_edit_cancel">Отменить редактирование</string>
+    <string name="chat_edited">изменено</string>
+    <string name="chat_delete">Удалить</string>
+    <string name="chat_delete_title">Удалить сообщение?</string>
+    <string name="chat_delete_body">Сообщение исчезнет у вас и у собеседника.</string>
     <string name="status_sending">Отправляется</string>
     <string name="status_sent">Отправлено</string>
     <string name="status_read">Прочитано</string>

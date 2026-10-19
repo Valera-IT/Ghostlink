@@ -134,6 +134,148 @@ class ChatViewModelTest {
         }
 
     @Test
+    fun `edit replaces text, marks message edited and updates chat preview`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            vm.send("опечатка")
+            val sent =
+                vm.state.value
+                    .messages()
+                    .single()
+
+            vm.startEdit(sent.message.id)
+            assertEquals(
+                sent.message.id,
+                vm.state.value.editing
+                    ?.message
+                    ?.id,
+            )
+            now += 1_000
+            vm.send("  исправлено ")
+
+            val edited =
+                vm.state.value
+                    .messages()
+                    .single()
+            assertEquals("исправлено", edited.message.text)
+            assertEquals(now, edited.message.editedAt)
+            assertNull(vm.state.value.editing)
+            assertEquals(
+                "исправлено",
+                backend
+                    .observeChat(chatId)
+                    .first()!!
+                    .lastMessage
+                    ?.text,
+            )
+        }
+
+    @Test
+    fun `editing an older message keeps the chat preview`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            vm.send("первое")
+            vm.send("второе")
+            vm.startEdit(
+                vm.state.value
+                    .messages()
+                    .first()
+                    .message.id,
+            )
+            vm.send("первое!")
+            assertEquals(
+                "второе",
+                backend
+                    .observeChat(chatId)
+                    .first()!!
+                    .lastMessage
+                    ?.text,
+            )
+        }
+
+    @Test
+    fun `partner messages cannot be edited or deleted`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            backend.sendMessage(chatId, FRIEND, "моё")
+            val id =
+                vm.state.value
+                    .messages()
+                    .single()
+                    .message.id
+
+            vm.startEdit(id)
+            assertNull(vm.state.value.editing)
+            vm.delete(id)
+            assertEquals(
+                1,
+                vm.state.value
+                    .messages()
+                    .size,
+            )
+        }
+
+    @Test
+    fun `reply and edit modes replace each other`() =
+        runTest {
+            val (_, _, vm) = setUp()
+            vm.send("раз")
+            val id =
+                vm.state.value
+                    .messages()
+                    .single()
+                    .message.id
+            vm.startReply(id)
+            vm.startEdit(id)
+            assertNull(vm.state.value.replyingTo)
+            vm.startReply(id)
+            assertNull(vm.state.value.editing)
+        }
+
+    @Test
+    fun `deleting the latest message moves chat preview to the previous one`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            backend.sendMessage(chatId, FRIEND, "привет")
+            vm.send("ой, не то")
+            vm.delete(
+                vm.state.value
+                    .messages()
+                    .last()
+                    .message.id,
+            )
+
+            assertEquals(
+                listOf("привет"),
+                vm.state.value
+                    .messages()
+                    .map { it.message.text },
+            )
+            val last = backend.observeChat(chatId).first()!!.lastMessage
+            assertEquals("привет", last?.text)
+            assertEquals(FRIEND, last?.senderId)
+        }
+
+    @Test
+    fun `deleting the only message clears chat preview`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            vm.send("единственное")
+            vm.delete(
+                vm.state.value
+                    .messages()
+                    .single()
+                    .message.id,
+            )
+            assertTrue(
+                vm.state.value
+                    .messages()
+                    .isEmpty(),
+            )
+            assertNull(backend.observeChat(chatId).first()!!.lastMessage)
+        }
+
+    @Test
     fun `incoming message is marked read only while chat is visible`() =
         runTest {
             val (backend, chatId, vm) = setUp()

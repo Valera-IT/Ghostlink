@@ -140,11 +140,46 @@ describe('chats/{a_b}/messages/{id}', () => {
     await assertFails(addDoc(messages, { ...message('alice'), replyTo: { id: '', senderId: 'bob', preview: 'Привет' } }));
   });
 
-  test('сообщения неизменяемы', async () => {
+  const seedMessage = (senderId = 'alice') =>
+    seed((db) => setDoc(doc(db, `chats/${CHAT}/messages/m1`), { senderId, text: 'Привет', sentAt: Timestamp.now() }));
+
+  test('автор исправляет своё сообщение', async () => {
     await seedChat();
-    await seed((db) => setDoc(doc(db, `chats/${CHAT}/messages/m1`), { senderId: 'alice', text: 'Привет', sentAt: Timestamp.now() }));
+    await seedMessage();
+    const db = account('alice');
+    const batch = writeBatch(db);
+    batch.update(doc(db, `chats/${CHAT}/messages/m1`), { text: 'Привет!', editedAt: serverTimestamp() });
+    batch.update(doc(db, `chats/${CHAT}`), { 'lastMessage.text': 'Привет!' });
+    await assertSucceeds(batch.commit());
+  });
+
+  test('чужое сообщение не исправить', async () => {
+    await seedChat();
+    await seedMessage('bob');
+    await assertFails(updateDoc(doc(account('alice'), `chats/${CHAT}/messages/m1`), { text: 'Подмена', editedAt: serverTimestamp() }));
+  });
+
+  test('правка меняет только текст, с серверным временем', async () => {
+    await seedChat();
+    await seedMessage();
     const ref = doc(account('alice'), `chats/${CHAT}/messages/m1`);
-    await assertFails(updateDoc(ref, { text: 'Изменено' }));
-    await assertFails(deleteDoc(ref));
+    await assertFails(updateDoc(ref, { text: 'Без отметки' }));
+    await assertFails(updateDoc(ref, { text: 'Своё время', editedAt: Timestamp.now() }));
+    await assertFails(updateDoc(ref, { text: '', editedAt: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { text: 'x', editedAt: serverTimestamp(), sentAt: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { text: 'x', editedAt: serverTimestamp(), senderId: 'bob' }));
+  });
+
+  test('автор удаляет своё сообщение', async () => {
+    await seedChat();
+    await seedMessage();
+    await assertSucceeds(deleteDoc(doc(account('alice'), `chats/${CHAT}/messages/m1`)));
+  });
+
+  test('чужое сообщение не удалить', async () => {
+    await seedChat();
+    await seedMessage('bob');
+    await assertFails(deleteDoc(doc(account('alice'), `chats/${CHAT}/messages/m1`)));
+    await assertFails(deleteDoc(doc(account('mallory'), `chats/${CHAT}/messages/m1`)));
   });
 });

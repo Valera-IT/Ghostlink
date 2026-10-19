@@ -74,6 +74,8 @@ data class Message(
     /** Сообщение записано только локально и ещё не подтверждено сервером. */
     val pending: Boolean = false,
     val replyTo: ReplyTo? = null,
+    /** Когда автор последний раз исправил текст; null — не исправлялось. */
+    val editedAt: Long? = null,
 ) {
     fun status(partnerLastRead: Long?): MessageStatus =
         when {

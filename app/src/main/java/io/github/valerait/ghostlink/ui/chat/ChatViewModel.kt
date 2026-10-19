@@ -63,6 +63,8 @@ data class ChatUiState(
     val rows: List<ChatRow> = emptyList(),
     /** Сообщение, на которое пользователь сейчас отвечает (плашка над полем ввода). */
     val replyingTo: MessageItem? = null,
+    /** Своё сообщение, которое пользователь сейчас исправляет; взаимоисключается с [replyingTo]. */
+    val editing: MessageItem? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -81,6 +83,7 @@ class ChatViewModel
         private val zone = ZoneId.systemDefault()
         private val visible = MutableStateFlow(false)
         private val replyingToId = MutableStateFlow<String?>(null)
+        private val editingId = MutableStateFlow<String?>(null)
 
         private val chat =
             chats
@@ -98,7 +101,7 @@ class ChatViewModel
                 .onStart { emit(null) }
 
         val state: StateFlow<ChatUiState> =
-            combine(chat, messages, partner, replyingToId) { chat, messages, partner, replyingToId ->
+            combine(chat, messages, partner, replyingToId, editingId) { chat, messages, partner, replyingToId, editingId ->
                 val partnerRead = chat?.lastRead?.get(chat.partnerId(me))
                 val items =
                     messages.map { message ->
@@ -115,6 +118,7 @@ class ChatViewModel
                     partner = partner,
                     rows = buildRows(items),
                     replyingTo = replyingToId?.let { id -> items.firstOrNull { it.message.id == id } },
+                    editing = editingId?.let { id -> items.firstOrNull { it.message.id == id && it.mine } },
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
 
@@ -138,6 +142,7 @@ class ChatViewModel
         }
 
         fun startReply(messageId: String) {
+            editingId.value = null
             replyingToId.value = messageId
         }
 
@@ -145,17 +150,55 @@ class ChatViewModel
             replyingToId.value = null
         }
 
-        fun send(text: String) {
-            val trimmed = text.trim()
-            if (trimmed.isEmpty()) return
-            // Отвечать можно только на сообщение, уже записанное на сервер: у pending ещё нет стабильного места в чате.
-            val replyTo =
-                state.value.replyingTo
-                    ?.message
-                    ?.takeUnless { it.pending }
-                    ?.let(ReplyTo::of)
-            chats.sendMessage(chatId, me, trimmed.take(MAX_MESSAGE_LENGTH), replyTo)
+        fun startEdit(messageId: String) {
             replyingToId.value = null
+            editingId.value = messageId
+        }
+
+        fun cancelEdit() {
+            editingId.value = null
+        }
+
+        fun delete(messageId: String) {
+            val list = messages.replayCache.firstOrNull() ?: return
+            val index = list.indexOfFirst { it.id == messageId }
+            if (index < 0 || list[index].senderId != me) return
+            chats.deleteMessage(chatId, messageId, isLatest = index == list.lastIndex, previous = list.getOrNull(index - 1))
+            if (replyingToId.value == messageId) replyingToId.value = null
+            if (editingId.value == messageId) editingId.value = null
+        }
+
+        /** Отправляет новое сообщение или, в режиме правки, сохраняет исправленный текст. */
+        fun send(text: String) {
+            val trimmed = text.trim().take(MAX_MESSAGE_LENGTH)
+            if (trimmed.isEmpty()) return
+            val editing = state.value.editing
+            if (editing != null) {
+                saveEdit(editing.message, trimmed)
+            } else {
+                // Отвечать можно только на сообщение, уже записанное на сервер: у pending ещё нет стабильного места в чате.
+                val replyTo =
+                    state.value.replyingTo
+                        ?.message
+                        ?.takeUnless { it.pending }
+                        ?.let(ReplyTo::of)
+                chats.sendMessage(chatId, me, trimmed, replyTo)
+                replyingToId.value = null
+            }
+        }
+
+        private fun saveEdit(
+            message: Message,
+            text: String,
+        ) {
+            editingId.value = null
+            if (text == message.text) return
+            val isLatest =
+                messages.replayCache
+                    .firstOrNull()
+                    ?.lastOrNull()
+                    ?.id == message.id
+            chats.editMessage(chatId, message.id, text, isLatest)
         }
 
         private fun buildRows(items: List<MessageItem>): List<ChatRow> {
