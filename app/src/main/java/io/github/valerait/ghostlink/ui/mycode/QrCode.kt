@@ -33,8 +33,12 @@ import kotlinx.coroutines.withContext
 
 private val QrInk = Color(0xFF0E0F14)
 
-/** Белая карточка с QR-кодом и призраком в центре. */
-// Ложное срабатывание lint: value присваивается внутри лямбды (до обновления Compose на этапе 3.1).
+/**
+ * Белая карточка с QR-кодом и призраком в центре.
+ *
+ * `ProduceStateDoesNotAssignValue` — ложное срабатывание lint: value присваивается внутри лямбды
+ * (до обновления Compose на этапе 3.1).
+ */
 @SuppressLint("ProduceStateDoesNotAssignValue")
 @Composable
 fun QrCard(
