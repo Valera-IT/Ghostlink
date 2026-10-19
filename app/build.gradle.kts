@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.kover)
 }
 
 // Конфиг Firebase лежит в app/src/dev|prod/google-services.json и в git не попадает (в CI — из секретов).
@@ -23,7 +24,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.1.0" // x-release-please-version
     }
 
     flavorDimensions += "env"
@@ -72,6 +73,31 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+    }
+}
+
+// Покрытие считаем на demo-варианте: на нём идут unit-тесты в CI.
+kover {
+    currentProject {
+        createVariant("ci") {
+            add("demoDebug")
+        }
+    }
+    reports {
+        filters {
+            excludes {
+                classes(
+                    "*.BuildConfig",
+                    "*.ComposableSingletons*",
+                    "*_Factory*",
+                    "*_HiltModules*",
+                    "*Hilt_*",
+                    "hilt_aggregated_deps.*",
+                    "dagger.hilt.*",
+                )
+                annotatedBy("androidx.compose.runtime.Composable", "androidx.compose.ui.tooling.preview.Preview")
+            }
+        }
     }
 }
 

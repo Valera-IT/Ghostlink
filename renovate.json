@@ -1,0 +1,32 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits", ":dependencyDashboard"],
+  "timezone": "Europe/Moscow",
+  "schedule": ["before 9am on monday"],
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Kotlin, KSP и Compose-компилятор обновляются вместе",
+      "matchPackageNames": ["org.jetbrains.kotlin{/,}**", "com.google.devtools.ksp{/,}**"],
+      "groupName": "kotlin"
+    },
+    {
+      "matchPackageNames": ["androidx.compose{/,}**"],
+      "groupName": "compose"
+    },
+    {
+      "matchPackageNames": ["com.google.firebase{/,}**", "com.google.gms{/,}**", "firebase", "firebase-tools", "@firebase/**"],
+      "groupName": "firebase"
+    },
+    {
+      "description": "GitLive и firebase-java-sdk — неофициальные, следим за каждым выпуском (ADR 0006)",
+      "matchPackageNames": ["dev.gitlive{/,}**", "dev.gitlive:firebase-java-sdk"],
+      "groupName": "gitlive"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "automerge": false
+    }
+  ]
+}

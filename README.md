@@ -132,7 +132,7 @@ cd firebase && npm ci && npm test
 
 На каждую коллекцию есть разрешённые и запрещённые случаи: чужой профиль, чужое устройство, повторное подтверждение заявки, просроченная заявка, сообщение от чужого имени, клиентское время вместо серверного.
 
-**Статический анализ:** `./gradlew spotlessCheck detekt` (форматирование — `./gradlew spotlessApply`). Всё это и сборка запускаются в CI на каждый PR.
+**Статический анализ:** `./gradlew spotlessCheck detekt` (форматирование — `./gradlew spotlessApply`). **Покрытие:** `./gradlew :app:koverHtmlReportCi`. Всё это и сборка запускаются в CI на каждый PR; зависимости обновляет Renovate, CHANGELOG собирает release-please из заголовков PR (Conventional Commits).
 
 ## Дальше
 
