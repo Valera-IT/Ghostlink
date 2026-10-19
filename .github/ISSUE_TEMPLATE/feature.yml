@@ -1,0 +1,32 @@
+name: Задача из плана
+description: Пункт ROADMAP (N.M) или новая функция
+labels: ["enhancement"]
+body:
+  - type: input
+    id: roadmap
+    attributes:
+      label: Пункт плана
+      description: Номер из docs/ROADMAP.md, например 2.8. Пусто, если задачи нет в плане.
+      placeholder: "2.8"
+  - type: textarea
+    id: goal
+    attributes:
+      label: Что и зачем
+      description: Что должно появиться и какую проблему это решает.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Готово, когда
+      description: Проверяемые условия приёмки.
+      placeholder: |
+        - [ ] …
+        - [ ] тесты / тесты правил
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Заметки
+      description: Ограничения (Spark, правила Firestore), ссылки на ADR, открытые вопросы.

@@ -1,0 +1,38 @@
+name: Ошибка
+description: Что-то работает не так, как должно
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Что случилось
+      description: Что ожидалось и что произошло вместо этого.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как повторить
+      placeholder: |
+        1. …
+        2. …
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Платформа
+      multiple: true
+      options: [Android, iOS, macOS, Windows]
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Бэкенд
+      options: [Firebase (prod), Firebase (dev), Firebase Emulator, Демо-режим]
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи и скриншоты
+      render: text
