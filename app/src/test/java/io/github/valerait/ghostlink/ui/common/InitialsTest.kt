@@ -4,7 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class InitialsTest {
-
     @Test
     fun `takes first letters of the first two words`() {
         assertEquals("ВМ", initials("Валера Махнович"))

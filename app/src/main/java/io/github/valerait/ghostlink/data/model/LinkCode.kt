@@ -7,8 +7,10 @@ import java.util.Base64
  * Новое устройство показывает его, устройство с аккаунтом сканирует.
  * Публичный ключ берётся только из QR, а не из Firestore: подменить его через базу нельзя.
  */
-data class LinkCode(val requestId: String, val publicKey: ByteArray) {
-
+data class LinkCode(
+    val requestId: String,
+    val publicKey: ByteArray,
+) {
     fun toUri(): String = PREFIX + requestId + "." + Base64.getUrlEncoder().withoutPadding().encodeToString(publicKey)
 
     override fun equals(other: Any?): Boolean =
@@ -35,11 +37,15 @@ data class LinkCode(val requestId: String, val publicKey: ByteArray) {
 
 /** Что можно отсканировать в Ghostlink. */
 sealed interface ScannedCode {
-    data class Invite(val userId: String) : ScannedCode
-    data class Link(val code: LinkCode) : ScannedCode
+    data class Invite(
+        val userId: String,
+    ) : ScannedCode
+
+    data class Link(
+        val code: LinkCode,
+    ) : ScannedCode
 
     companion object {
-        fun parse(raw: String?): ScannedCode? =
-            InviteLink.parse(raw)?.let(::Invite) ?: LinkCode.parse(raw)?.let(::Link)
+        fun parse(raw: String?): ScannedCode? = InviteLink.parse(raw)?.let(::Invite) ?: LinkCode.parse(raw)?.let(::Link)
     }
 }

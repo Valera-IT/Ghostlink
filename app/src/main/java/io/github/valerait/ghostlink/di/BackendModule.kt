@@ -48,11 +48,12 @@ class Backend(
 @Module
 @InstallIn(SingletonComponent::class)
 object BackendModule {
-
     @SuppressLint("DiscouragedApi") // ресурс генерирует google-services, и его может не быть
     @Provides
     @Singleton
-    fun provideAppConfig(@ApplicationContext context: Context): AppConfig {
+    fun provideAppConfig(
+        @ApplicationContext context: Context,
+    ): AppConfig {
         BuildConfig.FIREBASE_EMULATOR_HOST?.let { host ->
             connectToEmulator(context, host)
             return AppConfig(demoMode = false, webClientId = null)
@@ -63,11 +64,15 @@ object BackendModule {
     }
 
     /** Локальный Firebase Emulator: проект demo-* не требует ни google-services.json, ни настоящего проекта. */
-    private fun connectToEmulator(context: Context, host: String) {
+    private fun connectToEmulator(
+        context: Context,
+        host: String,
+    ) {
         if (FirebaseApp.getApps(context).isEmpty()) {
             FirebaseApp.initializeApp(
                 context,
-                FirebaseOptions.Builder()
+                FirebaseOptions
+                    .Builder()
                     .setProjectId("demo-ghostlink")
                     .setApplicationId("1:000000000000:android:0000000000000000")
                     .setApiKey("emulator-api-key")
@@ -80,7 +85,10 @@ object BackendModule {
 
     @Provides
     @Singleton
-    fun provideBackend(@ApplicationContext context: Context, config: AppConfig): Backend =
+    fun provideBackend(
+        @ApplicationContext context: Context,
+        config: AppConfig,
+    ): Backend =
         if (config.demoMode) {
             val demo = InMemoryBackend(CoroutineScope(SupervisorJob() + Dispatchers.Default))
             Backend(demo, demo, demo, demo, demo)
@@ -98,7 +106,9 @@ object BackendModule {
 
     @Provides
     @Singleton
-    fun provideThisDevice(@ApplicationContext context: Context): ThisDevice = ThisDevice.from(context)
+    fun provideThisDevice(
+        @ApplicationContext context: Context,
+    ): ThisDevice = ThisDevice.from(context)
 
     @Provides
     fun provideAuthRepository(backend: Backend): AuthRepository = backend.auth

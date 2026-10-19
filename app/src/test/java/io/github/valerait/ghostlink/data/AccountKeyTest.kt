@@ -8,7 +8,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AccountKeyTest {
-
     @Test
     fun `recovery code round-trips`() {
         val key = AccountKey.generate()
@@ -21,7 +20,13 @@ class AccountKeyTest {
     @Test
     fun `recovery code tolerates case, spaces and look-alike letters`() {
         val key = AccountKey(ByteArray(AccountKey.SIZE) { it.toByte() })
-        val messy = key.toRecoveryCode().lowercase().replace("-", " ").replace('0', 'o').replace('1', 'l')
+        val messy =
+            key
+                .toRecoveryCode()
+                .lowercase()
+                .replace("-", " ")
+                .replace('0', 'o')
+                .replace('1', 'l')
 
         assertEquals(key, AccountKey.parseRecoveryCode("  $messy\n"))
     }

@@ -13,9 +13,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import io.github.valerait.ghostlink.data.model.ScannedCode
 import io.github.valerait.ghostlink.ui.chat.ChatScreen
 import io.github.valerait.ghostlink.ui.chats.ChatListScreen
-import io.github.valerait.ghostlink.data.model.ScannedCode
 import io.github.valerait.ghostlink.ui.connect.ConnectScreen
 import io.github.valerait.ghostlink.ui.devices.DevicesScreen
 import io.github.valerait.ghostlink.ui.link.LinkApproveScreen
@@ -29,18 +29,34 @@ import io.github.valerait.ghostlink.ui.settings.ThemeScreen
 import kotlinx.serialization.Serializable
 
 @Serializable data object ChatsRoute
-@Serializable data class ChatRoute(val chatId: String)
+
+@Serializable data class ChatRoute(
+    val chatId: String,
+)
+
 @Serializable data object MyCodeRoute
+
 @Serializable data object ScanRoute
-@Serializable data class ConnectRoute(val userId: String)
+
+@Serializable data class ConnectRoute(
+    val userId: String,
+)
+
 @Serializable data object SettingsRoute
+
 @Serializable data object DevicesRoute
+
 @Serializable data object ThemeRoute
+
 /** code — отсканированная ссылка ghostlink://link/…; разбирает её LinkApproveViewModel. */
-@Serializable data class LinkApproveRoute(val code: String)
+@Serializable data class LinkApproveRoute(
+    val code: String,
+)
 
 @Serializable data object WelcomeRoute
+
 @Serializable data object LinkReceiveRoute
+
 @Serializable data object RecoveryRoute
 
 @Composable
@@ -78,7 +94,10 @@ private fun OnboardingNavHost() {
 }
 
 @Composable
-private fun MainNavHost(pendingInvite: String?, onInviteHandled: () -> Unit) {
+private fun MainNavHost(
+    pendingInvite: String?,
+    onInviteHandled: () -> Unit,
+) {
     val nav = rememberNavController()
 
     LaunchedEffect(pendingInvite) {
@@ -107,10 +126,11 @@ private fun MainNavHost(pendingInvite: String?, onInviteHandled: () -> Unit) {
             ScanScreen(
                 onBack = { nav.navigateUp() },
                 onScanned = { code ->
-                    val route: Any = when (code) {
-                        is ScannedCode.Invite -> ConnectRoute(code.userId)
-                        is ScannedCode.Link -> LinkApproveRoute(code.code.toUri())
-                    }
+                    val route: Any =
+                        when (code) {
+                            is ScannedCode.Invite -> ConnectRoute(code.userId)
+                            is ScannedCode.Link -> LinkApproveRoute(code.code.toUri())
+                        }
                     nav.navigate(route) { popUpTo<ScanRoute> { inclusive = true } }
                 },
             )

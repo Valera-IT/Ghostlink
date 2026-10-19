@@ -10,7 +10,12 @@ plugins {
 // Firebase подключается, только если положен свой google-services.json.
 // Без него приложение работает на локальном демо-бэкенде (см. README).
 if (file("google-services.json").exists()) {
-    apply(plugin = libs.plugins.google.services.get().pluginId)
+    apply(
+        plugin =
+            libs.plugins.google.services
+                .get()
+                .pluginId,
+    )
 }
 
 android {

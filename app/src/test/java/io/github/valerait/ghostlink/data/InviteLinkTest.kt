@@ -6,7 +6,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class InviteLinkTest {
-
     @Test
     fun `created link parses back to the same user id`() {
         val id = "Xk3pQ9aZbT2uV7wY1cD4eF5gH6i2"

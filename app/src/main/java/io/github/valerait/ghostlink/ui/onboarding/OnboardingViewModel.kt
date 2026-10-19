@@ -29,50 +29,53 @@ data class OnboardingState(
 }
 
 @HiltViewModel
-class OnboardingViewModel @Inject constructor(
-    private val auth: AuthRepository,
-    private val users: UserRepository,
-    private val config: AppConfig,
-) : ViewModel() {
+class OnboardingViewModel
+    @Inject
+    constructor(
+        private val auth: AuthRepository,
+        private val users: UserRepository,
+        private val config: AppConfig,
+    ) : ViewModel() {
+        private val _state =
+            MutableStateFlow(
+                OnboardingState(demoMode = config.demoMode, googleAvailable = config.webClientId != null),
+            )
+        val state: StateFlow<OnboardingState> = _state.asStateFlow()
 
-    private val _state = MutableStateFlow(
-        OnboardingState(demoMode = config.demoMode, googleAvailable = config.webClientId != null),
-    )
-    val state: StateFlow<OnboardingState> = _state.asStateFlow()
+        val webClientId: String? get() = config.webClientId
 
-    val webClientId: String? get() = config.webClientId
-
-    fun onNameChange(value: String) {
-        _state.update { it.copy(name = value.take(MAX_NAME_LENGTH), error = null) }
-    }
-
-    /** Создаёт аккаунт с ключом (если его ещё нет) и профиль; дальше корень сам переключится на чаты. */
-    fun submit() {
-        val name = _state.value.name.trim()
-        if (name.isEmpty() || _state.value.busy) return
-        runBusy {
-            // Аккаунт уже может быть: временный, оставшийся от брошенного входа по QR. Ключ ему выдаст реестр устройств.
-            val account = auth.account.value ?: auth.createAccount()
-            users.saveProfile(account.id, name)
+        fun onNameChange(value: String) {
+            _state.update { it.copy(name = value.take(MAX_NAME_LENGTH), error = null) }
         }
-    }
 
-    /** Вход в уже привязанный к Google аккаунт — так переписка восстанавливается на новом телефоне. */
-    fun signInWithGoogle(idToken: String) = runBusy {
-        auth.signInWithGoogle(idToken)
-        // Профиль не нашёлся (Google ещё ни к чему не привязан) — корень останется на онбординге.
-        _state.update { it.copy(busy = false) }
-    }
+        /** Создаёт аккаунт с ключом (если его ещё нет) и профиль; дальше корень сам переключится на чаты. */
+        fun submit() {
+            val name = _state.value.name.trim()
+            if (name.isEmpty() || _state.value.busy) return
+            runBusy {
+                // Аккаунт уже может быть: временный, оставшийся от брошенного входа по QR. Ключ ему выдаст реестр устройств.
+                val account = auth.account.value ?: auth.createAccount()
+                users.saveProfile(account.id, name)
+            }
+        }
 
-    private fun runBusy(block: suspend () -> Unit) {
-        _state.update { it.copy(busy = true, error = null) }
-        viewModelScope.launch {
-            try {
-                block()
-            } catch (e: Exception) {
-                Log.w("Onboarding", "Sign in failed", e)
-                _state.update { it.copy(busy = false, error = R.string.error_sign_in) }
+        /** Вход в уже привязанный к Google аккаунт — так переписка восстанавливается на новом телефоне. */
+        fun signInWithGoogle(idToken: String) =
+            runBusy {
+                auth.signInWithGoogle(idToken)
+                // Профиль не нашёлся (Google ещё ни к чему не привязан) — корень останется на онбординге.
+                _state.update { it.copy(busy = false) }
+            }
+
+        private fun runBusy(block: suspend () -> Unit) {
+            _state.update { it.copy(busy = true, error = null) }
+            viewModelScope.launch {
+                try {
+                    block()
+                } catch (e: Exception) {
+                    Log.w("Onboarding", "Sign in failed", e)
+                    _state.update { it.copy(busy = false, error = R.string.error_sign_in) }
+                }
             }
         }
     }
-}

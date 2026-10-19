@@ -28,7 +28,6 @@ class FirebaseAuthRepository(
     private val auth: FirebaseAuth,
     private val keys: AccountKeyStore,
 ) : AuthRepository {
-
     private val _account = MutableStateFlow(auth.currentUser?.toAccount())
     override val account: StateFlow<Account?> = _account.asStateFlow()
 
@@ -54,19 +53,19 @@ class FirebaseAuthRepository(
         auth.currentUser?.takeIf { it.isAnonymous }?.let { temp ->
             runCatching { temp.delete().await() }
         }
-        val user = try {
-            checkNotNull(auth.signInWithEmailAndPassword(key.email, key.password).await().user)
-        } catch (e: FirebaseAuthInvalidCredentialsException) {
-            throw InvalidAccountKeyException(e)
-        } catch (e: FirebaseAuthInvalidUserException) {
-            throw InvalidAccountKeyException(e)
-        }
+        val user =
+            try {
+                checkNotNull(auth.signInWithEmailAndPassword(key.email, key.password).await().user)
+            } catch (e: FirebaseAuthInvalidCredentialsException) {
+                throw InvalidAccountKeyException(e)
+            } catch (e: FirebaseAuthInvalidUserException) {
+                throw InvalidAccountKeyException(e)
+            }
         keys.put(user.uid, key)
         return checkNotNull(refresh(user))
     }
 
-    override suspend fun signInAnonymously(): Account =
-        checkNotNull(refresh(checkNotNull(auth.signInAnonymously().await().user)))
+    override suspend fun signInAnonymously(): Account = checkNotNull(refresh(checkNotNull(auth.signInAnonymously().await().user)))
 
     override suspend fun signInWithGoogle(idToken: String): Account {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
@@ -84,38 +83,41 @@ class FirebaseAuthRepository(
         refresh()
     }
 
-    override suspend fun ensureAccountKey(): AccountKey = keyMutex.withLock {
-        val user = requireUser()
-        keys.get(user.uid)?.let { return it }
+    override suspend fun ensureAccountKey(): AccountKey =
+        keyMutex.withLock {
+            val user = requireUser()
+            keys.get(user.uid)?.let { return it }
 
-        val serviceEmail = user.email?.takeIf(AccountKey::isServiceEmail)
-        val key = if (serviceEmail == null) {
-            // Анонимный аккаунт из старой версии или аккаунт только с Google: добавляем пароль, uid не меняется.
-            AccountKey.generate().also {
-                user.linkWithCredential(EmailAuthProvider.getCredential(it.email, it.password)).await()
-            }
-        } else {
-            // Пароль у аккаунта есть, но этому устройству он неизвестен (вошли через Google).
-            // Задаём новый: остальные устройства выйдут, зато ключ снова под контролем.
-            // Firebase требует свежий вход — сразу после входа через Google он есть.
-            checkNotNull(AccountKey.forEmail(serviceEmail)).also { user.updatePassword(it.password).await() }
+            val serviceEmail = user.email?.takeIf(AccountKey::isServiceEmail)
+            val key =
+                if (serviceEmail == null) {
+                    // Анонимный аккаунт из старой версии или аккаунт только с Google: добавляем пароль, uid не меняется.
+                    AccountKey.generate().also {
+                        user.linkWithCredential(EmailAuthProvider.getCredential(it.email, it.password)).await()
+                    }
+                } else {
+                    // Пароль у аккаунта есть, но этому устройству он неизвестен (вошли через Google).
+                    // Задаём новый: остальные устройства выйдут, зато ключ снова под контролем.
+                    // Firebase требует свежий вход — сразу после входа через Google он есть.
+                    checkNotNull(AccountKey.forEmail(serviceEmail)).also { user.updatePassword(it.password).await() }
+                }
+            keys.put(user.uid, key)
+            refresh()
+            key
         }
-        keys.put(user.uid, key)
-        refresh()
-        key
-    }
 
-    override suspend fun rotateKey(): AccountKey = keyMutex.withLock {
-        val user = requireUser()
-        val current = checkNotNull(keys.get(user.uid)) { "No account key on this device" }
-        // Смена пароля требует недавнего входа; ключ у нас есть, так что входим им же.
-        user.reauthenticate(EmailAuthProvider.getCredential(current.email, current.password)).await()
-        val next = current.rotated()
-        user.updatePassword(next.password).await()
-        keys.put(user.uid, next)
-        _accountKey.value = next
-        next
-    }
+    override suspend fun rotateKey(): AccountKey =
+        keyMutex.withLock {
+            val user = requireUser()
+            val current = checkNotNull(keys.get(user.uid)) { "No account key on this device" }
+            // Смена пароля требует недавнего входа; ключ у нас есть, так что входим им же.
+            user.reauthenticate(EmailAuthProvider.getCredential(current.email, current.password)).await()
+            val next = current.rotated()
+            user.updatePassword(next.password).await()
+            keys.put(user.uid, next)
+            _accountKey.value = next
+            next
+        }
 
     override suspend fun signOut() {
         keys.clear()
@@ -132,8 +134,9 @@ class FirebaseAuthRepository(
     }
 }
 
-private fun FirebaseUser.toAccount() = Account(
-    id = uid,
-    isAnonymous = isAnonymous,
-    googleEmail = providerData.firstOrNull { it.providerId == GoogleAuthProvider.PROVIDER_ID }?.email,
-)
+private fun FirebaseUser.toAccount() =
+    Account(
+        id = uid,
+        isAnonymous = isAnonymous,
+        googleEmail = providerData.firstOrNull { it.providerId == GoogleAuthProvider.PROVIDER_ID }?.email,
+    )

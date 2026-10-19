@@ -66,7 +66,10 @@ import io.github.valerait.ghostlink.ui.theme.LocalChatStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen(onBack: () -> Unit, viewModel: ChatViewModel = hiltViewModel()) {
+fun ChatScreen(
+    onBack: () -> Unit,
+    viewModel: ChatViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val now by rememberNow()
     val listState = rememberLazyListState()
@@ -193,18 +196,18 @@ private fun MessageBubble(item: MessageItem) {
 }
 
 @Composable
-private fun mutedContentColor(): Color =
-    LocalContentColor.current.copy(alpha = 0.6f)
+private fun mutedContentColor(): Color = LocalContentColor.current.copy(alpha = 0.6f)
 
 private fun TextStyle.mono(): TextStyle = copy(fontFamily = FontFamily.Monospace)
 
 @Composable
 private fun StatusIcon(status: MessageStatus) {
-    val (icon, description) = when (status) {
-        MessageStatus.SENDING -> Icons.Filled.Schedule to R.string.status_sending
-        MessageStatus.SENT -> Icons.Filled.Done to R.string.status_sent
-        MessageStatus.READ -> Icons.Filled.DoneAll to R.string.status_read
-    }
+    val (icon, description) =
+        when (status) {
+            MessageStatus.SENDING -> Icons.Filled.Schedule to R.string.status_sending
+            MessageStatus.SENT -> Icons.Filled.Done to R.string.status_sent
+            MessageStatus.READ -> Icons.Filled.DoneAll to R.string.status_read
+        }
     Icon(
         imageVector = icon,
         contentDescription = stringResource(description),
@@ -218,11 +221,12 @@ private fun MessageInput(onSend: (String) -> Unit) {
     var text by rememberSaveable { mutableStateOf("") }
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
             TextField(
@@ -231,12 +235,13 @@ private fun MessageInput(onSend: (String) -> Unit) {
                 placeholder = { Text(stringResource(R.string.chat_input_hint)) },
                 maxLines = 5,
                 shape = RoundedCornerShape(24.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                ),
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    ),
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier.weight(1f),
             )

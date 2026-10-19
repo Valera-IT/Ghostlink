@@ -33,7 +33,11 @@ import io.github.valerait.ghostlink.R
 
 /** Показывает ключ восстановления: 8 групп по 5 символов, по 4 группы в строке. */
 @Composable
-fun RecoveryCodeDialog(code: String, title: String, onDismiss: () -> Unit) {
+fun RecoveryCodeDialog(
+    code: String,
+    title: String,
+    onDismiss: () -> Unit,
+) {
     val context = LocalContext.current
     var copied by remember { mutableStateOf(false) }
     AlertDialog(
@@ -77,7 +81,10 @@ fun RecoveryCodeDialog(code: String, title: String, onDismiss: () -> Unit) {
 }
 
 /** Помечаем буфер как секрет: Android 13+ не покажет ключ во всплывающем превью. */
-private fun copySensitive(context: Context, text: String) {
+private fun copySensitive(
+    context: Context,
+    text: String,
+) {
     val clip = ClipData.newPlainText("Ghostlink", text)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }

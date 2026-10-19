@@ -12,22 +12,24 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import io.github.valerait.ghostlink.R
 
-fun platformIcon(platform: String): ImageVector = when (platform) {
-    "android" -> Icons.Outlined.PhoneAndroid
-    "ios" -> Icons.Outlined.PhoneIphone
-    "macos" -> Icons.Outlined.Laptop
-    "windows", "linux" -> Icons.Outlined.Computer
-    "web" -> Icons.Outlined.Language
-    else -> Icons.Outlined.Devices
-}
+fun platformIcon(platform: String): ImageVector =
+    when (platform) {
+        "android" -> Icons.Outlined.PhoneAndroid
+        "ios" -> Icons.Outlined.PhoneIphone
+        "macos" -> Icons.Outlined.Laptop
+        "windows", "linux" -> Icons.Outlined.Computer
+        "web" -> Icons.Outlined.Language
+        else -> Icons.Outlined.Devices
+    }
 
 @Composable
-fun platformLabel(platform: String): String = when (platform) {
-    "android" -> "Android"
-    "ios" -> "iOS"
-    "macos" -> "macOS"
-    "windows" -> "Windows"
-    "linux" -> "Linux"
-    "web" -> stringResource(R.string.platform_web)
-    else -> stringResource(R.string.platform_unknown)
-}
+fun platformLabel(platform: String): String =
+    when (platform) {
+        "android" -> "Android"
+        "ios" -> "iOS"
+        "macos" -> "macOS"
+        "windows" -> "Windows"
+        "linux" -> "Linux"
+        "web" -> stringResource(R.string.platform_web)
+        else -> stringResource(R.string.platform_unknown)
+    }

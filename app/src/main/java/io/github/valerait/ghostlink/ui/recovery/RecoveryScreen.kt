@@ -39,7 +39,10 @@ import io.github.valerait.ghostlink.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecoveryScreen(onBack: () -> Unit, viewModel: RecoveryViewModel = hiltViewModel()) {
+fun RecoveryScreen(
+    onBack: () -> Unit,
+    viewModel: RecoveryViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -78,12 +81,13 @@ fun RecoveryScreen(onBack: () -> Unit, viewModel: RecoveryViewModel = hiltViewMo
                 supportingText = state.error?.let { { Text(stringResource(it)) } },
                 enabled = !state.busy,
                 minLines = 2,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Characters,
-                    autoCorrectEnabled = false,
-                    keyboardType = KeyboardType.Ascii,
-                    imeAction = ImeAction.Done,
-                ),
+                keyboardOptions =
+                    KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Ascii,
+                        imeAction = ImeAction.Done,
+                    ),
                 keyboardActions = KeyboardActions(onDone = { viewModel.submit() }),
                 modifier = Modifier.fillMaxWidth(),
             )

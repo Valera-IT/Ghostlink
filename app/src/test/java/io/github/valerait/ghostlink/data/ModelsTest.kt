@@ -13,7 +13,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ModelsTest {
-
     @Test
     fun `chat id does not depend on who adds whom`() {
         assertEquals(ChatIds.of("alice", "bob"), ChatIds.of("bob", "alice"))
