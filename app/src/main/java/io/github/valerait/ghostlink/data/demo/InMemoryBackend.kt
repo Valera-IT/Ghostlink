@@ -178,6 +178,42 @@ class InMemoryBackend(
         if (BOT_ID in chat.members && senderId != BOT_ID) replyAsBot(chatId)
     }
 
+    override fun editMessage(
+        chatId: String,
+        messageId: String,
+        text: String,
+        isLatest: Boolean,
+    ) {
+        messages.update { all ->
+            val list = all[chatId] ?: return@update all
+            all + (chatId to list.map { if (it.id == messageId) it.copy(text = text, editedAt = clock()) else it })
+        }
+        if (isLatest) {
+            chats.update { all ->
+                val chat = all[chatId] ?: return@update all
+                all + (chatId to chat.copy(lastMessage = chat.lastMessage?.copy(text = text)))
+            }
+        }
+    }
+
+    override fun deleteMessage(
+        chatId: String,
+        messageId: String,
+        isLatest: Boolean,
+        previous: Message?,
+    ) {
+        messages.update { all ->
+            val list = all[chatId] ?: return@update all
+            all + (chatId to list.filterNot { it.id == messageId })
+        }
+        if (isLatest) {
+            chats.update { all ->
+                val chat = all[chatId] ?: return@update all
+                all + (chatId to chat.copy(lastMessage = previous?.let { LastMessage(it.text, it.senderId, it.sentAt) }))
+            }
+        }
+    }
+
     override fun markRead(
         chatId: String,
         userId: String,

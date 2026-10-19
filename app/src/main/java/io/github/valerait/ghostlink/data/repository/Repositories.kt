@@ -79,6 +79,28 @@ interface ChatRepository {
         replyTo: ReplyTo? = null,
     )
 
+    /**
+     * Исправляет текст своего сообщения. [isLatest] — сообщение последнее в чате:
+     * тогда вместе с ним правится и превью в списке чатов.
+     */
+    fun editMessage(
+        chatId: String,
+        messageId: String,
+        text: String,
+        isLatest: Boolean,
+    )
+
+    /**
+     * Удаляет своё сообщение у обоих участников. Если удалено последнее ([isLatest]),
+     * превью в списке чатов переходит на [previous] или пропадает, если сообщений не осталось.
+     */
+    fun deleteMessage(
+        chatId: String,
+        messageId: String,
+        isLatest: Boolean,
+        previous: Message?,
+    )
+
     fun markRead(
         chatId: String,
         userId: String,

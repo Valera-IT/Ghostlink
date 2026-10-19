@@ -16,11 +16,12 @@ import io.github.valerait.ghostlink.data.model.ReplyTo
 import io.github.valerait.ghostlink.data.repository.ChatRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
+import java.util.Date
 
 /**
  * Схема:
  *  chats/{a_b}            members, lastMessage, updatedAt, lastRead.{uid}
- *  chats/{a_b}/messages   senderId, text, sentAt, replyTo?{id, senderId, preview}
+ *  chats/{a_b}/messages   senderId, text, sentAt, replyTo?{id, senderId, preview}, editedAt?
  */
 class FirebaseChatRepository(
     private val db: FirebaseFirestore,
@@ -68,6 +69,43 @@ class FirebaseChatRepository(
                 ),
             ).commit()
             .addOnFailureListener { Log.w(TAG, "Send failed", it) }
+    }
+
+    override fun editMessage(
+        chatId: String,
+        messageId: String,
+        text: String,
+        isLatest: Boolean,
+    ) {
+        val chatRef = chats.document(chatId)
+        val batch =
+            db
+                .batch()
+                .update(chatRef.collection("messages").document(messageId), "text", text, "editedAt", FieldValue.serverTimestamp())
+        if (isLatest) batch.update(chatRef, "lastMessage.text", text)
+        batch.commit().addOnFailureListener { Log.w(TAG, "Edit failed", it) }
+    }
+
+    override fun deleteMessage(
+        chatId: String,
+        messageId: String,
+        isLatest: Boolean,
+        previous: Message?,
+    ) {
+        val chatRef = chats.document(chatId)
+        val batch = db.batch().delete(chatRef.collection("messages").document(messageId))
+        if (isLatest) {
+            val last: Any =
+                previous?.let {
+                    mapOf(
+                        "text" to it.text,
+                        "senderId" to it.senderId,
+                        "sentAt" to (it.sentAt?.let { ms -> Timestamp(Date(ms)) } ?: FieldValue.serverTimestamp()),
+                    )
+                } ?: FieldValue.delete()
+            batch.update(chatRef, "lastMessage", last)
+        }
+        batch.commit().addOnFailureListener { Log.w(TAG, "Delete failed", it) }
     }
 
     override fun markRead(
@@ -141,6 +179,7 @@ private fun DocumentSnapshot.toMessage() =
         text = getString("text").orEmpty(),
         sentAt = getTimestamp("sentAt", ServerTimestampBehavior.ESTIMATE)?.millis,
         pending = metadata.hasPendingWrites(),
+        editedAt = getTimestamp("editedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
         replyTo =
             (get("replyTo") as? Map<*, *>)?.let {
                 ReplyTo(
