@@ -1,0 +1,67 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>InstanceOfCheckForException:LinkReceiveViewModel.kt$LinkReceiveViewModel$e is CancellationException</ID>
+    <ID>MagicNumber:AccountKey.kt$AccountKey.Companion$16</ID>
+    <ID>MagicNumber:AccountKey.kt$Base32$0xFF</ID>
+    <ID>MagicNumber:AccountKey.kt$Base32$31</ID>
+    <ID>MagicNumber:AccountKey.kt$Base32$4</ID>
+    <ID>MagicNumber:AccountKey.kt$Base32$5</ID>
+    <ID>MagicNumber:AccountKey.kt$Base32$8</ID>
+    <ID>MagicNumber:AccountKeyStore.kt$AndroidAccountKeyStore$128</ID>
+    <ID>MagicNumber:AccountKeyStore.kt$AndroidAccountKeyStore$256</ID>
+    <ID>MagicNumber:BackendModule.kt$BackendModule$8080</ID>
+    <ID>MagicNumber:BackendModule.kt$BackendModule$9099</ID>
+    <ID>MagicNumber:ChatViewModel.kt$ChatViewModel$8</ID>
+    <ID>MagicNumber:FirebaseLinkRepository.kt$FirebaseLinkRepository$60</ID>
+    <ID>MagicNumber:FirebaseUserRepository.kt$FirebaseUserRepository$30</ID>
+    <ID>MagicNumber:Formatting.kt$6</ID>
+    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$10</ID>
+    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$1_200</ID>
+    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$20</ID>
+    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$3</ID>
+    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$4</ID>
+    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$700</ID>
+    <ID>MagicNumber:LinkCode.kt$LinkCode.Companion$65</ID>
+    <ID>MagicNumber:LinkCrypto.kt$LinkCrypto$0x04</ID>
+    <ID>MagicNumber:LinkCrypto.kt$LinkCrypto$3</ID>
+    <ID>MagicNumber:LinkCrypto.kt$LinkCrypto$32</ID>
+    <ID>MagicNumber:LinkReceiveScreen.kt$1000</ID>
+    <ID>MagicNumber:Theme.kt$0.04f</ID>
+    <ID>MagicNumber:Theme.kt$0.07f</ID>
+    <ID>MagicNumber:Theme.kt$0.11f</ID>
+    <ID>MagicNumber:Theme.kt$0.12f</ID>
+    <ID>MagicNumber:Theme.kt$0.15f</ID>
+    <ID>MagicNumber:Theme.kt$0.18f</ID>
+    <ID>MagicNumber:Theme.kt$0.22f</ID>
+    <ID>MagicNumber:Theme.kt$0.5f</ID>
+    <ID>MagicNumber:Theme.kt$0xFF0B0A10</ID>
+    <ID>MagicNumber:Theme.kt$0xFFFF6B7D</ID>
+    <ID>MagicNumber:Theme.kt$NeonPalette$0xFF0B0A10</ID>
+    <ID>MagicNumber:Theme.kt$NeonPalette$0xFFF1F0F7</ID>
+    <ID>MatchingDeclarationName:ThemeScreen.kt$ThemeViewModel : ViewModel</ID>
+    <ID>ReturnCount:AccountKey.kt$AccountKey.Companion$private fun emailToLogin(email: String): ByteArray?</ID>
+    <ID>ReturnCount:AccountKeyStore.kt$AndroidAccountKeyStore$override fun get(userId: String): AccountKey?</ID>
+    <ID>ReturnCount:BackendModule.kt$BackendModule$@SuppressLint("DiscouragedApi") // ресурс генерирует google-services, и его может не быть @Provides @Singleton fun provideAppConfig( @ApplicationContext context: Context, ): AppConfig</ID>
+    <ID>ReturnCount:FirebaseChatRepository.kt$private fun DocumentSnapshot.toChat(): Chat?</ID>
+    <ID>ReturnCount:InMemoryBackend.kt$InMemoryBackend$override suspend fun getUser(id: String): User?</ID>
+    <ID>ReturnCount:InviteLink.kt$InviteLink$fun parse(raw: String?): String?</ID>
+    <ID>ReturnCount:LinkApproveViewModel.kt$LinkApproveViewModel$fun approve()</ID>
+    <ID>ReturnCount:LinkCode.kt$LinkCode.Companion$fun parse(raw: String?): LinkCode?</ID>
+    <ID>ReturnCount:Models.kt$Chat$fun isUnreadFor(me: String): Boolean</ID>
+    <ID>SwallowedException:FirebaseAuthRepository.kt$FirebaseAuthRepository$e: FirebaseAuthUserCollisionException</ID>
+    <ID>SwallowedException:GoogleSignIn.kt$e: GetCredentialCancellationException</ID>
+    <ID>SwallowedException:RecoveryViewModel.kt$RecoveryViewModel$e: InvalidAccountKeyException</ID>
+    <ID>SwallowedException:SettingsViewModel.kt$SettingsViewModel$e: AccountAlreadyLinkedException</ID>
+    <ID>TooGenericExceptionCaught:AccountKeyStore.kt$AndroidAccountKeyStore$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ConnectViewModel.kt$ConnectViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:DeviceRegistry.kt$DeviceRegistry$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:DevicesViewModel.kt$DevicesViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LinkApproveViewModel.kt$LinkApproveViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LinkReceiveViewModel.kt$LinkReceiveViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:OnboardingViewModel.kt$OnboardingViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:RecoveryViewModel.kt$RecoveryViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SettingsViewModel.kt$SettingsViewModel$e: Exception</ID>
+  </CurrentIssues>
+</SmellBaseline>
