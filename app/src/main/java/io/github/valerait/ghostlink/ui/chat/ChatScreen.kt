@@ -246,23 +246,24 @@ private fun SwipeToReply(
                     if (enabled) customActions = listOf(CustomAccessibilityAction(replyLabel) { currentOnReply().let { true } })
                 }.pointerInput(enabled) {
                     if (!enabled) return@pointerInput
-                    var armed = false
+                    // Смещение копим здесь: offset обновляется асинхронно и отстаёт от жеста.
+                    var dragged = 0f
+                    val reset = {
+                        dragged = 0f
+                        scope.launch { offset.animateTo(0f) }
+                    }
                     detectHorizontalDragGestures(
                         onDragEnd = {
-                            if (armed) currentOnReply()
-                            armed = false
-                            scope.launch { offset.animateTo(0f) }
+                            if (dragged >= threshold) currentOnReply()
+                            reset()
                         },
-                        onDragCancel = {
-                            armed = false
-                            scope.launch { offset.animateTo(0f) }
-                        },
+                        onDragCancel = { reset() },
                     ) { change, dragAmount ->
                         change.consume()
-                        val next = (offset.value + dragAmount).coerceIn(0f, threshold * 1.4f)
-                        scope.launch { offset.snapTo(next) }
-                        if (!armed && next >= threshold) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        armed = next >= threshold
+                        val wasArmed = dragged >= threshold
+                        dragged = (dragged + dragAmount).coerceIn(0f, threshold * 1.4f)
+                        if (!wasArmed && dragged >= threshold) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        scope.launch { offset.snapTo(dragged) }
                     }
                 },
     ) {
