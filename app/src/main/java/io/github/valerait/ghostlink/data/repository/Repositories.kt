@@ -6,6 +6,7 @@ import io.github.valerait.ghostlink.data.model.Chat
 import io.github.valerait.ghostlink.data.model.Device
 import io.github.valerait.ghostlink.data.model.LinkRequest
 import io.github.valerait.ghostlink.data.model.Message
+import io.github.valerait.ghostlink.data.model.ReplyTo
 import io.github.valerait.ghostlink.data.model.User
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -83,6 +84,7 @@ interface ChatRepository {
         chatId: String,
         senderId: String,
         text: String,
+        replyTo: ReplyTo? = null,
     )
 
     fun markRead(

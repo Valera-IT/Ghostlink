@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.data.model.Message
 import io.github.valerait.ghostlink.data.model.MessageStatus
+import io.github.valerait.ghostlink.data.model.ReplyTo
 import io.github.valerait.ghostlink.data.model.User
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
@@ -35,6 +36,8 @@ data class MessageItem(
     val mine: Boolean,
     /** Статус показываем только у своих сообщений. */
     val status: MessageStatus?,
+    /** Цитата в ответе — на моё сообщение (подпись «Вы» вместо имени собеседника). */
+    val replyToMine: Boolean = false,
 )
 
 sealed interface ChatRow {
@@ -58,6 +61,8 @@ data class ChatUiState(
     val partner: User? = null,
     /** Новые сообщения в начале списка — под LazyColumn(reverseLayout = true). */
     val rows: List<ChatRow> = emptyList(),
+    /** Сообщение, на которое пользователь сейчас отвечает (плашка над полем ввода). */
+    val replyingTo: MessageItem? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -75,6 +80,7 @@ class ChatViewModel
         private val me = auth.requireUserId()
         private val zone = ZoneId.systemDefault()
         private val visible = MutableStateFlow(false)
+        private val replyingToId = MutableStateFlow<String?>(null)
 
         private val chat =
             chats
@@ -92,14 +98,24 @@ class ChatViewModel
                 .onStart { emit(null) }
 
         val state: StateFlow<ChatUiState> =
-            combine(chat, messages, partner) { chat, messages, partner ->
+            combine(chat, messages, partner, replyingToId) { chat, messages, partner, replyingToId ->
                 val partnerRead = chat?.lastRead?.get(chat.partnerId(me))
                 val items =
                     messages.map { message ->
                         val mine = message.senderId == me
-                        MessageItem(message, mine, if (mine) message.status(partnerRead) else null)
+                        MessageItem(
+                            message = message,
+                            mine = mine,
+                            status = if (mine) message.status(partnerRead) else null,
+                            replyToMine = message.replyTo?.senderId == me,
+                        )
                     }
-                ChatUiState(loading = false, partner = partner, rows = buildRows(items))
+                ChatUiState(
+                    loading = false,
+                    partner = partner,
+                    rows = buildRows(items),
+                    replyingTo = replyingToId?.let { id -> items.firstOrNull { it.message.id == id } },
+                )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
 
         init {
@@ -121,10 +137,25 @@ class ChatViewModel
             visible.value = isVisible
         }
 
+        fun startReply(messageId: String) {
+            replyingToId.value = messageId
+        }
+
+        fun cancelReply() {
+            replyingToId.value = null
+        }
+
         fun send(text: String) {
             val trimmed = text.trim()
             if (trimmed.isEmpty()) return
-            chats.sendMessage(chatId, me, trimmed.take(MAX_MESSAGE_LENGTH))
+            // Отвечать можно только на сообщение, уже записанное на сервер: у pending ещё нет стабильного места в чате.
+            val replyTo =
+                state.value.replyingTo
+                    ?.message
+                    ?.takeUnless { it.pending }
+                    ?.let(ReplyTo::of)
+            chats.sendMessage(chatId, me, trimmed.take(MAX_MESSAGE_LENGTH), replyTo)
+            replyingToId.value = null
         }
 
         private fun buildRows(items: List<MessageItem>): List<ChatRow> {

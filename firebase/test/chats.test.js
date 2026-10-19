@@ -111,6 +111,35 @@ describe('chats/{a_b}/messages/{id}', () => {
     await assertFails(addDoc(collection(account('alice'), `chats/${CHAT}/messages`), { ...message('alice'), edited: true }));
   });
 
+  test('ответ на сообщение участника', async () => {
+    await seedChat();
+    const messages = collection(account('alice'), `chats/${CHAT}/messages`);
+    await assertSucceeds(addDoc(messages, { ...message('alice'), replyTo: { id: 'm1', senderId: 'bob', preview: 'Как дела?' } }));
+    await assertSucceeds(addDoc(messages, { ...message('alice'), replyTo: { id: 'm2', senderId: 'alice', preview: 'x'.repeat(100) } }));
+  });
+
+  test('ответ: автор исходного сообщения — участник чата', async () => {
+    await seedChat();
+    const messages = collection(account('alice'), `chats/${CHAT}/messages`);
+    await assertFails(addDoc(messages, { ...message('alice'), replyTo: { id: 'm1', senderId: 'mallory', preview: 'Привет' } }));
+  });
+
+  test('ответ: превью от 1 до 100 символов', async () => {
+    await seedChat();
+    const messages = collection(account('alice'), `chats/${CHAT}/messages`);
+    await assertFails(addDoc(messages, { ...message('alice'), replyTo: { id: 'm1', senderId: 'bob', preview: '' } }));
+    await assertFails(addDoc(messages, { ...message('alice'), replyTo: { id: 'm1', senderId: 'bob', preview: 'x'.repeat(101) } }));
+  });
+
+  test('ответ: только поля id, senderId, preview', async () => {
+    await seedChat();
+    const messages = collection(account('alice'), `chats/${CHAT}/messages`);
+    await assertFails(addDoc(messages, { ...message('alice'), replyTo: { id: 'm1', senderId: 'bob' } }));
+    await assertFails(addDoc(messages, { ...message('alice'), replyTo: { id: 'm1', senderId: 'bob', preview: 'Привет', text: 'всё сообщение' } }));
+    await assertFails(addDoc(messages, { ...message('alice'), replyTo: 'm1' }));
+    await assertFails(addDoc(messages, { ...message('alice'), replyTo: { id: '', senderId: 'bob', preview: 'Привет' } }));
+  });
+
   test('сообщения неизменяемы', async () => {
     await seedChat();
     await seed((db) => setDoc(doc(db, `chats/${CHAT}/messages/m1`), { senderId: 'alice', text: 'Привет', sentAt: Timestamp.now() }));

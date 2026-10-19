@@ -5,7 +5,7 @@ rules_version = '2';
 //   users/{uid}/devices/{id}       name, platform, lastActiveAt — реестр устройств аккаунта
 //   linkRequests/{id}              owner, deviceName, platform, createdAt, expiresAt, payload, approvedBy
 //   chats/{a_b}                    members [a, b] (отсортированы), lastMessage, updatedAt, lastRead.{uid}
-//   chats/{a_b}/messages/{id}      senderId, text, sentAt
+//   chats/{a_b}/messages/{id}      senderId, text, sentAt, replyTo? {id, senderId, preview}
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -100,8 +100,23 @@ service cloud.firestore {
              .hasOnly([request.auth.uid]);
 
       match /messages/{messageId} {
+        function members() {
+          return get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        }
+
         function isMember() {
-          return request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+          return request.auth.uid in members();
+        }
+
+        // Ответ ссылается на сообщение участника этого же чата; превью — первые 100 символов исходного текста.
+        function validReplyTo(data) {
+          return !('replyTo' in data)
+            || (data.replyTo is map
+              && data.replyTo.keys().hasAll(['id', 'senderId', 'preview'])
+              && data.replyTo.keys().hasOnly(['id', 'senderId', 'preview'])
+              && shortString(data.replyTo.id, 64)
+              && data.replyTo.senderId in members()
+              && shortString(data.replyTo.preview, 100));
         }
 
         allow read: if signedIn() && isMember();
@@ -109,12 +124,13 @@ service cloud.firestore {
         // Писать можно только от своего имени и только с серверным временем.
         allow create: if signedIn()
           && isMember()
-          && request.resource.data.keys().hasOnly(['senderId', 'text', 'sentAt'])
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'sentAt', 'replyTo'])
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 4000
-          && request.resource.data.sentAt == request.time;
+          && request.resource.data.sentAt == request.time
+          && validReplyTo(request.resource.data);
 
         // Сообщения неизменяемы.
         allow update, delete: if false;

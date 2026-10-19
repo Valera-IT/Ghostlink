@@ -12,6 +12,7 @@ import io.github.valerait.ghostlink.data.model.Chat
 import io.github.valerait.ghostlink.data.model.ChatIds
 import io.github.valerait.ghostlink.data.model.LastMessage
 import io.github.valerait.ghostlink.data.model.Message
+import io.github.valerait.ghostlink.data.model.ReplyTo
 import io.github.valerait.ghostlink.data.repository.ChatRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
@@ -19,7 +20,7 @@ import kotlinx.coroutines.tasks.await
 /**
  * Схема:
  *  chats/{a_b}            members, lastMessage, updatedAt, lastRead.{uid}
- *  chats/{a_b}/messages   senderId, text, sentAt
+ *  chats/{a_b}/messages   senderId, text, sentAt, replyTo?{id, senderId, preview}
  */
 class FirebaseChatRepository(
     private val db: FirebaseFirestore,
@@ -47,13 +48,18 @@ class FirebaseChatRepository(
         chatId: String,
         senderId: String,
         text: String,
+        replyTo: ReplyTo?,
     ) {
         val chatRef = chats.document(chatId)
         val messageRef = chatRef.collection("messages").document()
         val now = FieldValue.serverTimestamp()
+        val message = mutableMapOf<String, Any>("senderId" to senderId, "text" to text, "sentAt" to now)
+        if (replyTo != null) {
+            message["replyTo"] = mapOf("id" to replyTo.id, "senderId" to replyTo.senderId, "preview" to replyTo.preview)
+        }
         db
             .batch()
-            .set(messageRef, mapOf("senderId" to senderId, "text" to text, "sentAt" to now))
+            .set(messageRef, message)
             .update(
                 chatRef,
                 mapOf(
@@ -135,4 +141,12 @@ private fun DocumentSnapshot.toMessage() =
         text = getString("text").orEmpty(),
         sentAt = getTimestamp("sentAt", ServerTimestampBehavior.ESTIMATE)?.millis,
         pending = metadata.hasPendingWrites(),
+        replyTo =
+            (get("replyTo") as? Map<*, *>)?.let {
+                ReplyTo(
+                    id = it["id"] as? String ?: return@let null,
+                    senderId = it["senderId"] as? String ?: "",
+                    preview = it["preview"] as? String ?: "",
+                )
+            },
     )
