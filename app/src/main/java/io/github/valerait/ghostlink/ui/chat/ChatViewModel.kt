@@ -38,6 +38,8 @@ data class MessageItem(
     val status: MessageStatus?,
     /** Цитата в ответе — на моё сообщение (подпись «Вы» вместо имени собеседника). */
     val replyToMine: Boolean = false,
+    /** Исходное сообщение цитаты удалено — вместо превью показываем «Сообщение удалено». */
+    val replyToDeleted: Boolean = false,
 )
 
 sealed interface ChatRow {
@@ -103,6 +105,7 @@ class ChatViewModel
         val state: StateFlow<ChatUiState> =
             combine(chat, messages, partner, replyingToId, editingId) { chat, messages, partner, replyingToId, editingId ->
                 val partnerRead = chat?.lastRead?.get(chat.partnerId(me))
+                val deletedIds = messages.filter { it.deleted }.mapTo(HashSet()) { it.id }
                 val items =
                     messages.map { message ->
                         val mine = message.senderId == me
@@ -111,14 +114,15 @@ class ChatViewModel
                             mine = mine,
                             status = if (mine) message.status(partnerRead) else null,
                             replyToMine = message.replyTo?.senderId == me,
+                            replyToDeleted = message.replyTo?.id in deletedIds,
                         )
                     }
                 ChatUiState(
                     loading = false,
                     partner = partner,
                     rows = buildRows(items),
-                    replyingTo = replyingToId?.let { id -> items.firstOrNull { it.message.id == id } },
-                    editing = editingId?.let { id -> items.firstOrNull { it.message.id == id && it.mine } },
+                    replyingTo = replyingToId?.let { id -> items.firstOrNull { it.message.id == id && !it.message.deleted } },
+                    editing = editingId?.let { id -> items.firstOrNull { it.message.id == id && it.mine && !it.message.deleted } },
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
 
@@ -162,8 +166,14 @@ class ChatViewModel
         fun delete(messageId: String) {
             val list = messages.replayCache.firstOrNull() ?: return
             val index = list.indexOfFirst { it.id == messageId }
-            if (index < 0 || list[index].senderId != me) return
-            chats.deleteMessage(chatId, messageId, isLatest = index == list.lastIndex, previous = list.getOrNull(index - 1))
+            if (index < 0 || list[index].senderId != me || list[index].deleted) return
+            // Превью в списке чатов показывает последнее неудалённое сообщение.
+            chats.deleteMessage(
+                chatId,
+                messageId,
+                isLatest = list.isLatestVisible(index),
+                previous = list.subList(0, index).lastOrNull { !it.deleted },
+            )
             if (replyingToId.value == messageId) replyingToId.value = null
             if (editingId.value == messageId) editingId.value = null
         }
@@ -193,13 +203,13 @@ class ChatViewModel
         ) {
             editingId.value = null
             if (text == message.text) return
-            val isLatest =
-                messages.replayCache
-                    .firstOrNull()
-                    ?.lastOrNull()
-                    ?.id == message.id
+            val list = messages.replayCache.firstOrNull().orEmpty()
+            val isLatest = list.isLatestVisible(list.indexOfFirst { it.id == message.id })
             chats.editMessage(chatId, message.id, text, isLatest)
         }
+
+        /** После сообщения с номером [index] остались только удалённые — значит, оно сейчас в превью чата. */
+        private fun List<Message>.isLatestVisible(index: Int): Boolean = index >= 0 && subList(index + 1, size).all { it.deleted }
 
         private fun buildRows(items: List<MessageItem>): List<ChatRow> {
             val rows = ArrayList<ChatRow>(items.size + 8)

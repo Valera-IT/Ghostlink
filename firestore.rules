@@ -5,7 +5,7 @@ rules_version = '2';
 //   users/{uid}/devices/{id}       name, platform, lastActiveAt — реестр устройств аккаунта
 //   linkRequests/{id}              owner, deviceName, platform, createdAt, expiresAt, payload, approvedBy
 //   chats/{a_b}                    members [a, b] (отсортированы), lastMessage, updatedAt, lastRead.{uid}
-//   chats/{a_b}/messages/{id}      senderId, text, sentAt, replyTo? {id, senderId, preview}, editedAt?
+//   chats/{a_b}/messages/{id}      senderId, text, sentAt, replyTo? {id, senderId, preview}, editedAt?, deletedAt?
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -135,14 +135,29 @@ service cloud.firestore {
           && validReplyTo(request.resource.data);
 
         // Своё сообщение можно исправить: меняется только текст, editedAt — серверное время правки.
+        function isEdit() {
+          return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'editedAt'])
+            && validText(request.resource.data.text)
+            && request.resource.data.editedAt == request.time;
+        }
+
+        // Удаление у обоих участников: от сообщения остаются автор, время и отметка deletedAt,
+        // чтобы в чате было видно «Сообщение удалено».
+        function isSoftDelete() {
+          return request.resource.data.keys().hasOnly(['senderId', 'sentAt', 'deletedAt'])
+            && request.resource.data.senderId == resource.data.senderId
+            && request.resource.data.sentAt == resource.data.sentAt
+            && request.resource.data.deletedAt == request.time;
+        }
+
+        // Удалённое сообщение больше не меняется.
         allow update: if signedIn()
           && isMember()
           && resource.data.senderId == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'editedAt'])
-          && validText(request.resource.data.text)
-          && request.resource.data.editedAt == request.time;
+          && !('deletedAt' in resource.data)
+          && (isEdit() || isSoftDelete());
 
-        // Своё сообщение можно удалить у обоих участников.
+        // Полное удаление — для клиентов до появления отметки «Сообщение удалено».
         allow delete: if signedIn()
           && isMember()
           && resource.data.senderId == request.auth.uid;

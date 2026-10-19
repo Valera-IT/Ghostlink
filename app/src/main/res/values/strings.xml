@@ -48,7 +48,8 @@
     <string name="chat_edited">изменено</string>
     <string name="chat_delete">Удалить</string>
     <string name="chat_delete_title">Удалить сообщение?</string>
-    <string name="chat_delete_body">Сообщение исчезнет у вас и у собеседника.</string>
+    <string name="chat_delete_body">Сообщение исчезнет у вас и у собеседника, на его месте останется отметка «Сообщение удалено».</string>
+    <string name="chat_deleted">Сообщение удалено</string>
     <string name="status_sending">Отправляется</string>
     <string name="status_sent">Отправлено</string>
     <string name="status_read">Прочитано</string>
