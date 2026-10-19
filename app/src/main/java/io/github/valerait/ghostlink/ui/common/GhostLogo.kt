@@ -12,7 +12,11 @@ import androidx.compose.ui.unit.dp
 import io.github.valerait.ghostlink.R
 
 @Composable
-fun GhostLogo(modifier: Modifier = Modifier, size: Dp = 72.dp, tint: Color = MaterialTheme.colorScheme.primary) {
+fun GhostLogo(
+    modifier: Modifier = Modifier,
+    size: Dp = 72.dp,
+    tint: Color = MaterialTheme.colorScheme.primary,
+) {
     Icon(
         painter = painterResource(R.drawable.ic_ghost),
         contentDescription = null,

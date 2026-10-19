@@ -19,40 +19,45 @@ import javax.inject.Inject
 
 sealed interface RootState {
     data object Loading : RootState
+
     /** Нет аккаунта или у аккаунта ещё нет профиля. */
     data object Onboarding : RootState
-    data class Ready(val userId: String) : RootState
+
+    data class Ready(
+        val userId: String,
+    ) : RootState
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class RootViewModel @Inject constructor(
-    auth: AuthRepository,
-    users: UserRepository,
-) : ViewModel() {
+class RootViewModel
+    @Inject
+    constructor(
+        auth: AuthRepository,
+        users: UserRepository,
+    ) : ViewModel() {
+        val state: StateFlow<RootState> =
+            auth.account
+                .map { it?.id }
+                .distinctUntilChanged()
+                .flatMapLatest { id ->
+                    if (id == null) {
+                        flowOf(RootState.Onboarding)
+                    } else {
+                        users.observeUser(id).map { if (it == null) RootState.Onboarding else RootState.Ready(id) }
+                    }
+                }.distinctUntilChanged()
+                .stateIn(viewModelScope, SharingStarted.Eagerly, RootState.Loading)
 
-    val state: StateFlow<RootState> = auth.account
-        .map { it?.id }
-        .distinctUntilChanged()
-        .flatMapLatest { id ->
-            if (id == null) {
-                flowOf(RootState.Onboarding)
-            } else {
-                users.observeUser(id).map { if (it == null) RootState.Onboarding else RootState.Ready(id) }
-            }
+        // Приглашение может прийти до онбординга — тогда откроем его сразу после.
+        private val _pendingInvite = MutableStateFlow<String?>(null)
+        val pendingInvite: StateFlow<String?> = _pendingInvite.asStateFlow()
+
+        fun onInvite(userId: String) {
+            _pendingInvite.value = userId
         }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, RootState.Loading)
 
-    // Приглашение может прийти до онбординга — тогда откроем его сразу после.
-    private val _pendingInvite = MutableStateFlow<String?>(null)
-    val pendingInvite: StateFlow<String?> = _pendingInvite.asStateFlow()
-
-    fun onInvite(userId: String) {
-        _pendingInvite.value = userId
+        fun onInviteHandled() {
+            _pendingInvite.value = null
+        }
     }
-
-    fun onInviteHandled() {
-        _pendingInvite.value = null
-    }
-}

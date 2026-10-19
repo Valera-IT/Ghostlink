@@ -13,17 +13,24 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
-data class MyCodeState(val userId: String, val name: String, val link: String)
+data class MyCodeState(
+    val userId: String,
+    val name: String,
+    val link: String,
+)
 
 @HiltViewModel
-class MyCodeViewModel @Inject constructor(
-    auth: AuthRepository,
-    users: UserRepository,
-) : ViewModel() {
+class MyCodeViewModel
+    @Inject
+    constructor(
+        auth: AuthRepository,
+        users: UserRepository,
+    ) : ViewModel() {
+        private val me = auth.requireUserId()
 
-    private val me = auth.requireUserId()
-
-    val state: StateFlow<MyCodeState> = users.observeUser(me)
-        .map { MyCodeState(me, it?.name.orEmpty(), InviteLink.create(me)) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MyCodeState(me, "", InviteLink.create(me)))
-}
+        val state: StateFlow<MyCodeState> =
+            users
+                .observeUser(me)
+                .map { MyCodeState(me, it?.name.orEmpty(), InviteLink.create(me)) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MyCodeState(me, "", InviteLink.create(me)))
+    }

@@ -37,37 +37,43 @@ data class ChatListState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class ChatListViewModel @Inject constructor(
-    auth: AuthRepository,
-    users: UserRepository,
-    chats: ChatRepository,
-    config: AppConfig,
-) : ViewModel() {
+class ChatListViewModel
+    @Inject
+    constructor(
+        auth: AuthRepository,
+        users: UserRepository,
+        chats: ChatRepository,
+        config: AppConfig,
+    ) : ViewModel() {
+        private val me = auth.requireUserId()
 
-    private val me = auth.requireUserId()
+        private val chatList =
+            chats
+                .observeChats(me)
+                .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
-    private val chatList = chats.observeChats(me)
-        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+        // Подписка на собеседников пересоздаётся только при смене состава чатов, а не на каждое сообщение.
+        private val partners =
+            chatList
+                .map { list -> list.map { it.partnerId(me) }.distinct().sorted() }
+                .distinctUntilChanged()
+                .flatMapLatest { users.observeUsers(it) }
 
-    // Подписка на собеседников пересоздаётся только при смене состава чатов, а не на каждое сообщение.
-    private val partners = chatList
-        .map { list -> list.map { it.partnerId(me) }.distinct().sorted() }
-        .distinctUntilChanged()
-        .flatMapLatest { users.observeUsers(it) }
-
-    val state: StateFlow<ChatListState> = combine(chatList, partners) { list, people ->
-        ChatListState(
-            loading = false,
-            items = list.map { chat ->
-                ChatListItem(
-                    chat = chat,
-                    partnerId = chat.partnerId(me),
-                    partner = people[chat.partnerId(me)],
-                    unread = chat.isUnreadFor(me),
-                    lastMessageIsMine = chat.lastMessage?.senderId == me,
+        val state: StateFlow<ChatListState> =
+            combine(chatList, partners) { list, people ->
+                ChatListState(
+                    loading = false,
+                    items =
+                        list.map { chat ->
+                            ChatListItem(
+                                chat = chat,
+                                partnerId = chat.partnerId(me),
+                                partner = people[chat.partnerId(me)],
+                                unread = chat.isUnreadFor(me),
+                                lastMessageIsMine = chat.lastMessage?.senderId == me,
+                            )
+                        },
+                    demoMode = config.demoMode,
                 )
-            },
-            demoMode = config.demoMode,
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatListState(demoMode = config.demoMode))
-}
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatListState(demoMode = config.demoMode))
+    }

@@ -35,7 +35,11 @@ import io.github.valerait.ghostlink.ui.common.GhostLogo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConnectScreen(onBack: () -> Unit, onChatReady: (String) -> Unit, viewModel: ConnectViewModel = hiltViewModel()) {
+fun ConnectScreen(
+    onBack: () -> Unit,
+    onChatReady: (String) -> Unit,
+    viewModel: ConnectViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
@@ -62,7 +66,11 @@ fun ConnectScreen(onBack: () -> Unit, onChatReady: (String) -> Unit, viewModel: 
             when (val s = state) {
                 ConnectState.Loading -> CircularProgressIndicator()
                 ConnectState.Self -> Message(stringResource(R.string.connect_self_title), stringResource(R.string.connect_self_body))
-                ConnectState.NotFound -> Message(stringResource(R.string.connect_not_found_title), stringResource(R.string.connect_not_found_body))
+                ConnectState.NotFound ->
+                    Message(
+                        stringResource(R.string.connect_not_found_title),
+                        stringResource(R.string.connect_not_found_body),
+                    )
                 is ConnectState.Found -> {
                     Avatar(s.user.name, s.user.id, size = 112.dp)
                     Spacer(Modifier.height(20.dp))
@@ -97,7 +105,10 @@ fun ConnectScreen(onBack: () -> Unit, onChatReady: (String) -> Unit, viewModel: 
 }
 
 @Composable
-private fun Message(title: String, body: String) {
+private fun Message(
+    title: String,
+    body: String,
+) {
     GhostLogo(size = 88.dp, tint = MaterialTheme.colorScheme.outline)
     Spacer(Modifier.height(20.dp))
     Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)

@@ -9,8 +9,9 @@ import java.security.SecureRandom
  *
  * 25 случайных байт: первые 8 — логин (не меняется у аккаунта), остальные 17 — секрет.
  */
-class AccountKey(bytes: ByteArray) {
-
+class AccountKey(
+    bytes: ByteArray,
+) {
     init {
         require(bytes.size == SIZE) { "Account key must be $SIZE bytes" }
     }
@@ -35,7 +36,7 @@ class AccountKey(bytes: ByteArray) {
 
     override fun hashCode(): Int = data.contentHashCode()
 
-    override fun toString(): String = "AccountKey(${email})"
+    override fun toString(): String = "AccountKey($email)"
 
     companion object {
         const val SIZE = 25
@@ -43,11 +44,13 @@ class AccountKey(bytes: ByteArray) {
         private const val GROUP = 5
         private const val DOMAIN = "@ghostlink.invalid"
 
-        fun generate(random: SecureRandom = SecureRandom()): AccountKey =
-            AccountKey(ByteArray(SIZE).also(random::nextBytes))
+        fun generate(random: SecureRandom = SecureRandom()): AccountKey = AccountKey(ByteArray(SIZE).also(random::nextBytes))
 
         /** Новый секрет для аккаунта, у которого уже есть служебная почта (например, после входа через Google). */
-        fun forEmail(email: String, random: SecureRandom = SecureRandom()): AccountKey? {
+        fun forEmail(
+            email: String,
+            random: SecureRandom = SecureRandom(),
+        ): AccountKey? {
             val login = emailToLogin(email) ?: return null
             return AccountKey(login + ByteArray(SIZE - LOGIN_SIZE).also(random::nextBytes))
         }
@@ -60,8 +63,7 @@ class AccountKey(bytes: ByteArray) {
             return if (bytes.size == SIZE) AccountKey(bytes) else null
         }
 
-        private fun loginToEmail(login: ByteArray): String =
-            login.joinToString("") { "%02x".format(it) } + DOMAIN
+        private fun loginToEmail(login: ByteArray): String = login.joinToString("") { "%02x".format(it) } + DOMAIN
 
         private fun emailToLogin(email: String): ByteArray? {
             if (!email.endsWith(DOMAIN)) return null
@@ -97,11 +99,12 @@ internal object Base32 {
         var buffer = 0
         var bits = 0
         for (c in text) {
-            val value = when (val upper = c.uppercaseChar()) {
-                'O' -> 0
-                'I', 'L' -> 1
-                else -> ALPHABET.indexOf(upper).takeIf { it >= 0 } ?: return null
-            }
+            val value =
+                when (val upper = c.uppercaseChar()) {
+                    'O' -> 0
+                    'I', 'L' -> 1
+                    else -> ALPHABET.indexOf(upper).takeIf { it >= 0 } ?: return null
+                }
             buffer = (buffer shl 5) or value
             bits += 5
             if (bits >= 8) {

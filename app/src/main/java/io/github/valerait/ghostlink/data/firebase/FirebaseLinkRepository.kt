@@ -17,31 +17,42 @@ class FirebaseLinkRepository(
     db: FirebaseFirestore,
     private val auth: FirebaseAuth,
 ) : LinkRepository {
-
     private val requests = db.collection("linkRequests")
 
-    override suspend fun createLinkRequest(deviceName: String, platform: String): String {
+    override suspend fun createLinkRequest(
+        deviceName: String,
+        platform: String,
+    ): String {
         val owner = checkNotNull(auth.currentUser) { "Not signed in" }.uid
         val doc = requests.document()
         // expiresAt считает клиент, но правила проверяют его по серверному времени.
         // На него же можно повесить TTL-политику Firestore, чтобы брошенные заявки удалялись сами.
-        doc.set(
-            mapOf(
-                "owner" to owner,
-                "deviceName" to deviceName.take(60),
-                "platform" to platform,
-                "createdAt" to FieldValue.serverTimestamp(),
-                "expiresAt" to Timestamp(Date(System.currentTimeMillis() + LINK_TTL_MS)),
-            ),
-        ).await()
+        doc
+            .set(
+                mapOf(
+                    "owner" to owner,
+                    "deviceName" to deviceName.take(60),
+                    "platform" to platform,
+                    "createdAt" to FieldValue.serverTimestamp(),
+                    "expiresAt" to Timestamp(Date(System.currentTimeMillis() + LINK_TTL_MS)),
+                ),
+            ).await()
         return doc.id
     }
 
-    override suspend fun getLinkRequest(id: String): LinkRequest? = requests.document(id).get().await().toLinkRequest()
+    override suspend fun getLinkRequest(id: String): LinkRequest? =
+        requests
+            .document(id)
+            .get()
+            .await()
+            .toLinkRequest()
 
     override fun observeLinkRequest(id: String): Flow<LinkRequest?> = requests.document(id).observe { it.toLinkRequest() }
 
-    override suspend fun approveLinkRequest(id: String, payload: ByteArray) {
+    override suspend fun approveLinkRequest(
+        id: String,
+        payload: ByteArray,
+    ) {
         val approver = checkNotNull(auth.currentUser) { "Not signed in" }.uid
         requests.document(id).update(mapOf("payload" to Blob.fromBytes(payload), "approvedBy" to approver)).await()
     }

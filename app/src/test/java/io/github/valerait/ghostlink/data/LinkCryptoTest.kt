@@ -10,7 +10,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LinkCryptoTest {
-
     private val secret = "account key bytes".toByteArray()
 
     @Test
@@ -76,8 +75,10 @@ class LinkCryptoTest {
 
     @Test
     fun `malformed link codes are ignored`() {
-        val key = LinkCode("AbCdEf0123456789XyZw", LinkCrypto.encodePublicKey(LinkCrypto.generateKeyPair().public))
-            .toUri().substringAfter('.')
+        val key =
+            LinkCode("AbCdEf0123456789XyZw", LinkCrypto.encodePublicKey(LinkCrypto.generateKeyPair().public))
+                .toUri()
+                .substringAfter('.')
 
         assertNull(LinkCode.parse("ghostlink://link/AbCdEf0123456789XyZw"))
         assertNull(LinkCode.parse("ghostlink://link/short.$key"))

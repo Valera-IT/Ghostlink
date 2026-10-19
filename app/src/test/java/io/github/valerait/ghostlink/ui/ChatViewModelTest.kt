@@ -21,7 +21,6 @@ import org.junit.Rule
 import org.junit.Test
 
 class ChatViewModelTest {
-
     @get:Rule val mainRule = MainDispatcherRule()
 
     private var now = 1_000_000L
@@ -37,53 +36,73 @@ class ChatViewModelTest {
         return Triple(backend, chatId, vm)
     }
 
-    private fun ChatUiState.messages(): List<MessageItem> =
-        rows.filterIsInstance<ChatRow.Msg>().map { it.item }.reversed()
+    private fun ChatUiState.messages(): List<MessageItem> = rows.filterIsInstance<ChatRow.Msg>().map { it.item }.reversed()
 
     @Test
-    fun `own message turns read after partner reads the chat`() = runTest {
-        val (backend, chatId, vm) = setUp()
+    fun `own message turns read after partner reads the chat`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
 
-        vm.send("  привет  ")
-        val sent = vm.state.value.messages().single()
-        assertEquals("привет", sent.message.text)
-        assertTrue(sent.mine)
-        assertEquals(MessageStatus.SENT, sent.status)
+            vm.send("  привет  ")
+            val sent =
+                vm.state.value
+                    .messages()
+                    .single()
+            assertEquals("привет", sent.message.text)
+            assertTrue(sent.mine)
+            assertEquals(MessageStatus.SENT, sent.status)
 
-        now += 1_000
-        backend.markRead(chatId, FRIEND)
-        assertEquals(MessageStatus.READ, vm.state.value.messages().single().status)
-    }
-
-    @Test
-    fun `incoming message is marked read only while chat is visible`() = runTest {
-        val (backend, chatId, vm) = setUp()
-        val me = backend.account.value!!.id
-
-        backend.sendMessage(chatId, FRIEND, "ты тут?")
-        assertNull(backend.observeChat(chatId).first()!!.lastRead[me])
-
-        now += 1_000
-        vm.onVisibilityChanged(true)
-        assertNotNull(backend.observeChat(chatId).first()!!.lastRead[me])
-        assertEquals(false, backend.observeChat(chatId).first()!!.isUnreadFor(me))
-    }
+            now += 1_000
+            backend.markRead(chatId, FRIEND)
+            assertEquals(
+                MessageStatus.READ,
+                vm.state.value
+                    .messages()
+                    .single()
+                    .status,
+            )
+        }
 
     @Test
-    fun `blank messages are not sent`() = runTest {
-        val (_, _, vm) = setUp()
-        vm.send("   ")
-        assertTrue(vm.state.value.messages().isEmpty())
-    }
+    fun `incoming message is marked read only while chat is visible`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            val me = backend.account.value!!.id
+
+            backend.sendMessage(chatId, FRIEND, "ты тут?")
+            assertNull(backend.observeChat(chatId).first()!!.lastRead[me])
+
+            now += 1_000
+            vm.onVisibilityChanged(true)
+            assertNotNull(backend.observeChat(chatId).first()!!.lastRead[me])
+            assertEquals(false, backend.observeChat(chatId).first()!!.isUnreadFor(me))
+        }
 
     @Test
-    fun `messages from different days get a day separator`() = runTest {
-        val (_, _, vm) = setUp()
-        vm.send("вчера")
-        now += 24 * 60 * 60 * 1000L
-        vm.send("сегодня")
-        assertEquals(2, vm.state.value.rows.count { it is ChatRow.Day })
-    }
+    fun `blank messages are not sent`() =
+        runTest {
+            val (_, _, vm) = setUp()
+            vm.send("   ")
+            assertTrue(
+                vm.state.value
+                    .messages()
+                    .isEmpty(),
+            )
+        }
+
+    @Test
+    fun `messages from different days get a day separator`() =
+        runTest {
+            val (_, _, vm) = setUp()
+            vm.send("вчера")
+            now += 24 * 60 * 60 * 1000L
+            vm.send("сегодня")
+            assertEquals(
+                2,
+                vm.state.value.rows
+                    .count { it is ChatRow.Day },
+            )
+        }
 
     private companion object {
         const val FRIEND = "friend"

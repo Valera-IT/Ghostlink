@@ -44,7 +44,10 @@ import io.github.valerait.ghostlink.ui.devices.platformLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LinkApproveScreen(onClose: () -> Unit, viewModel: LinkApproveViewModel = hiltViewModel()) {
+fun LinkApproveScreen(
+    onClose: () -> Unit,
+    viewModel: LinkApproveViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -60,11 +63,12 @@ fun LinkApproveScreen(onClose: () -> Unit, viewModel: LinkApproveViewModel = hil
         },
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             when (val current = state) {
@@ -73,25 +77,31 @@ fun LinkApproveScreen(onClose: () -> Unit, viewModel: LinkApproveViewModel = hil
                     CircularProgressIndicator()
                 }
                 is LinkApproveState.Confirm -> Confirm(current, onApprove = viewModel::approve, onCancel = onClose)
-                LinkApproveState.Done -> Outcome(
-                    icon = Icons.Outlined.CheckCircle,
-                    title = stringResource(R.string.link_approve_done_title),
-                    body = stringResource(R.string.link_approve_done_body),
-                    onClose = onClose,
-                )
-                LinkApproveState.Invalid -> Outcome(
-                    icon = Icons.Outlined.ErrorOutline,
-                    title = stringResource(R.string.link_approve_invalid_title),
-                    body = stringResource(R.string.link_approve_invalid_body),
-                    onClose = onClose,
-                )
+                LinkApproveState.Done ->
+                    Outcome(
+                        icon = Icons.Outlined.CheckCircle,
+                        title = stringResource(R.string.link_approve_done_title),
+                        body = stringResource(R.string.link_approve_done_body),
+                        onClose = onClose,
+                    )
+                LinkApproveState.Invalid ->
+                    Outcome(
+                        icon = Icons.Outlined.ErrorOutline,
+                        title = stringResource(R.string.link_approve_invalid_title),
+                        body = stringResource(R.string.link_approve_invalid_body),
+                        onClose = onClose,
+                    )
             }
         }
     }
 }
 
 @Composable
-private fun Confirm(state: LinkApproveState.Confirm, onApprove: () -> Unit, onCancel: () -> Unit) {
+private fun Confirm(
+    state: LinkApproveState.Confirm,
+    onApprove: () -> Unit,
+    onCancel: () -> Unit,
+) {
     Spacer(Modifier.height(24.dp))
     Icon(platformIcon(state.platform), contentDescription = null, modifier = Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
     Spacer(Modifier.height(16.dp))
@@ -143,7 +153,12 @@ private fun Confirm(state: LinkApproveState.Confirm, onApprove: () -> Unit, onCa
 }
 
 @Composable
-private fun Outcome(icon: ImageVector, title: String, body: String, onClose: () -> Unit) {
+private fun Outcome(
+    icon: ImageVector,
+    title: String,
+    body: String,
+    onClose: () -> Unit,
+) {
     Spacer(Modifier.height(48.dp))
     Icon(icon, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
     Spacer(Modifier.height(16.dp))

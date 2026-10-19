@@ -51,26 +51,34 @@ import io.github.valerait.ghostlink.ui.theme.LocalChatStyle
 import javax.inject.Inject
 
 @HiltViewModel
-class ThemeViewModel @Inject constructor(private val prefs: ThemePreferences) : ViewModel() {
-    val theme = prefs.theme
+class ThemeViewModel
+    @Inject
+    constructor(
+        private val prefs: ThemePreferences,
+    ) : ViewModel() {
+        val theme = prefs.theme
 
-    fun select(theme: ThemeId) = prefs.setTheme(theme)
-}
+        fun select(theme: ThemeId) = prefs.setTheme(theme)
+    }
 
 @get:StringRes
 val ThemeId.title: Int
-    get() = when (this) {
-        ThemeId.TOXIC_YELLOW -> R.string.theme_toxic_yellow
-        ThemeId.NEON_SUNSET -> R.string.theme_neon_sunset
-        ThemeId.ICEWIRE -> R.string.theme_icewire
-        ThemeId.ACID_CIRCUIT -> R.string.theme_acid_circuit
-        ThemeId.AMBER_ALERT -> R.string.theme_amber_alert
-        ThemeId.CUSTOM_SPECTRUM -> R.string.theme_custom_spectrum
-    }
+    get() =
+        when (this) {
+            ThemeId.TOXIC_YELLOW -> R.string.theme_toxic_yellow
+            ThemeId.NEON_SUNSET -> R.string.theme_neon_sunset
+            ThemeId.ICEWIRE -> R.string.theme_icewire
+            ThemeId.ACID_CIRCUIT -> R.string.theme_acid_circuit
+            ThemeId.AMBER_ALERT -> R.string.theme_amber_alert
+            ThemeId.CUSTOM_SPECTRUM -> R.string.theme_custom_spectrum
+        }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ThemeScreen(onBack: () -> Unit, viewModel: ThemeViewModel = hiltViewModel()) {
+fun ThemeScreen(
+    onBack: () -> Unit,
+    viewModel: ThemeViewModel = hiltViewModel(),
+) {
     val current by viewModel.theme.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
@@ -100,7 +108,11 @@ fun ThemeScreen(onBack: () -> Unit, viewModel: ThemeViewModel = hiltViewModel())
 
 /** Карточка-превью: мини-чат, нарисованный в самой теме, как на экране выбора тем в Telegram. */
 @Composable
-private fun ThemeCard(theme: ThemeId, selected: Boolean, onClick: () -> Unit) {
+private fun ThemeCard(
+    theme: ThemeId,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
     GhostlinkTheme(theme = theme) {
         val colors = MaterialTheme.colorScheme
         val chatStyle = LocalChatStyle.current
@@ -110,8 +122,7 @@ private fun ThemeCard(theme: ThemeId, selected: Boolean, onClick: () -> Unit) {
                 .border(
                     BorderStroke(if (selected) 3.dp else 1.dp, if (selected) colors.primary else colors.outlineVariant),
                     chatStyle.panelShape,
-                )
-                .background(colors.background)
+                ).background(colors.background)
                 .clickable(onClick = onClick)
                 .padding(10.dp),
         ) {
@@ -146,7 +157,10 @@ private fun ThemeCard(theme: ThemeId, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PreviewBubble(text: String, mine: Boolean) {
+private fun PreviewBubble(
+    text: String,
+    mine: Boolean,
+) {
     val chatStyle = LocalChatStyle.current
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
         Surface(

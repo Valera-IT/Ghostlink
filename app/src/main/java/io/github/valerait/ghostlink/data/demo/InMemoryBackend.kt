@@ -36,10 +36,14 @@ class InMemoryBackend(
     private val scope: CoroutineScope,
     private val clock: () -> Long = System::currentTimeMillis,
     private val seedDemoData: Boolean = true,
-) : AuthRepository, UserRepository, ChatRepository, DeviceRepository, LinkRepository {
-
+) : AuthRepository,
+    UserRepository,
+    ChatRepository,
+    DeviceRepository,
+    LinkRepository {
     private val _account = MutableStateFlow<Account?>(null)
     private val _accountKey = MutableStateFlow<AccountKey?>(null)
+
     /** «Сервер» аккаунтов: служебная почта -> (пароль, uid). Переживает выход, как настоящий Firebase. */
     private val accounts = mutableMapOf<String, Pair<String, String>>()
     private val devices = MutableStateFlow<Map<String, Map<String, Device>>>(emptyMap())
@@ -86,8 +90,7 @@ class InMemoryBackend(
     override suspend fun signInWithGoogle(idToken: String): Account =
         throw UnsupportedOperationException("Google sign-in is not available in demo mode")
 
-    override suspend fun linkGoogle(idToken: String) =
-        throw UnsupportedOperationException("Google sign-in is not available in demo mode")
+    override suspend fun linkGoogle(idToken: String) = throw UnsupportedOperationException("Google sign-in is not available in demo mode")
 
     override suspend fun ensureAccountKey(): AccountKey {
         val account = checkNotNull(_account.value) { "Not signed in" }
@@ -134,14 +137,20 @@ class InMemoryBackend(
         return stranger
     }
 
-    override suspend fun saveProfile(id: String, name: String) {
+    override suspend fun saveProfile(
+        id: String,
+        name: String,
+    ) {
         users.update {
             val user = it[id]?.copy(name = name) ?: User(id, name, online = true, lastSeen = clock())
             it + (id to user)
         }
     }
 
-    override fun setOnline(id: String, online: Boolean) {
+    override fun setOnline(
+        id: String,
+        online: Boolean,
+    ) {
         users.update { all ->
             val user = all[id] ?: return@update all
             all + (id to user.copy(online = online, lastSeen = clock()))
@@ -153,29 +162,39 @@ class InMemoryBackend(
     // region ChatRepository
 
     override fun observeChats(userId: String): Flow<List<Chat>> =
-        chats.map { all ->
-            all.values.filter { userId in it.members }.sortedByDescending { it.updatedAt ?: Long.MAX_VALUE }
-        }.distinctUntilChanged()
+        chats
+            .map { all ->
+                all.values.filter { userId in it.members }.sortedByDescending { it.updatedAt ?: Long.MAX_VALUE }
+            }.distinctUntilChanged()
 
     override fun observeChat(chatId: String): Flow<Chat?> = chats.map { it[chatId] }.distinctUntilChanged()
 
-    override fun observeMessages(chatId: String): Flow<List<Message>> =
-        messages.map { it[chatId].orEmpty() }.distinctUntilChanged()
+    override fun observeMessages(chatId: String): Flow<List<Message>> = messages.map { it[chatId].orEmpty() }.distinctUntilChanged()
 
-    override fun sendMessage(chatId: String, senderId: String, text: String) {
+    override fun sendMessage(
+        chatId: String,
+        senderId: String,
+        text: String,
+    ) {
         post(chatId, senderId, text, clock())
         val chat = chats.value[chatId] ?: return
         if (BOT_ID in chat.members && senderId != BOT_ID) replyAsBot(chatId)
     }
 
-    override fun markRead(chatId: String, userId: String) {
+    override fun markRead(
+        chatId: String,
+        userId: String,
+    ) {
         chats.update { all ->
             val chat = all[chatId] ?: return@update all
             all + (chatId to chat.copy(lastRead = chat.lastRead + (userId to clock())))
         }
     }
 
-    override suspend fun startChat(userId: String, friendId: String): String {
+    override suspend fun startChat(
+        userId: String,
+        friendId: String,
+    ): String {
         require(userId != friendId) { "Cannot start a chat with yourself" }
         val id = ChatIds.of(userId, friendId)
         chats.update { all ->
@@ -191,14 +210,22 @@ class InMemoryBackend(
     override fun observeDevices(userId: String): Flow<List<Device>> =
         devices.map { it[userId].orEmpty().values.sortedByDescending { d -> d.lastActiveAt } }.distinctUntilChanged()
 
-    override fun observeDevice(userId: String, deviceId: String): Flow<Device?> =
-        devices.map { it[userId]?.get(deviceId) }.distinctUntilChanged()
+    override fun observeDevice(
+        userId: String,
+        deviceId: String,
+    ): Flow<Device?> = devices.map { it[userId]?.get(deviceId) }.distinctUntilChanged()
 
-    override suspend fun registerDevice(userId: String, device: Device) {
+    override suspend fun registerDevice(
+        userId: String,
+        device: Device,
+    ) {
         devices.update { all -> all + (userId to all[userId].orEmpty() + (device.id to device.copy(lastActiveAt = clock()))) }
     }
 
-    override suspend fun removeDevice(userId: String, deviceId: String) {
+    override suspend fun removeDevice(
+        userId: String,
+        deviceId: String,
+    ) {
         devices.update { all -> all + (userId to all[userId].orEmpty() - deviceId) }
     }
 
@@ -206,7 +233,10 @@ class InMemoryBackend(
 
     // region LinkRepository
 
-    override suspend fun createLinkRequest(deviceName: String, platform: String): String {
+    override suspend fun createLinkRequest(
+        deviceName: String,
+        platform: String,
+    ): String {
         checkNotNull(_account.value) { "Not signed in" }
         val id = "link${nextId.incrementAndGet()}".padEnd(20, '0')
         linkRequests.update { it + (id to LinkRequest(id, deviceName, platform, expiresAt = clock() + LINK_TTL_MS)) }
@@ -217,7 +247,10 @@ class InMemoryBackend(
 
     override fun observeLinkRequest(id: String): Flow<LinkRequest?> = linkRequests.map { it[id] }.distinctUntilChanged()
 
-    override suspend fun approveLinkRequest(id: String, payload: ByteArray) {
+    override suspend fun approveLinkRequest(
+        id: String,
+        payload: ByteArray,
+    ) {
         linkRequests.update { all ->
             val request = checkNotNull(all[id]) { "No such link request" }
             check(request.payload == null && !request.isExpired(clock())) { "Link request is no longer valid" }
@@ -231,7 +264,12 @@ class InMemoryBackend(
 
     // endregion
 
-    private fun post(chatId: String, senderId: String, text: String, at: Long) {
+    private fun post(
+        chatId: String,
+        senderId: String,
+        text: String,
+        at: Long,
+    ) {
         val message = Message("m${nextId.incrementAndGet()}", senderId, text, at)
         messages.update { it + (chatId to it[chatId].orEmpty() + message) }
         chats.update { all ->
@@ -251,16 +289,18 @@ class InMemoryBackend(
 
     private fun seed(me: String) {
         val now = clock()
-        users.value = mapOf(
-            BOT_ID to User(BOT_ID, "Призрак", online = true),
-            ANYA_ID to User(ANYA_ID, "Аня", online = false, lastSeen = now - 2 * HOUR),
-        )
+        users.value =
+            mapOf(
+                BOT_ID to User(BOT_ID, "Призрак", online = true),
+                ANYA_ID to User(ANYA_ID, "Аня", online = false, lastSeen = now - 2 * HOUR),
+            )
         val botChat = ChatIds.of(me, BOT_ID)
         val anyaChat = ChatIds.of(me, ANYA_ID)
-        chats.value = mapOf(
-            botChat to Chat(botChat, listOf(me, BOT_ID).sorted(), updatedAt = now),
-            anyaChat to Chat(anyaChat, listOf(me, ANYA_ID).sorted(), updatedAt = now),
-        )
+        chats.value =
+            mapOf(
+                botChat to Chat(botChat, listOf(me, BOT_ID).sorted(), updatedAt = now),
+                anyaChat to Chat(anyaChat, listOf(me, ANYA_ID).sorted(), updatedAt = now),
+            )
         post(anyaChat, ANYA_ID, "Привет! Спасибо, что отсканировал(а) мой код на встрече 🙂", now - DAY - 3 * HOUR)
         post(anyaChat, me, "Привет! Рад(а) знакомству", now - DAY - 2 * HOUR)
         post(anyaChat, ANYA_ID, "Скинешь фотки с митапа?", now - DAY - HOUR)
@@ -280,12 +320,13 @@ class InMemoryBackend(
         private const val HOUR = 60 * MINUTE
         private const val DAY = 24 * HOUR
 
-        private val BOT_REPLIES = listOf(
-            "Я тебя слышу, даже если ты меня не видишь 👻",
-            "В Ghostlink нельзя найти человека по номеру — только встретиться и отсканировать код.",
-            "Открой «Мой код», покажи QR другу — и вы сразу окажетесь в общем чате.",
-            "Видишь две галочки? Значит, я прочитал. Призраки всё читают.",
-            "Я живу только в демо-режиме. Подключи Firebase — и появятся настоящие люди.",
-        )
+        private val BOT_REPLIES =
+            listOf(
+                "Я тебя слышу, даже если ты меня не видишь 👻",
+                "В Ghostlink нельзя найти человека по номеру — только встретиться и отсканировать код.",
+                "Открой «Мой код», покажи QR другу — и вы сразу окажетесь в общем чате.",
+                "Видишь две галочки? Значит, я прочитал. Призраки всё читают.",
+                "Я живу только в демо-режиме. Подключи Firebase — и появятся настоящие люди.",
+            )
     }
 }

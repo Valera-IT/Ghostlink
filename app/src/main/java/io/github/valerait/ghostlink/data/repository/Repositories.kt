@@ -44,7 +44,9 @@ interface AuthRepository {
 }
 
 /** Ключ не подошёл: аккаунта нет или секрет уже сменили. */
-class InvalidAccountKeyException(cause: Throwable? = null) : Exception(cause)
+class InvalidAccountKeyException(
+    cause: Throwable? = null,
+) : Exception(cause)
 
 /** Google-аккаунт уже привязан к другому профилю Ghostlink. */
 class AccountAlreadyLinkedException : Exception()
@@ -58,9 +60,15 @@ interface UserRepository {
 
     suspend fun getUser(id: String): User?
 
-    suspend fun saveProfile(id: String, name: String)
+    suspend fun saveProfile(
+        id: String,
+        name: String,
+    )
 
-    fun setOnline(id: String, online: Boolean)
+    fun setOnline(
+        id: String,
+        online: Boolean,
+    )
 }
 
 interface ChatRepository {
@@ -71,36 +79,61 @@ interface ChatRepository {
     fun observeMessages(chatId: String): Flow<List<Message>>
 
     /** Не ждёт сервера: сообщение сразу появляется локально со статусом SENDING. */
-    fun sendMessage(chatId: String, senderId: String, text: String)
+    fun sendMessage(
+        chatId: String,
+        senderId: String,
+        text: String,
+    )
 
-    fun markRead(chatId: String, userId: String)
+    fun markRead(
+        chatId: String,
+        userId: String,
+    )
 
     /** Создаёт чат пары (если его ещё нет) и возвращает его id. */
-    suspend fun startChat(userId: String, friendId: String): String
+    suspend fun startChat(
+        userId: String,
+        friendId: String,
+    ): String
 }
 
 interface DeviceRepository {
     fun observeDevices(userId: String): Flow<List<Device>>
 
     /** Испускает null, когда устройство удалили из реестра. */
-    fun observeDevice(userId: String, deviceId: String): Flow<Device?>
+    fun observeDevice(
+        userId: String,
+        deviceId: String,
+    ): Flow<Device?>
 
     /** Создаёт или обновляет запись и время последней активности. */
-    suspend fun registerDevice(userId: String, device: Device)
+    suspend fun registerDevice(
+        userId: String,
+        device: Device,
+    )
 
-    suspend fun removeDevice(userId: String, deviceId: String)
+    suspend fun removeDevice(
+        userId: String,
+        deviceId: String,
+    )
 }
 
 interface LinkRepository {
     /** Создаёт заявку от имени текущего (временного) аккаунта и возвращает её id. */
-    suspend fun createLinkRequest(deviceName: String, platform: String): String
+    suspend fun createLinkRequest(
+        deviceName: String,
+        platform: String,
+    ): String
 
     suspend fun getLinkRequest(id: String): LinkRequest?
 
     fun observeLinkRequest(id: String): Flow<LinkRequest?>
 
     /** Кладёт в заявку зашифрованный ключ аккаунта. */
-    suspend fun approveLinkRequest(id: String, payload: ByteArray)
+    suspend fun approveLinkRequest(
+        id: String,
+        payload: ByteArray,
+    )
 
     suspend fun deleteLinkRequest(id: String)
 }

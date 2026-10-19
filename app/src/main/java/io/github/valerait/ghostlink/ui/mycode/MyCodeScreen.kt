@@ -37,7 +37,11 @@ import io.github.valerait.ghostlink.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyCodeScreen(onBack: () -> Unit, onScan: () -> Unit, viewModel: MyCodeViewModel = hiltViewModel()) {
+fun MyCodeScreen(
+    onBack: () -> Unit,
+    onScan: () -> Unit,
+    viewModel: MyCodeViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val shareText = stringResource(R.string.my_code_share_text, state.link)
@@ -56,11 +60,12 @@ fun MyCodeScreen(onBack: () -> Unit, onScan: () -> Unit, viewModel: MyCodeViewMo
         },
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 32.dp, vertical = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 32.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             QrCard(state.link, stringResource(R.string.my_code_qr_description))

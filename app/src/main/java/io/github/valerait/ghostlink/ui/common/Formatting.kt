@@ -18,11 +18,17 @@ private val TimeFormat = DateTimeFormatter.ofPattern("HH:mm")
 
 private fun Long.toLocalDate(zone: ZoneId): LocalDate = Instant.ofEpochMilli(this).atZone(zone).toLocalDate()
 
-fun formatTime(millis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
-    Instant.ofEpochMilli(millis).atZone(zone).format(TimeFormat)
+fun formatTime(
+    millis: Long,
+    zone: ZoneId = ZoneId.systemDefault(),
+): String = Instant.ofEpochMilli(millis).atZone(zone).format(TimeFormat)
 
 /** Время в списке чатов: сегодня — часы, на этой неделе — день недели, иначе — дата. */
-fun formatChatListTime(millis: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+fun formatChatListTime(
+    millis: Long,
+    now: Long,
+    zone: ZoneId = ZoneId.systemDefault(),
+): String {
     val date = millis.toLocalDate(zone)
     val days = ChronoUnit.DAYS.between(date, now.toLocalDate(zone))
     return when {
@@ -33,7 +39,11 @@ fun formatChatListTime(millis: Long, now: Long, zone: ZoneId = ZoneId.systemDefa
 }
 
 @Composable
-fun dayLabel(millis: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+fun dayLabel(
+    millis: Long,
+    now: Long,
+    zone: ZoneId = ZoneId.systemDefault(),
+): String {
     val date = millis.toLocalDate(zone)
     val today = now.toLocalDate(zone)
     return when (date) {
@@ -47,20 +57,25 @@ fun dayLabel(millis: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): St
 }
 
 @Composable
-fun presenceText(user: User?, now: Long): String = when {
-    user == null -> ""
-    user.isOnline(now) -> stringResource(R.string.presence_online)
-    user.lastSeen == null -> stringResource(R.string.presence_long_ago)
-    user.lastSeen.toLocalDate(ZoneId.systemDefault()) == now.toLocalDate(ZoneId.systemDefault()) ->
-        stringResource(R.string.presence_last_seen_today, formatTime(user.lastSeen))
-    else -> stringResource(R.string.presence_last_seen_date, formatChatListTime(user.lastSeen, now))
-}
+fun presenceText(
+    user: User?,
+    now: Long,
+): String =
+    when {
+        user == null -> ""
+        user.isOnline(now) -> stringResource(R.string.presence_online)
+        user.lastSeen == null -> stringResource(R.string.presence_long_ago)
+        user.lastSeen.toLocalDate(ZoneId.systemDefault()) == now.toLocalDate(ZoneId.systemDefault()) ->
+            stringResource(R.string.presence_last_seen_today, formatTime(user.lastSeen))
+        else -> stringResource(R.string.presence_last_seen_date, formatChatListTime(user.lastSeen, now))
+    }
 
 /** Текущее время, которое раз в 30 секунд обновляется — для «в сети» и меток времени. */
 @Composable
-fun rememberNow(): State<Long> = produceState(System.currentTimeMillis()) {
-    while (true) {
-        delay(30_000)
-        value = System.currentTimeMillis()
+fun rememberNow(): State<Long> =
+    produceState(System.currentTimeMillis()) {
+        while (true) {
+            delay(30_000)
+            value = System.currentTimeMillis()
+        }
     }
-}

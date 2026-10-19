@@ -65,7 +65,8 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onDevices: () -> Unit,
     onTheme: () -> Unit,
-    viewModel: SettingsViewModel = hiltViewModel()) {
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -112,10 +113,11 @@ fun SettingsScreen(
             if (state.demoMode) DemoModeBanner(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { renaming = true }
-                    .padding(16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { renaming = true }
+                        .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Avatar(state.name, state.userId, size = 72.dp)
@@ -166,7 +168,13 @@ fun SettingsScreen(
             val googleEmail = state.googleEmail
             if (googleEmail != null) {
                 ListItem(
-                    leadingContent = { Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    leadingContent = {
+                        Icon(
+                            Icons.Outlined.CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    },
                     headlineContent = { Text(stringResource(R.string.settings_google_linked_title)) },
                     supportingContent = { Text(googleEmail) },
                 )
@@ -181,7 +189,13 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(8.dp))
             ListItem(
-                leadingContent = { Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                leadingContent = {
+                    Icon(
+                        Icons.AutoMirrored.Outlined.Logout,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                },
                 headlineContent = { Text(stringResource(R.string.settings_sign_out), color = MaterialTheme.colorScheme.error) },
                 modifier = Modifier.clickable(enabled = !state.busy) { confirmSignOut = true },
             )
@@ -233,7 +247,11 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun RenameDialog(initial: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+private fun RenameDialog(
+    initial: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
     var value by rememberSaveable { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,

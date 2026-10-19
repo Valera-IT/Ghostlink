@@ -16,7 +16,10 @@ import javax.crypto.spec.GCMParameterSpec
 interface AccountKeyStore {
     fun get(userId: String): AccountKey?
 
-    fun put(userId: String, key: AccountKey)
+    fun put(
+        userId: String,
+        key: AccountKey,
+    )
 
     fun clear()
 }
@@ -26,7 +29,10 @@ class InMemoryAccountKeyStore : AccountKeyStore {
 
     override fun get(userId: String): AccountKey? = stored?.takeIf { it.first == userId }?.second
 
-    override fun put(userId: String, key: AccountKey) {
+    override fun put(
+        userId: String,
+        key: AccountKey,
+    ) {
         stored = userId to key
     }
 
@@ -40,8 +46,9 @@ class InMemoryAccountKeyStore : AccountKeyStore {
  * защищённое хранилище, а в SharedPreferences лежит только шифротекст.
  * Резервное копирование отключено в манифесте, так что ключ не уедет в облако.
  */
-class AndroidAccountKeyStore(context: Context) : AccountKeyStore {
-
+class AndroidAccountKeyStore(
+    context: Context,
+) : AccountKeyStore {
     private val prefs = context.getSharedPreferences("account_key", Context.MODE_PRIVATE)
 
     override fun get(userId: String): AccountKey? {
@@ -59,11 +66,15 @@ class AndroidAccountKeyStore(context: Context) : AccountKeyStore {
         }
     }
 
-    override fun put(userId: String, key: AccountKey) {
+    override fun put(
+        userId: String,
+        key: AccountKey,
+    ) {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, secretKey())
         val sealed = cipher.iv + cipher.doFinal(key.bytes)
-        prefs.edit()
+        prefs
+            .edit()
             .putString(KEY_USER, userId)
             .putString(KEY_VALUE, Base64.encodeToString(sealed, Base64.NO_WRAP))
             .apply()
@@ -76,15 +87,18 @@ class AndroidAccountKeyStore(context: Context) : AccountKeyStore {
     private fun secretKey(): SecretKey {
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         (keyStore.getKey(ALIAS, null) as? SecretKey)?.let { return it }
-        return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE).apply {
-            init(
-                KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
-                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .setKeySize(256)
-                    .build(),
-            )
-        }.generateKey()
+        return KeyGenerator
+            .getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
+            .apply {
+                init(
+                    KeyGenParameterSpec
+                        .Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+                        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                        .setKeySize(256)
+                        .build(),
+                )
+            }.generateKey()
     }
 
     private companion object {
