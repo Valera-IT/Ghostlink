@@ -5,17 +5,13 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
-// Firebase подключается, только если положен свой google-services.json.
-// Без него приложение работает на локальном демо-бэкенде (см. README).
-if (file("google-services.json").exists()) {
-    apply(
-        plugin =
-            libs.plugins.google.services
-                .get()
-                .pluginId,
-    )
+// Конфиг Firebase лежит в app/src/dev|prod/google-services.json и в git не попадает (в CI — из секретов).
+// Если его нет, сборка всё равно проходит, а приложение работает в демо-режиме (см. README).
+googleServices {
+    missingGoogleServicesStrategy = com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy.IGNORE
 }
 
 android {
@@ -28,6 +24,26 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+    }
+
+    flavorDimensions += "env"
+    productFlavors {
+        // Бэкенд в памяти с ботом: без Firebase и без секретов.
+        create("demo") {
+            dimension = "env"
+            applicationIdSuffix = ".demo"
+            resValue("string", "app_name", "Ghostlink Demo")
+        }
+        // Проект ghostlink-dev: ставится рядом с prod, для разработки и проверки PR.
+        create("dev") {
+            dimension = "env"
+            applicationIdSuffix = ".dev"
+            resValue("string", "app_name", "Ghostlink Dev")
+        }
+        create("prod") {
+            dimension = "env"
+            resValue("string", "app_name", "Ghostlink")
+        }
     }
 
     buildTypes.configureEach {

@@ -15,7 +15,7 @@
   - непрочитанные в списке чатов.
 - **Присутствие:** «в сети» и «был(а) в сети в 14:05» через heartbeat, с истечением статуса, если приложение убили.
 - **Google как запасной способ восстановления** (Credential Manager): по желанию, друзья его не видят.
-- **Демо-режим.** Без `google-services.json` приложение работает на бэкенде в памяти с ботом-собеседником, поэтому проект можно склонировать и сразу запустить.
+- **Демо-режим.** Флейвор `demo` (и любая сборка без `google-services.json`) работает на бэкенде в памяти с ботом-собеседником, поэтому проект можно склонировать и сразу запустить.
 
 ## Стек
 
@@ -84,12 +84,20 @@ QR  ghostlink://link/{id}.{publicKey}
 
 ## Запуск
 
-**Демо-режим:** открыть проект в Android Studio и запустить. Ничего настраивать не нужно.
+У приложения три флейвора, они ставятся рядом друг с другом:
+
+| Флейвор | Пакет | Бэкенд |
+|---|---|---|
+| `demo` | `io.github.valerait.ghostlink.demo` | в памяти, с ботом-собеседником |
+| `dev` | `io.github.valerait.ghostlink.dev` | Firebase-проект для разработки |
+| `prod` | `io.github.valerait.ghostlink` | боевой Firebase-проект |
+
+**Демо-режим:** открыть проект в Android Studio, выбрать вариант `demoDebug` и запустить. Ничего настраивать не нужно. `dev` и `prod` без своего конфига тоже запускаются в демо-режиме.
 
 **С Firebase:**
 
-1. Создать проект в [Firebase Console](https://console.firebase.google.com) и добавить Android-приложение с пакетом `io.github.valerait.ghostlink`.
-2. Положить `google-services.json` в `app/`. Файл в `.gitignore`: у каждого свой проект.
+1. Создать проект в [Firebase Console](https://console.firebase.google.com) и добавить Android-приложение с пакетом `io.github.valerait.ghostlink` (для `dev` — `io.github.valerait.ghostlink.dev`).
+2. Положить `google-services.json` в `app/src/prod/` (или `app/src/dev/`). Файлы в `.gitignore`: у каждого свой проект. В CI конфиг `dev` берётся из секрета `GOOGLE_SERVICES_DEV`.
 3. В разделе **Authentication → Sign-in method** включить **Email/Password** и **Anonymous**; **Google** — по желанию. Для Google нужно добавить SHA-1 debug-ключа: его выводит `./gradlew signingReport`.
 4. Создать базу **Firestore** и вставить содержимое `firestore.rules` во вкладку **Rules**.
 5. Только на Blaze: в Firestore → **TTL** добавить политику для коллекции `linkRequests` по полю `expiresAt`, чтобы брошенные заявки удалялись сами. На Spark TTL недоступен, но это не страшно: приложение удаляет свои заявки само, а просроченную заявку правила не дают подтвердить.
@@ -100,7 +108,7 @@ QR  ghostlink://link/{id}.{publicKey}
 
 ```bash
 npx firebase-tools emulators:start --only auth,firestore --project demo-ghostlink
-./gradlew installDebug -Pghostlink.emulatorHost=10.0.2.2
+./gradlew installDemoDebug -Pghostlink.emulatorHost=10.0.2.2
 ```
 
 `10.0.2.2` — это адрес Mac из Android-эмулятора. Правила из `firestore.rules` эмулятор подхватывает сам, а интерфейс эмулятора открывается на http://localhost:4000.
@@ -108,7 +116,7 @@ npx firebase-tools emulators:start --only auth,firestore --project demo-ghostlin
 ## Тесты
 
 ```bash
-./gradlew testDebugUnitTest
+./gradlew testDemoDebugUnitTest
 ```
 
 Покрыты модели (статусы, непрочитанное, онлайн, приглашения), ViewModel чата и онбординга, а также привязка устройств:

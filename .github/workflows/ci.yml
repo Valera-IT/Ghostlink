@@ -26,8 +26,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-      # Без google-services.json собирается демо-режим: секреты для сборки не нужны.
-      - run: ./gradlew spotlessCheck detekt assembleDebug testDebugUnitTest lintDebug --stacktrace
+      # Проверки идут на флейворе demo: ему не нужен ни Firebase, ни секреты.
+      - run: ./gradlew spotlessCheck detekt assembleDemoDebug testDemoDebugUnitTest lintDemoDebug --stacktrace
+      # dev собирается с настоящим конфигом ghostlink-dev, если секрет доступен (в PR из форков его нет).
+      - name: Сборка dev
+        env:
+          GOOGLE_SERVICES_DEV: ${{ secrets.GOOGLE_SERVICES_DEV }}
+        if: env.GOOGLE_SERVICES_DEV != ''
+        run: |
+          mkdir -p app/src/dev
+          printf '%s' "$GOOGLE_SERVICES_DEV" > app/src/dev/google-services.json
+          ./gradlew assembleDevDebug --stacktrace
       - if: always()
         uses: actions/upload-artifact@v4
         with:
