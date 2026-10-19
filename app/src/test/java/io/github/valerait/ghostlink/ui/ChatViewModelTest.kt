@@ -245,12 +245,12 @@ class ChatViewModelTest {
                     .message.id,
             )
 
-            assertEquals(
-                listOf("привет"),
+            val deleted =
                 vm.state.value
                     .messages()
-                    .map { it.message.text },
-            )
+                    .last()
+            assertTrue(deleted.message.deleted)
+            assertEquals("", deleted.message.text)
             val last = backend.observeChat(chatId).first()!!.lastMessage
             assertEquals("привет", last?.text)
             assertEquals(FRIEND, last?.senderId)
@@ -270,9 +270,61 @@ class ChatViewModelTest {
             assertTrue(
                 vm.state.value
                     .messages()
-                    .isEmpty(),
+                    .single()
+                    .message.deleted,
             )
             assertNull(backend.observeChat(chatId).first()!!.lastMessage)
+        }
+
+    @Test
+    fun `chat preview skips messages that are already deleted`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            vm.send("первое")
+            vm.send("второе")
+            vm.send("третье")
+            val ids =
+                vm.state.value
+                    .messages()
+                    .map { it.message.id }
+            vm.delete(ids[2])
+            vm.delete(ids[1])
+            assertEquals(
+                "первое",
+                backend
+                    .observeChat(chatId)
+                    .first()!!
+                    .lastMessage
+                    ?.text,
+            )
+            vm.delete(ids[0])
+            assertNull(backend.observeChat(chatId).first()!!.lastMessage)
+        }
+
+    @Test
+    fun `deleted message cannot be edited or replied to and its replies say so`() =
+        runTest {
+            val (_, _, vm) = setUp()
+            vm.send("исходное")
+            val id =
+                vm.state.value
+                    .messages()
+                    .single()
+                    .message.id
+            vm.startReply(id)
+            vm.send("ответ")
+            vm.delete(id)
+
+            assertTrue(
+                vm.state.value
+                    .messages()
+                    .last()
+                    .replyToDeleted,
+            )
+            vm.startEdit(id)
+            assertNull(vm.state.value.editing)
+            vm.startReply(id)
+            assertNull(vm.state.value.replyingTo)
         }
 
     @Test

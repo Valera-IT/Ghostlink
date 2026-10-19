@@ -76,7 +76,11 @@ data class Message(
     val replyTo: ReplyTo? = null,
     /** Когда автор последний раз исправил текст; null — не исправлялось. */
     val editedAt: Long? = null,
+    /** Когда автор удалил сообщение у обоих; от него остаётся только отметка «Сообщение удалено». */
+    val deletedAt: Long? = null,
 ) {
+    val deleted: Boolean get() = deletedAt != null
+
     fun status(partnerLastRead: Long?): MessageStatus =
         when {
             pending || sentAt == null -> MessageStatus.SENDING

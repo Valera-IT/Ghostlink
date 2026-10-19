@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -65,16 +66,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
@@ -126,6 +134,25 @@ fun ChatScreen(
             }
         }
     }
+
+    // Протяжка ленты пальцем вниз прячет клавиатуру, как в Telegram.
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val hideKeyboardOnDrag =
+        remember(keyboard, focusManager) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(
+                    available: Offset,
+                    source: NestedScrollSource,
+                ): Offset {
+                    if (source == NestedScrollSource.UserInput && available.y > 0f) {
+                        keyboard?.hide()
+                        focusManager.clearFocus()
+                    }
+                    return Offset.Zero
+                }
+            }
+        }
 
     LifecycleResumeEffect(Unit) {
         viewModel.onVisibilityChanged(true)
@@ -191,7 +218,7 @@ fun ChatScreen(
             state = listState,
             reverseLayout = true,
             contentPadding = PaddingValues(vertical = 8.dp),
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding).nestedScroll(hideKeyboardOnDrag),
         ) {
             items(state.rows, key = { it.key }) { row ->
                 when (row) {
@@ -280,6 +307,7 @@ private fun MessageBubble(
                         .widthIn(max = 300.dp)
                         .clip(if (mine) chatStyle.outgoingShape else chatStyle.incomingShape)
                         .combinedClickable(
+                            enabled = !item.message.deleted,
                             onLongClickLabel = stringResource(R.string.chat_actions),
                             onLongClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -292,12 +320,17 @@ private fun MessageBubble(
                     item.message.replyTo?.let { reply ->
                         ReplyQuote(
                             author = quoteAuthor,
-                            preview = reply.preview,
+                            preview = if (item.replyToDeleted) stringResource(R.string.chat_deleted) else reply.preview,
+                            previewDeleted = item.replyToDeleted,
                             accent = LocalContentColor.current,
                             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp).clickable { onQuoteClick(reply.id) },
                         )
                     }
-                    Text(item.message.text, style = MaterialTheme.typography.bodyLarge)
+                    if (item.message.deleted) {
+                        DeletedText()
+                    } else {
+                        Text(item.message.text, style = MaterialTheme.typography.bodyLarge)
+                    }
                     Row(
                         modifier = Modifier.align(Alignment.End),
                         verticalAlignment = Alignment.CenterVertically,
@@ -317,7 +350,7 @@ private fun MessageBubble(
                                 color = mutedContentColor(),
                             )
                         }
-                        item.status?.let {
+                        item.status?.takeUnless { item.message.deleted }?.let {
                             Spacer(Modifier.width(4.dp))
                             StatusIcon(it)
                         }
@@ -332,6 +365,20 @@ private fun MessageBubble(
                 actions = actions.copy(onCopy = { clipboard.setText(AnnotatedString(item.message.text)) }),
             )
         }
+    }
+}
+
+/** На месте удалённого сообщения — курсивная отметка, как в мессенджерах. */
+@Composable
+private fun DeletedText() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.Block, contentDescription = null, tint = mutedContentColor(), modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = stringResource(R.string.chat_deleted),
+            style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
+            color = mutedContentColor(),
+        )
     }
 }
 
@@ -362,6 +409,7 @@ private fun ReplyQuote(
     preview: String,
     accent: Color,
     modifier: Modifier = Modifier,
+    previewDeleted: Boolean = false,
 ) {
     Row(
         modifier =
@@ -376,6 +424,7 @@ private fun ReplyQuote(
             Text(
                 text = preview,
                 style = MaterialTheme.typography.bodySmall,
+                fontStyle = if (previewDeleted) FontStyle.Italic else null,
                 color = LocalContentColor.current.copy(alpha = 0.75f),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

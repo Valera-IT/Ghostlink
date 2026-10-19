@@ -21,7 +21,7 @@ import java.util.Date
 /**
  * Схема:
  *  chats/{a_b}            members, lastMessage, updatedAt, lastRead.{uid}
- *  chats/{a_b}/messages   senderId, text, sentAt, replyTo?{id, senderId, preview}, editedAt?
+ *  chats/{a_b}/messages   senderId, text, sentAt, replyTo?{id, senderId, preview}, editedAt?, deletedAt?
  */
 class FirebaseChatRepository(
     private val db: FirebaseFirestore,
@@ -93,7 +93,16 @@ class FirebaseChatRepository(
         previous: Message?,
     ) {
         val chatRef = chats.document(chatId)
-        val batch = db.batch().delete(chatRef.collection("messages").document(messageId))
+        val batch =
+            db.batch().update(
+                chatRef.collection("messages").document(messageId),
+                mapOf(
+                    "text" to FieldValue.delete(),
+                    "replyTo" to FieldValue.delete(),
+                    "editedAt" to FieldValue.delete(),
+                    "deletedAt" to FieldValue.serverTimestamp(),
+                ),
+            )
         if (isLatest) {
             val last: Any =
                 previous?.let {
@@ -180,6 +189,7 @@ private fun DocumentSnapshot.toMessage() =
         sentAt = getTimestamp("sentAt", ServerTimestampBehavior.ESTIMATE)?.millis,
         pending = metadata.hasPendingWrites(),
         editedAt = getTimestamp("editedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
+        deletedAt = getTimestamp("deletedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
         replyTo =
             (get("replyTo") as? Map<*, *>)?.let {
                 ReplyTo(

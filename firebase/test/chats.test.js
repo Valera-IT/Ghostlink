@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test';
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, Timestamp, updateDoc, writeBatch,
+  addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, serverTimestamp, setDoc, Timestamp, updateDoc, writeBatch,
 } from 'firebase/firestore';
 import { account, seed } from './setup.js';
 
@@ -168,6 +168,42 @@ describe('chats/{a_b}/messages/{id}', () => {
     await assertFails(updateDoc(ref, { text: '', editedAt: serverTimestamp() }));
     await assertFails(updateDoc(ref, { text: 'x', editedAt: serverTimestamp(), sentAt: serverTimestamp() }));
     await assertFails(updateDoc(ref, { text: 'x', editedAt: serverTimestamp(), senderId: 'bob' }));
+  });
+
+  const softDelete = { text: deleteField(), replyTo: deleteField(), editedAt: deleteField(), deletedAt: serverTimestamp() };
+
+  test('автор помечает своё сообщение удалённым', async () => {
+    await seedChat();
+    await seedMessage();
+    const db = account('alice');
+    const batch = writeBatch(db);
+    batch.update(doc(db, `chats/${CHAT}/messages/m1`), softDelete);
+    batch.update(doc(db, `chats/${CHAT}`), { lastMessage: deleteField() });
+    await assertSucceeds(batch.commit());
+  });
+
+  test('чужое сообщение не пометить удалённым', async () => {
+    await seedChat();
+    await seedMessage('bob');
+    await assertFails(updateDoc(doc(account('alice'), `chats/${CHAT}/messages/m1`), softDelete));
+    await assertFails(updateDoc(doc(account('mallory'), `chats/${CHAT}/messages/m1`), softDelete));
+  });
+
+  test('удалённое сообщение теряет текст и ответ, с серверным временем', async () => {
+    await seedChat();
+    await seedMessage();
+    const ref = doc(account('alice'), `chats/${CHAT}/messages/m1`);
+    await assertFails(updateDoc(ref, { deletedAt: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { ...softDelete, deletedAt: Timestamp.now() }));
+    await assertFails(updateDoc(ref, { ...softDelete, sentAt: serverTimestamp() }));
+  });
+
+  test('удалённое сообщение нельзя исправить или восстановить', async () => {
+    await seedChat();
+    await seed((db) => setDoc(doc(db, `chats/${CHAT}/messages/m1`), { senderId: 'alice', sentAt: Timestamp.now(), deletedAt: Timestamp.now() }));
+    const ref = doc(account('alice'), `chats/${CHAT}/messages/m1`);
+    await assertFails(updateDoc(ref, { text: 'Снова тут', editedAt: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { deletedAt: serverTimestamp() }));
   });
 
   test('автор удаляет своё сообщение', async () => {

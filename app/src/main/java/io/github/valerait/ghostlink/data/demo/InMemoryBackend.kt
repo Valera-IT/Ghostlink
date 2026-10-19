@@ -204,7 +204,13 @@ class InMemoryBackend(
     ) {
         messages.update { all ->
             val list = all[chatId] ?: return@update all
-            all + (chatId to list.filterNot { it.id == messageId })
+            all +
+                (
+                    chatId to
+                        list.map {
+                            if (it.id == messageId) it.copy(text = "", replyTo = null, editedAt = null, deletedAt = clock()) else it
+                        }
+                )
         }
         if (isLatest) {
             chats.update { all ->
