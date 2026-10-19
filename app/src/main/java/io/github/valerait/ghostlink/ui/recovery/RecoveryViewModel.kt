@@ -26,38 +26,41 @@ data class RecoveryState(
 
 /** Вход по ключу восстановления, когда других устройств с аккаунтом под рукой нет. */
 @HiltViewModel
-class RecoveryViewModel @Inject constructor(private val auth: AuthRepository) : ViewModel() {
+class RecoveryViewModel
+    @Inject
+    constructor(
+        private val auth: AuthRepository,
+    ) : ViewModel() {
+        private val _state = MutableStateFlow(RecoveryState())
+        val state: StateFlow<RecoveryState> = _state.asStateFlow()
 
-    private val _state = MutableStateFlow(RecoveryState())
-    val state: StateFlow<RecoveryState> = _state.asStateFlow()
-
-    fun onCodeChange(value: String) {
-        _state.update { it.copy(code = value.take(MAX_INPUT), error = null) }
-    }
-
-    fun submit() {
-        val current = _state.value
-        if (!current.canSubmit) return
-        val key = AccountKey.parseRecoveryCode(current.code)
-        if (key == null) {
-            _state.update { it.copy(error = R.string.recovery_error_format) }
-            return
+        fun onCodeChange(value: String) {
+            _state.update { it.copy(code = value.take(MAX_INPUT), error = null) }
         }
-        _state.update { it.copy(busy = true, error = null) }
-        viewModelScope.launch {
-            try {
-                auth.signInWithKey(key)
-                // Дальше корень сам переключится на чаты.
-            } catch (e: InvalidAccountKeyException) {
-                _state.update { it.copy(busy = false, error = R.string.recovery_error_wrong) }
-            } catch (e: Exception) {
-                Log.w("Recovery", "Sign in failed", e)
-                _state.update { it.copy(busy = false, error = R.string.error_sign_in) }
+
+        fun submit() {
+            val current = _state.value
+            if (!current.canSubmit) return
+            val key = AccountKey.parseRecoveryCode(current.code)
+            if (key == null) {
+                _state.update { it.copy(error = R.string.recovery_error_format) }
+                return
+            }
+            _state.update { it.copy(busy = true, error = null) }
+            viewModelScope.launch {
+                try {
+                    auth.signInWithKey(key)
+                    // Дальше корень сам переключится на чаты.
+                } catch (e: InvalidAccountKeyException) {
+                    _state.update { it.copy(busy = false, error = R.string.recovery_error_wrong) }
+                } catch (e: Exception) {
+                    Log.w("Recovery", "Sign in failed", e)
+                    _state.update { it.copy(busy = false, error = R.string.error_sign_in) }
+                }
             }
         }
-    }
 
-    private companion object {
-        const val MAX_INPUT = 80
+        private companion object {
+            const val MAX_INPUT = 80
+        }
     }
-}

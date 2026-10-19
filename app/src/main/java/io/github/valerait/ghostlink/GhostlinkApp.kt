@@ -6,8 +6,8 @@ import javax.inject.Inject
 
 @HiltAndroidApp
 class GhostlinkApp : Application() {
-
     @Inject lateinit var presence: PresenceTracker
+
     @Inject lateinit var deviceRegistry: DeviceRegistry
 
     override fun onCreate() {

@@ -74,16 +74,20 @@ import kotlinx.coroutines.delay
 import java.util.concurrent.Executors
 
 @Composable
-fun ScanScreen(onBack: () -> Unit, onScanned: (ScannedCode) -> Unit) {
+fun ScanScreen(
+    onBack: () -> Unit,
+    onScanned: (ScannedCode) -> Unit,
+) {
     val context = LocalContext.current
     var granted by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
     }
     var asked by remember { mutableStateOf(false) }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        granted = it
-        asked = true
-    }
+    val permission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            granted = it
+            asked = true
+        }
     LaunchedEffect(Unit) {
         if (!granted) permission.launch(Manifest.permission.CAMERA)
     }
@@ -186,20 +190,24 @@ private fun CameraPreview(onBarcode: (String) -> Unit) {
     DisposableEffect(lifecycleOwner, provider) {
         val cameraProvider = provider ?: return@DisposableEffect onDispose {}
         val executor = Executors.newSingleThreadExecutor()
-        val scanner = BarcodeScanning.getClient(
-            BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build(),
-        )
+        val scanner =
+            BarcodeScanning.getClient(
+                BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build(),
+            )
         val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
-        val analysis = ImageAnalysis.Builder()
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .build()
+        val analysis =
+            ImageAnalysis
+                .Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
         analysis.setAnalyzer(executor) { proxy ->
             val image = proxy.image
             if (image == null) {
                 proxy.close()
                 return@setAnalyzer
             }
-            scanner.process(InputImage.fromMediaImage(image, proxy.imageInfo.rotationDegrees))
+            scanner
+                .process(InputImage.fromMediaImage(image, proxy.imageInfo.rotationDegrees))
                 .addOnSuccessListener { codes -> codes.firstNotNullOfOrNull { it.rawValue }?.let(currentOnBarcode) }
                 .addOnCompleteListener { proxy.close() }
         }

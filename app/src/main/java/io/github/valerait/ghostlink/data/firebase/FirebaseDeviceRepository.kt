@@ -10,24 +10,35 @@ import io.github.valerait.ghostlink.data.repository.DeviceRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 
-class FirebaseDeviceRepository(private val db: FirebaseFirestore) : DeviceRepository {
-
+class FirebaseDeviceRepository(
+    private val db: FirebaseFirestore,
+) : DeviceRepository {
     private fun devices(userId: String) = db.collection("users").document(userId).collection("devices")
 
     override fun observeDevices(userId: String): Flow<List<Device>> =
         devices(userId).observe { qs -> qs.documents.mapNotNull { it.toDevice() }.sortedByDescending { it.lastActiveAt } }
 
-    override fun observeDevice(userId: String, deviceId: String): Flow<Device?> =
-        devices(userId).document(deviceId).observe { it.toDevice() }
+    override fun observeDevice(
+        userId: String,
+        deviceId: String,
+    ): Flow<Device?> = devices(userId).document(deviceId).observe { it.toDevice() }
 
-    override suspend fun registerDevice(userId: String, device: Device) {
-        devices(userId).document(device.id).set(
-            mapOf("name" to device.name, "platform" to device.platform, "lastActiveAt" to FieldValue.serverTimestamp()),
-            SetOptions.merge(),
-        ).await()
+    override suspend fun registerDevice(
+        userId: String,
+        device: Device,
+    ) {
+        devices(userId)
+            .document(device.id)
+            .set(
+                mapOf("name" to device.name, "platform" to device.platform, "lastActiveAt" to FieldValue.serverTimestamp()),
+                SetOptions.merge(),
+            ).await()
     }
 
-    override suspend fun removeDevice(userId: String, deviceId: String) {
+    override suspend fun removeDevice(
+        userId: String,
+        deviceId: String,
+    ) {
         devices(userId).document(deviceId).delete().await()
     }
 }

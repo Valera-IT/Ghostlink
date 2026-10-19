@@ -37,7 +37,10 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LinkReceiveScreen(onBack: () -> Unit, viewModel: LinkReceiveViewModel = hiltViewModel()) {
+fun LinkReceiveScreen(
+    onBack: () -> Unit,
+    viewModel: LinkReceiveViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -53,11 +56,12 @@ fun LinkReceiveScreen(onBack: () -> Unit, viewModel: LinkReceiveViewModel = hilt
         },
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 32.dp, vertical = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 32.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             when (val current = state) {
@@ -81,9 +85,10 @@ fun LinkReceiveScreen(onBack: () -> Unit, viewModel: LinkReceiveViewModel = hilt
                 LinkReceiveState.Expired, LinkReceiveState.Failed -> {
                     Spacer(Modifier.height(96.dp))
                     Text(
-                        text = stringResource(
-                            if (current == LinkReceiveState.Expired) R.string.link_receive_expired else R.string.link_receive_failed,
-                        ),
+                        text =
+                            stringResource(
+                                if (current == LinkReceiveState.Expired) R.string.link_receive_expired else R.string.link_receive_failed,
+                            ),
                         style = MaterialTheme.typography.titleMedium,
                         textAlign = TextAlign.Center,
                     )
@@ -126,7 +131,10 @@ private fun Steps() {
 }
 
 @Composable
-private fun Hint(text: String, align: TextAlign = TextAlign.Center) {
+private fun Hint(
+    text: String,
+    align: TextAlign = TextAlign.Center,
+) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyMedium,

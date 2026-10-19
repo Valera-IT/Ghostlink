@@ -33,16 +33,25 @@ import kotlinx.coroutines.withContext
 
 private val QrInk = Color(0xFF0E0F14)
 
-/** Белая карточка с QR-кодом и призраком в центре. */
-// Ложное срабатывание lint: value присваивается внутри лямбды (до обновления Compose на этапе 3.1).
+/**
+ * Белая карточка с QR-кодом и призраком в центре.
+ *
+ * `ProduceStateDoesNotAssignValue` — ложное срабатывание lint: value присваивается внутри лямбды
+ * (до обновления Compose на этапе 3.1).
+ */
 @SuppressLint("ProduceStateDoesNotAssignValue")
 @Composable
-fun QrCard(content: String, contentDescription: String, modifier: Modifier = Modifier) {
+fun QrCard(
+    content: String,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
     // QR рисуем всегда тёмным по белому: камеры хуже читают инвертированные коды.
     val qr by produceState<ImageBitmap?>(null, content) {
-        value = withContext(Dispatchers.Default) {
-            createQrBitmap(content, 720, QrInk.toArgb(), Color.White.toArgb())
-        }
+        value =
+            withContext(Dispatchers.Default) {
+                createQrBitmap(content, 720, QrInk.toArgb(), Color.White.toArgb())
+            }
     }
     Surface(
         color = Color.White,
@@ -64,12 +73,19 @@ fun QrCard(content: String, contentDescription: String, modifier: Modifier = Mod
         }
     }
 }
+
 /** Рисует QR-код; цвета передаются как ARGB. */
-fun createQrBitmap(content: String, size: Int, foreground: Int, background: Int): ImageBitmap {
-    val hints = mapOf(
-        EncodeHintType.MARGIN to 1,
-        EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
-    )
+fun createQrBitmap(
+    content: String,
+    size: Int,
+    foreground: Int,
+    background: Int,
+): ImageBitmap {
+    val hints =
+        mapOf(
+            EncodeHintType.MARGIN to 1,
+            EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
+        )
     val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size, hints)
     val pixels = IntArray(size * size) { i -> if (matrix[i % size, i / size]) foreground else background }
     return Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888).asImageBitmap()

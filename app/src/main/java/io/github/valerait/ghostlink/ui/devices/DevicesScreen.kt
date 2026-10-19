@@ -49,7 +49,11 @@ import io.github.valerait.ghostlink.ui.recovery.RecoveryCodeDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DevicesScreen(onBack: () -> Unit, onScan: () -> Unit, viewModel: DevicesViewModel = hiltViewModel()) {
+fun DevicesScreen(
+    onBack: () -> Unit,
+    onScan: () -> Unit,
+    viewModel: DevicesViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val now by rememberNow()
     val snackbar = remember { SnackbarHostState() }
@@ -106,9 +110,10 @@ fun DevicesScreen(onBack: () -> Unit, onScan: () -> Unit, viewModel: DevicesView
                 state.others.forEach { device ->
                     DeviceRow(
                         device = device,
-                        subtitle = device.lastActiveAt
-                            ?.let { stringResource(R.string.devices_last_active, formatChatListTime(it, now)) }
-                            .orEmpty(),
+                        subtitle =
+                            device.lastActiveAt
+                                ?.let { stringResource(R.string.devices_last_active, formatChatListTime(it, now)) }
+                                .orEmpty(),
                         onRemove = { removing = device }.takeUnless { state.busy },
                     )
                 }
@@ -175,17 +180,22 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun DeviceRow(device: Device, subtitle: String, onRemove: (() -> Unit)? = null) {
+private fun DeviceRow(
+    device: Device,
+    subtitle: String,
+    onRemove: (() -> Unit)? = null,
+) {
     ListItem(
         leadingContent = { Icon(platformIcon(device.platform), contentDescription = null) },
         headlineContent = { Text(device.name) },
         supportingContent = { Text("${platformLabel(device.platform)} · $subtitle".trimEnd(' ', '·')) },
-        trailingContent = onRemove?.let {
-            {
-                IconButton(onClick = it) {
-                    Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.devices_remove))
+        trailingContent =
+            onRemove?.let {
+                {
+                    IconButton(onClick = it) {
+                        Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.devices_remove))
+                    }
                 }
-            }
-        },
+            },
     )
 }

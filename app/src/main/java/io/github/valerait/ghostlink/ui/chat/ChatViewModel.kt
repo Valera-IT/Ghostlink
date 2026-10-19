@@ -40,11 +40,15 @@ data class MessageItem(
 sealed interface ChatRow {
     val key: String
 
-    data class Day(val millis: Long) : ChatRow {
+    data class Day(
+        val millis: Long,
+    ) : ChatRow {
         override val key = "day-$millis"
     }
 
-    data class Msg(val item: MessageItem) : ChatRow {
+    data class Msg(
+        val item: MessageItem,
+    ) : ChatRow {
         override val key = item.message.id
     }
 }
@@ -58,77 +62,90 @@ data class ChatUiState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class ChatViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
-    auth: AuthRepository,
-    users: UserRepository,
-    private val chats: ChatRepository,
-) : ViewModel() {
+class ChatViewModel
+    @Inject
+    constructor(
+        savedStateHandle: SavedStateHandle,
+        auth: AuthRepository,
+        users: UserRepository,
+        private val chats: ChatRepository,
+    ) : ViewModel() {
+        // Аргумент типобезопасного маршрута ChatRoute(chatId) лежит в SavedStateHandle под именем поля.
+        private val chatId: String = checkNotNull(savedStateHandle["chatId"])
+        private val me = auth.requireUserId()
+        private val zone = ZoneId.systemDefault()
+        private val visible = MutableStateFlow(false)
 
-    // Аргумент типобезопасного маршрута ChatRoute(chatId) лежит в SavedStateHandle под именем поля.
-    private val chatId: String = checkNotNull(savedStateHandle["chatId"])
-    private val me = auth.requireUserId()
-    private val zone = ZoneId.systemDefault()
-    private val visible = MutableStateFlow(false)
-
-    private val chat = chats.observeChat(chatId)
-        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
-    private val messages = chats.observeMessages(chatId)
-        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
-    private val partner = chat
-        .mapNotNull { it?.partnerId(me) }
-        .distinctUntilChanged()
-        .flatMapLatest { users.observeUser(it) }
-        .onStart { emit(null) }
-
-    val state: StateFlow<ChatUiState> = combine(chat, messages, partner) { chat, messages, partner ->
-        val partnerRead = chat?.lastRead?.get(chat.partnerId(me))
-        val items = messages.map { message ->
-            val mine = message.senderId == me
-            MessageItem(message, mine, if (mine) message.status(partnerRead) else null)
-        }
-        ChatUiState(loading = false, partner = partner, rows = buildRows(items))
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
-
-    init {
-        // Отмечаем прочитанным, только пока чат реально на экране и пришло что-то новое.
-        viewModelScope.launch {
-            combine(visible, chat, messages) { visible, chat, messages ->
-                if (!visible || chat == null) return@combine null
-                val lastIncoming = messages.lastOrNull { it.senderId != me && !it.pending }?.sentAt
-                    ?: return@combine null
-                lastIncoming.takeIf { it > (chat.lastRead[me] ?: 0L) }
-            }
-                .filterNotNull()
+        private val chat =
+            chats
+                .observeChat(chatId)
+                .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+        private val messages =
+            chats
+                .observeMessages(chatId)
+                .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+        private val partner =
+            chat
+                .mapNotNull { it?.partnerId(me) }
                 .distinctUntilChanged()
-                .collect { chats.markRead(chatId, me) }
-        }
-    }
+                .flatMapLatest { users.observeUser(it) }
+                .onStart { emit(null) }
 
-    fun onVisibilityChanged(isVisible: Boolean) {
-        visible.value = isVisible
-    }
+        val state: StateFlow<ChatUiState> =
+            combine(chat, messages, partner) { chat, messages, partner ->
+                val partnerRead = chat?.lastRead?.get(chat.partnerId(me))
+                val items =
+                    messages.map { message ->
+                        val mine = message.senderId == me
+                        MessageItem(message, mine, if (mine) message.status(partnerRead) else null)
+                    }
+                ChatUiState(loading = false, partner = partner, rows = buildRows(items))
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
 
-    fun send(text: String) {
-        val trimmed = text.trim()
-        if (trimmed.isEmpty()) return
-        chats.sendMessage(chatId, me, trimmed.take(MAX_MESSAGE_LENGTH))
-    }
-
-    private fun buildRows(items: List<MessageItem>): List<ChatRow> {
-        val rows = ArrayList<ChatRow>(items.size + 8)
-        var lastDay: Long? = null
-        for (item in items) {
-            val sentAt = item.message.sentAt
-            if (sentAt != null) {
-                val day = Instant.ofEpochMilli(sentAt).atZone(zone).toLocalDate().toEpochDay()
-                if (day != lastDay) {
-                    rows += ChatRow.Day(sentAt)
-                    lastDay = day
-                }
+        init {
+            // Отмечаем прочитанным, только пока чат реально на экране и пришло что-то новое.
+            viewModelScope.launch {
+                combine(visible, chat, messages) { visible, chat, messages ->
+                    if (!visible || chat == null) return@combine null
+                    val lastIncoming =
+                        messages.lastOrNull { it.senderId != me && !it.pending }?.sentAt
+                            ?: return@combine null
+                    lastIncoming.takeIf { it > (chat.lastRead[me] ?: 0L) }
+                }.filterNotNull()
+                    .distinctUntilChanged()
+                    .collect { chats.markRead(chatId, me) }
             }
-            rows += ChatRow.Msg(item)
         }
-        return rows.asReversed()
+
+        fun onVisibilityChanged(isVisible: Boolean) {
+            visible.value = isVisible
+        }
+
+        fun send(text: String) {
+            val trimmed = text.trim()
+            if (trimmed.isEmpty()) return
+            chats.sendMessage(chatId, me, trimmed.take(MAX_MESSAGE_LENGTH))
+        }
+
+        private fun buildRows(items: List<MessageItem>): List<ChatRow> {
+            val rows = ArrayList<ChatRow>(items.size + 8)
+            var lastDay: Long? = null
+            for (item in items) {
+                val sentAt = item.message.sentAt
+                if (sentAt != null) {
+                    val day =
+                        Instant
+                            .ofEpochMilli(sentAt)
+                            .atZone(zone)
+                            .toLocalDate()
+                            .toEpochDay()
+                    if (day != lastDay) {
+                        rows += ChatRow.Day(sentAt)
+                        lastDay = day
+                    }
+                }
+                rows += ChatRow.Msg(item)
+            }
+            return rows.asReversed()
+        }
     }
-}

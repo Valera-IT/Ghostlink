@@ -76,16 +76,20 @@ data class Message(
     /** Сообщение записано только локально и ещё не подтверждено сервером. */
     val pending: Boolean = false,
 ) {
-    fun status(partnerLastRead: Long?): MessageStatus = when {
-        pending || sentAt == null -> MessageStatus.SENDING
-        partnerLastRead != null && partnerLastRead >= sentAt -> MessageStatus.READ
-        else -> MessageStatus.SENT
-    }
+    fun status(partnerLastRead: Long?): MessageStatus =
+        when {
+            pending || sentAt == null -> MessageStatus.SENDING
+            partnerLastRead != null && partnerLastRead >= sentAt -> MessageStatus.READ
+            else -> MessageStatus.SENT
+        }
 }
 
 enum class MessageStatus { SENDING, SENT, READ }
 
 object ChatIds {
     /** У пары пользователей ровно один чат: id не зависит от того, кто кого добавил. */
-    fun of(a: String, b: String): String = if (a < b) "${a}_$b" else "${b}_$a"
+    fun of(
+        a: String,
+        b: String,
+    ): String = if (a < b) "${a}_$b" else "${b}_$a"
 }

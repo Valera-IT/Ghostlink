@@ -40,12 +40,13 @@ object LinkCrypto {
     private val TWO = BigInteger.valueOf(2)
 
     private val params: ECParameterSpec by lazy {
-        AlgorithmParameters.getInstance("EC").apply { init(ECGenParameterSpec(CURVE)) }
+        AlgorithmParameters
+            .getInstance("EC")
+            .apply { init(ECGenParameterSpec(CURVE)) }
             .getParameterSpec(ECParameterSpec::class.java)
     }
 
-    fun generateKeyPair(): KeyPair =
-        KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec(CURVE)) }.generateKeyPair()
+    fun generateKeyPair(): KeyPair = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec(CURVE)) }.generateKeyPair()
 
     /** Несжатая точка 0x04 || X || Y — переносимый формат для будущих iOS и десктопа. */
     fun encodePublicKey(key: PublicKey): ByteArray {
@@ -64,52 +65,76 @@ object LinkCrypto {
         return KeyFactory.getInstance("EC").generatePublic(ECPublicKeySpec(ECPoint(x, y), params))
     }
 
-    fun encrypt(recipientPublicKey: ByteArray, requestId: String, plaintext: ByteArray, random: SecureRandom = SecureRandom()): ByteArray {
+    fun encrypt(
+        recipientPublicKey: ByteArray,
+        requestId: String,
+        plaintext: ByteArray,
+        random: SecureRandom = SecureRandom(),
+    ): ByteArray {
         val ephemeral = generateKeyPair()
         val key = deriveKey(ephemeral.private, decodePublicKey(recipientPublicKey), requestId)
         val iv = ByteArray(IV_SIZE).also(random::nextBytes)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
-            init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(TAG_BITS, iv))
-            updateAAD(requestId.toByteArray())
-        }
+        val cipher =
+            Cipher.getInstance("AES/GCM/NoPadding").apply {
+                init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(TAG_BITS, iv))
+                updateAAD(requestId.toByteArray())
+            }
         return encodePublicKey(ephemeral.public) + iv + cipher.doFinal(plaintext)
     }
 
     /** Бросает исключение, если payload подделан или зашифрован не для этого ключа. */
-    fun decrypt(privateKey: PrivateKey, requestId: String, payload: ByteArray): ByteArray {
+    fun decrypt(
+        privateKey: PrivateKey,
+        requestId: String,
+        payload: ByteArray,
+    ): ByteArray {
         require(payload.size > POINT_SIZE + IV_SIZE) { "Payload too short" }
         val sender = decodePublicKey(payload.copyOfRange(0, POINT_SIZE))
         val iv = payload.copyOfRange(POINT_SIZE, POINT_SIZE + IV_SIZE)
         val key = deriveKey(privateKey, sender, requestId)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
-            init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(TAG_BITS, iv))
-            updateAAD(requestId.toByteArray())
-        }
+        val cipher =
+            Cipher.getInstance("AES/GCM/NoPadding").apply {
+                init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(TAG_BITS, iv))
+                updateAAD(requestId.toByteArray())
+            }
         return cipher.doFinal(payload, POINT_SIZE + IV_SIZE, payload.size - POINT_SIZE - IV_SIZE)
     }
 
-    private fun deriveKey(privateKey: PrivateKey, publicKey: PublicKey, requestId: String): ByteArray {
-        val shared = KeyAgreement.getInstance("ECDH").run {
-            init(privateKey)
-            doPhase(publicKey, true)
-            generateSecret()
-        }
+    private fun deriveKey(
+        privateKey: PrivateKey,
+        publicKey: PublicKey,
+        requestId: String,
+    ): ByteArray {
+        val shared =
+            KeyAgreement.getInstance("ECDH").run {
+                init(privateKey)
+                doPhase(publicKey, true)
+                generateSecret()
+            }
         return hkdfSha256(shared, salt = ByteArray(32), info = INFO + requestId.toByteArray(), length = 32)
     }
 
     /** RFC 5869; для 32 байт хватает одного блока expand. */
-    private fun hkdfSha256(ikm: ByteArray, salt: ByteArray, info: ByteArray, length: Int): ByteArray {
+    private fun hkdfSha256(
+        ikm: ByteArray,
+        salt: ByteArray,
+        info: ByteArray,
+        length: Int,
+    ): ByteArray {
         require(length <= 32)
-        val prk = Mac.getInstance("HmacSHA256").run {
-            init(SecretKeySpec(salt, "HmacSHA256"))
-            doFinal(ikm)
-        }
-        return Mac.getInstance("HmacSHA256").run {
-            init(SecretKeySpec(prk, "HmacSHA256"))
-            update(info)
-            update(1.toByte())
-            doFinal()
-        }.copyOf(length)
+        val prk =
+            Mac.getInstance("HmacSHA256").run {
+                init(SecretKeySpec(salt, "HmacSHA256"))
+                doFinal(ikm)
+            }
+        return Mac
+            .getInstance("HmacSHA256")
+            .run {
+                init(SecretKeySpec(prk, "HmacSHA256"))
+                update(info)
+                update(1.toByte())
+                doFinal()
+            }.copyOf(length)
     }
 
     private fun BigInteger.toFixed(): ByteArray {

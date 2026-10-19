@@ -26,7 +26,6 @@ import org.junit.Rule
 import org.junit.Test
 
 class DeviceLinkingTest {
-
     @get:Rule val mainRule = MainDispatcherRule()
 
     private val laptop = ThisDevice("laptop", "MacBook Air", "macos")
@@ -34,109 +33,116 @@ class DeviceLinkingTest {
     private fun TestScope.backend() = InMemoryBackend(backgroundScope, seedDemoData = false)
 
     @Test
-    fun `new device signs into the same account once the code is approved`() = runTest {
-        val backend = backend()
-        val owner = backend.createAccount()
-        val key = backend.accountKey.value!!
-        backend.signOut()
+    fun `new device signs into the same account once the code is approved`() =
+        runTest {
+            val backend = backend()
+            val owner = backend.createAccount()
+            val key = backend.accountKey.value!!
+            backend.signOut()
 
-        val receiver = LinkReceiveViewModel(backend, backend, laptop)
-        val code = LinkCode.parse((receiver.state.value as LinkReceiveState.ShowCode).link)!!
-        assertEquals("MacBook Air", backend.getLinkRequest(code.requestId)?.deviceName)
+            val receiver = LinkReceiveViewModel(backend, backend, laptop)
+            val code = LinkCode.parse((receiver.state.value as LinkReceiveState.ShowCode).link)!!
+            assertEquals("MacBook Air", backend.getLinkRequest(code.requestId)?.deviceName)
 
-        // Так делает устройство с аккаунтом после сканирования.
-        backend.approveLinkRequest(code.requestId, LinkCrypto.encrypt(code.publicKey, code.requestId, key.bytes))
-        runCurrent()
+            // Так делает устройство с аккаунтом после сканирования.
+            backend.approveLinkRequest(code.requestId, LinkCrypto.encrypt(code.publicKey, code.requestId, key.bytes))
+            runCurrent()
 
-        assertEquals(owner.id, backend.account.value?.id)
-        assertEquals(key, backend.accountKey.value)
-        assertNull("Request is cleaned up", backend.getLinkRequest(code.requestId))
-    }
-
-    @Test
-    fun `code expires if nobody approves it`() = runTest {
-        val backend = backend()
-        val receiver = LinkReceiveViewModel(backend, backend, laptop)
-        val code = LinkCode.parse((receiver.state.value as LinkReceiveState.ShowCode).link)!!
-
-        advanceTimeBy(LINK_TTL_MS + 1)
-
-        assertEquals(LinkReceiveState.Expired, receiver.state.value)
-        assertNull(backend.getLinkRequest(code.requestId))
-
-        receiver.restart()
-        assertTrue(receiver.state.value is LinkReceiveState.ShowCode)
-    }
+            assertEquals(owner.id, backend.account.value?.id)
+            assertEquals(key, backend.accountKey.value)
+            assertNull("Request is cleaned up", backend.getLinkRequest(code.requestId))
+        }
 
     @Test
-    fun `payload for another key fails instead of signing in`() = runTest {
-        val backend = backend()
-        val receiver = LinkReceiveViewModel(backend, backend, laptop)
-        val code = LinkCode.parse((receiver.state.value as LinkReceiveState.ShowCode).link)!!
-        val stranger = LinkCrypto.encodePublicKey(LinkCrypto.generateKeyPair().public)
+    fun `code expires if nobody approves it`() =
+        runTest {
+            val backend = backend()
+            val receiver = LinkReceiveViewModel(backend, backend, laptop)
+            val code = LinkCode.parse((receiver.state.value as LinkReceiveState.ShowCode).link)!!
 
-        backend.approveLinkRequest(code.requestId, LinkCrypto.encrypt(stranger, code.requestId, ByteArray(AccountKey.SIZE)))
-        runCurrent()
+            advanceTimeBy(LINK_TTL_MS + 1)
 
-        assertEquals(LinkReceiveState.Failed, receiver.state.value)
-        assertTrue(backend.account.value?.isAnonymous == true)
-    }
+            assertEquals(LinkReceiveState.Expired, receiver.state.value)
+            assertNull(backend.getLinkRequest(code.requestId))
 
-    @Test
-    fun `approving encrypts this account's key for the scanned device`() = runTest {
-        val backend = backend()
-        backend.createAccount()
-        val key = backend.accountKey.value!!
-        val newDevice = LinkCrypto.generateKeyPair()
-        val requestId = backend.createLinkRequest("Pixel 9", "android")
-        val code = LinkCode(requestId, LinkCrypto.encodePublicKey(newDevice.public))
-
-        val vm = LinkApproveViewModel(SavedStateHandle(mapOf("code" to code.toUri())), backend, backend)
-        assertEquals(LinkApproveState.Confirm("Pixel 9", "android"), vm.state.value)
-        vm.approve()
-
-        assertEquals(LinkApproveState.Done, vm.state.value)
-        val payload = assertNotNull(backend.getLinkRequest(requestId)?.payload)
-        assertArrayEquals(key.bytes, LinkCrypto.decrypt(newDevice.private, requestId, payload))
-    }
+            receiver.restart()
+            assertTrue(receiver.state.value is LinkReceiveState.ShowCode)
+        }
 
     @Test
-    fun `used or unknown codes cannot be approved`() = runTest {
-        val backend = backend()
-        backend.createAccount()
-        val publicKey = LinkCrypto.encodePublicKey(LinkCrypto.generateKeyPair().public)
-        val requestId = backend.createLinkRequest("Pixel 9", "android")
-        backend.approveLinkRequest(requestId, ByteArray(100))
+    fun `payload for another key fails instead of signing in`() =
+        runTest {
+            val backend = backend()
+            val receiver = LinkReceiveViewModel(backend, backend, laptop)
+            val code = LinkCode.parse((receiver.state.value as LinkReceiveState.ShowCode).link)!!
+            val stranger = LinkCrypto.encodePublicKey(LinkCrypto.generateKeyPair().public)
 
-        val used = LinkApproveViewModel(SavedStateHandle(mapOf("code" to LinkCode(requestId, publicKey).toUri())), backend, backend)
-        val unknown = LinkApproveViewModel(
-            SavedStateHandle(mapOf("code" to LinkCode("NoSuchRequest0000000", publicKey).toUri())),
-            backend,
-            backend,
-        )
+            backend.approveLinkRequest(code.requestId, LinkCrypto.encrypt(stranger, code.requestId, ByteArray(AccountKey.SIZE)))
+            runCurrent()
 
-        assertEquals(LinkApproveState.Invalid, used.state.value)
-        assertEquals(LinkApproveState.Invalid, unknown.state.value)
-    }
+            assertEquals(LinkReceiveState.Failed, receiver.state.value)
+            assertTrue(backend.account.value?.isAnonymous == true)
+        }
 
     @Test
-    fun `recovery key signs in and a rotated key stops working`() = runTest {
-        val backend = backend()
-        val owner = backend.createAccount()
-        val oldCode = backend.accountKey.value!!.toRecoveryCode()
-        val newCode = backend.rotateKey().toRecoveryCode()
-        backend.signOut()
+    fun `approving encrypts this account's key for the scanned device`() =
+        runTest {
+            val backend = backend()
+            backend.createAccount()
+            val key = backend.accountKey.value!!
+            val newDevice = LinkCrypto.generateKeyPair()
+            val requestId = backend.createLinkRequest("Pixel 9", "android")
+            val code = LinkCode(requestId, LinkCrypto.encodePublicKey(newDevice.public))
 
-        val vm = RecoveryViewModel(backend)
-        vm.onCodeChange(oldCode)
-        vm.submit()
-        assertNull(backend.account.value)
-        assertNotNull(vm.state.value.error)
+            val vm = LinkApproveViewModel(SavedStateHandle(mapOf("code" to code.toUri())), backend, backend)
+            assertEquals(LinkApproveState.Confirm("Pixel 9", "android"), vm.state.value)
+            vm.approve()
 
-        vm.onCodeChange(newCode.lowercase())
-        vm.submit()
-        assertEquals(owner.id, backend.account.value?.id)
-    }
+            assertEquals(LinkApproveState.Done, vm.state.value)
+            val payload = assertNotNull(backend.getLinkRequest(requestId)?.payload)
+            assertArrayEquals(key.bytes, LinkCrypto.decrypt(newDevice.private, requestId, payload))
+        }
+
+    @Test
+    fun `used or unknown codes cannot be approved`() =
+        runTest {
+            val backend = backend()
+            backend.createAccount()
+            val publicKey = LinkCrypto.encodePublicKey(LinkCrypto.generateKeyPair().public)
+            val requestId = backend.createLinkRequest("Pixel 9", "android")
+            backend.approveLinkRequest(requestId, ByteArray(100))
+
+            val used = LinkApproveViewModel(SavedStateHandle(mapOf("code" to LinkCode(requestId, publicKey).toUri())), backend, backend)
+            val unknown =
+                LinkApproveViewModel(
+                    SavedStateHandle(mapOf("code" to LinkCode("NoSuchRequest0000000", publicKey).toUri())),
+                    backend,
+                    backend,
+                )
+
+            assertEquals(LinkApproveState.Invalid, used.state.value)
+            assertEquals(LinkApproveState.Invalid, unknown.state.value)
+        }
+
+    @Test
+    fun `recovery key signs in and a rotated key stops working`() =
+        runTest {
+            val backend = backend()
+            val owner = backend.createAccount()
+            val oldCode = backend.accountKey.value!!.toRecoveryCode()
+            val newCode = backend.rotateKey().toRecoveryCode()
+            backend.signOut()
+
+            val vm = RecoveryViewModel(backend)
+            vm.onCodeChange(oldCode)
+            vm.submit()
+            assertNull(backend.account.value)
+            assertNotNull(vm.state.value.error)
+
+            vm.onCodeChange(newCode.lowercase())
+            vm.submit()
+            assertEquals(owner.id, backend.account.value?.id)
+        }
 
     private fun <T : Any> assertNotNull(value: T?): T {
         assertNotNull(null, value)

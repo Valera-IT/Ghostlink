@@ -21,8 +21,9 @@ import kotlinx.coroutines.tasks.await
  *  chats/{a_b}            members, lastMessage, updatedAt, lastRead.{uid}
  *  chats/{a_b}/messages   senderId, text, sentAt
  */
-class FirebaseChatRepository(private val db: FirebaseFirestore) : ChatRepository {
-
+class FirebaseChatRepository(
+    private val db: FirebaseFirestore,
+) : ChatRepository {
     private val chats = db.collection("chats")
 
     // Сортируем на клиенте, чтобы не требовать составной индекс members + updatedAt.
@@ -35,16 +36,23 @@ class FirebaseChatRepository(private val db: FirebaseFirestore) : ChatRepository
 
     // MetadataChanges.INCLUDE — чтобы увидеть, как pending-сообщение подтвердилось сервером.
     override fun observeMessages(chatId: String): Flow<List<Message>> =
-        chats.document(chatId).collection("messages")
+        chats
+            .document(chatId)
+            .collection("messages")
             .orderBy("sentAt", Query.Direction.ASCENDING)
             .limitToLast(MESSAGES_LIMIT)
             .observe(MetadataChanges.INCLUDE) { qs -> qs.documents.map { it.toMessage() } }
 
-    override fun sendMessage(chatId: String, senderId: String, text: String) {
+    override fun sendMessage(
+        chatId: String,
+        senderId: String,
+        text: String,
+    ) {
         val chatRef = chats.document(chatId)
         val messageRef = chatRef.collection("messages").document()
         val now = FieldValue.serverTimestamp()
-        db.batch()
+        db
+            .batch()
             .set(messageRef, mapOf("senderId" to senderId, "text" to text, "sentAt" to now))
             .update(
                 chatRef,
@@ -52,29 +60,36 @@ class FirebaseChatRepository(private val db: FirebaseFirestore) : ChatRepository
                     "lastMessage" to mapOf("text" to text, "senderId" to senderId, "sentAt" to now),
                     "updatedAt" to now,
                 ),
-            )
-            .commit()
+            ).commit()
             .addOnFailureListener { Log.w(TAG, "Send failed", it) }
     }
 
-    override fun markRead(chatId: String, userId: String) {
-        chats.document(chatId)
+    override fun markRead(
+        chatId: String,
+        userId: String,
+    ) {
+        chats
+            .document(chatId)
             .update("lastRead.$userId", FieldValue.serverTimestamp())
             .addOnFailureListener { Log.w(TAG, "markRead failed", it) }
     }
 
-    override suspend fun startChat(userId: String, friendId: String): String {
+    override suspend fun startChat(
+        userId: String,
+        friendId: String,
+    ): String {
         require(userId != friendId) { "Cannot start a chat with yourself" }
         val id = ChatIds.of(userId, friendId)
         val ref = chats.document(id)
         if (!ref.get().await().exists()) {
-            ref.set(
-                mapOf(
-                    "members" to listOf(userId, friendId).sorted(),
-                    "updatedAt" to FieldValue.serverTimestamp(),
-                    "lastRead" to emptyMap<String, Any>(),
-                ),
-            ).await()
+            ref
+                .set(
+                    mapOf(
+                        "members" to listOf(userId, friendId).sorted(),
+                        "updatedAt" to FieldValue.serverTimestamp(),
+                        "lastRead" to emptyMap<String, Any>(),
+                    ),
+                ).await()
         }
         return id
     }
@@ -88,21 +103,22 @@ class FirebaseChatRepository(private val db: FirebaseFirestore) : ChatRepository
 private fun DocumentSnapshot.toChat(): Chat? {
     if (!exists()) return null
     val members = (get("members") as? List<*>)?.filterIsInstance<String>() ?: return null
-    val last = (get("lastMessage", ServerTimestampBehavior.ESTIMATE) as? Map<*, *>)?.let {
-        LastMessage(
-            text = it["text"] as? String ?: "",
-            senderId = it["senderId"] as? String ?: "",
-            sentAt = (it["sentAt"] as? Timestamp)?.millis,
-        )
-    }
-    val lastRead = (get("lastRead", ServerTimestampBehavior.ESTIMATE) as? Map<*, *>)
-        ?.mapNotNull { (key, value) ->
-            val uid = key as? String ?: return@mapNotNull null
-            val ts = value as? Timestamp ?: return@mapNotNull null
-            uid to ts.millis
+    val last =
+        (get("lastMessage", ServerTimestampBehavior.ESTIMATE) as? Map<*, *>)?.let {
+            LastMessage(
+                text = it["text"] as? String ?: "",
+                senderId = it["senderId"] as? String ?: "",
+                sentAt = (it["sentAt"] as? Timestamp)?.millis,
+            )
         }
-        ?.toMap()
-        .orEmpty()
+    val lastRead =
+        (get("lastRead", ServerTimestampBehavior.ESTIMATE) as? Map<*, *>)
+            ?.mapNotNull { (key, value) ->
+                val uid = key as? String ?: return@mapNotNull null
+                val ts = value as? Timestamp ?: return@mapNotNull null
+                uid to ts.millis
+            }?.toMap()
+            .orEmpty()
     return Chat(
         id = id,
         members = members,
@@ -112,10 +128,11 @@ private fun DocumentSnapshot.toChat(): Chat? {
     )
 }
 
-private fun DocumentSnapshot.toMessage() = Message(
-    id = id,
-    senderId = getString("senderId").orEmpty(),
-    text = getString("text").orEmpty(),
-    sentAt = getTimestamp("sentAt", ServerTimestampBehavior.ESTIMATE)?.millis,
-    pending = metadata.hasPendingWrites(),
-)
+private fun DocumentSnapshot.toMessage() =
+    Message(
+        id = id,
+        senderId = getString("senderId").orEmpty(),
+        text = getString("text").orEmpty(),
+        sentAt = getTimestamp("sentAt", ServerTimestampBehavior.ESTIMATE)?.millis,
+        pending = metadata.hasPendingWrites(),
+    )

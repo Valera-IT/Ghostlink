@@ -96,29 +96,35 @@ fun ChatListScreen(
         when {
             state.loading -> Unit
             state.items.isEmpty() -> EmptyState(onMyCode, onScan, Modifier.padding(padding))
-            else -> LazyColumn(
-                contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = 96.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                if (state.demoMode) {
-                    item { DemoModeBanner(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
+            else ->
+                LazyColumn(
+                    contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = 96.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    if (state.demoMode) {
+                        item { DemoModeBanner(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
+                    }
+                    items(state.items, key = { it.chat.id }) { item ->
+                        ChatRow(item, now, onClick = { onOpenChat(item.chat.id) })
+                    }
                 }
-                items(state.items, key = { it.chat.id }) { item ->
-                    ChatRow(item, now, onClick = { onOpenChat(item.chat.id) })
-                }
-            }
         }
     }
 }
 
 @Composable
-private fun ChatRow(item: ChatListItem, now: Long, onClick: () -> Unit) {
+private fun ChatRow(
+    item: ChatListItem,
+    now: Long,
+    onClick: () -> Unit,
+) {
     val name = item.partner?.name ?: "…"
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box {
@@ -155,11 +161,12 @@ private fun ChatRow(item: ChatListItem, now: Long, onClick: () -> Unit) {
             Spacer(Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val last = item.chat.lastMessage
-                val preview = when {
-                    last == null -> stringResource(R.string.chats_no_messages)
-                    item.lastMessageIsMine -> stringResource(R.string.chats_you_prefix, last.text)
-                    else -> last.text
-                }
+                val preview =
+                    when {
+                        last == null -> stringResource(R.string.chats_no_messages)
+                        item.lastMessageIsMine -> stringResource(R.string.chats_you_prefix, last.text)
+                        else -> last.text
+                    }
                 Text(
                     text = preview,
                     style = MaterialTheme.typography.bodyMedium,
@@ -179,7 +186,11 @@ private fun ChatRow(item: ChatListItem, now: Long, onClick: () -> Unit) {
 }
 
 @Composable
-private fun EmptyState(onMyCode: () -> Unit, onScan: () -> Unit, modifier: Modifier = Modifier) {
+private fun EmptyState(
+    onMyCode: () -> Unit,
+    onScan: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -26,10 +26,17 @@ import javax.inject.Inject
 
 sealed interface LinkReceiveState {
     data object Preparing : LinkReceiveState
+
     /** QR с кодом входа; [expiresAt] — для обратного отсчёта. */
-    data class ShowCode(val link: String, val expiresAt: Long) : LinkReceiveState
+    data class ShowCode(
+        val link: String,
+        val expiresAt: Long,
+    ) : LinkReceiveState
+
     data object SigningIn : LinkReceiveState
+
     data object Expired : LinkReceiveState
+
     data object Failed : LinkReceiveState
 }
 
@@ -38,72 +45,74 @@ sealed interface LinkReceiveState {
  * положит в заявку зашифрованный ключ. Дальше корень сам переключится на чаты.
  */
 @HiltViewModel
-class LinkReceiveViewModel @Inject constructor(
-    private val auth: AuthRepository,
-    private val links: LinkRepository,
-    private val device: ThisDevice,
-) : ViewModel() {
+class LinkReceiveViewModel
+    @Inject
+    constructor(
+        private val auth: AuthRepository,
+        private val links: LinkRepository,
+        private val device: ThisDevice,
+    ) : ViewModel() {
+        private val _state = MutableStateFlow<LinkReceiveState>(LinkReceiveState.Preparing)
+        val state: StateFlow<LinkReceiveState> = _state.asStateFlow()
 
-    private val _state = MutableStateFlow<LinkReceiveState>(LinkReceiveState.Preparing)
-    val state: StateFlow<LinkReceiveState> = _state.asStateFlow()
+        private var job: Job? = null
+        private var requestId: String? = null
 
-    private var job: Job? = null
-    private var requestId: String? = null
+        init {
+            restart()
+        }
 
-    init {
-        restart()
-    }
+        fun restart() {
+            job?.cancel()
+            job = viewModelScope.launch { run() }
+        }
 
-    fun restart() {
-        job?.cancel()
-        job = viewModelScope.launch { run() }
-    }
-
-    private suspend fun run() {
-        _state.value = LinkReceiveState.Preparing
-        try {
-            dropRequest()
-            // Заявку нельзя создать без входа: временный анонимный аккаунт удалится после входа по ключу.
-            if (auth.account.value == null) auth.signInAnonymously()
-            val keyPair = LinkCrypto.generateKeyPair()
-            val id = links.createLinkRequest(device.name, device.platform).also { requestId = it }
-            val code = LinkCode(id, LinkCrypto.encodePublicKey(keyPair.public))
-            _state.value = LinkReceiveState.ShowCode(code.toUri(), System.currentTimeMillis() + LINK_TTL_MS)
-
-            val payload = withTimeoutOrNull(LINK_TTL_MS) {
-                links.observeLinkRequest(id).first { it?.payload != null }?.payload
-            }
-            if (payload == null) {
+        private suspend fun run() {
+            _state.value = LinkReceiveState.Preparing
+            try {
                 dropRequest()
-                _state.value = LinkReceiveState.Expired
-                return
+                // Заявку нельзя создать без входа: временный анонимный аккаунт удалится после входа по ключу.
+                if (auth.account.value == null) auth.signInAnonymously()
+                val keyPair = LinkCrypto.generateKeyPair()
+                val id = links.createLinkRequest(device.name, device.platform).also { requestId = it }
+                val code = LinkCode(id, LinkCrypto.encodePublicKey(keyPair.public))
+                _state.value = LinkReceiveState.ShowCode(code.toUri(), System.currentTimeMillis() + LINK_TTL_MS)
+
+                val payload =
+                    withTimeoutOrNull(LINK_TTL_MS) {
+                        links.observeLinkRequest(id).first { it?.payload != null }?.payload
+                    }
+                if (payload == null) {
+                    dropRequest()
+                    _state.value = LinkReceiveState.Expired
+                    return
+                }
+                _state.value = LinkReceiveState.SigningIn
+                val key = AccountKey(LinkCrypto.decrypt(keyPair.private, id, payload))
+                dropRequest()
+                auth.signInWithKey(key)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.w(TAG, "Linking failed", e)
+                _state.value = LinkReceiveState.Failed
             }
-            _state.value = LinkReceiveState.SigningIn
-            val key = AccountKey(LinkCrypto.decrypt(keyPair.private, id, payload))
-            dropRequest()
-            auth.signInWithKey(key)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Log.w(TAG, "Linking failed", e)
-            _state.value = LinkReceiveState.Failed
+        }
+
+        private suspend fun dropRequest() {
+            val id = requestId ?: return
+            requestId = null
+            withContext(NonCancellable) {
+                runCatching { links.deleteLinkRequest(id) }.onFailure { Log.w(TAG, "Failed to delete link request", it) }
+            }
+        }
+
+        override fun onCleared() {
+            // viewModelScope уже отменён; заявка истечёт сама, но уберём её, если успеем.
+            val id = requestId ?: return
+            MainScope().launch { runCatching { links.deleteLinkRequest(id) } }
+        }
+
+        private companion object {
+            const val TAG = "LinkReceive"
         }
     }
-
-    private suspend fun dropRequest() {
-        val id = requestId ?: return
-        requestId = null
-        withContext(NonCancellable) {
-            runCatching { links.deleteLinkRequest(id) }.onFailure { Log.w(TAG, "Failed to delete link request", it) }
-        }
-    }
-
-    override fun onCleared() {
-        // viewModelScope уже отменён; заявка истечёт сама, но уберём её, если успеем.
-        val id = requestId ?: return
-        MainScope().launch { runCatching { links.deleteLinkRequest(id) } }
-    }
-
-    private companion object {
-        const val TAG = "LinkReceive"
-    }
-}
