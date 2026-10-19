@@ -1,6 +1,6 @@
 # 0003. Kotlin Multiplatform + Compose Multiplatform
 
-**Статус:** принято, риск проверяется на этапе 2
+**Статус:** принято; риск по JVM снят в [0006](0006-gitlive-on-jvm.md)
 
 **Контекст.** Нужны Android, iOS, macOS и Windows, а разработчик один. Сейчас код написан на Kotlin и Compose.
 
