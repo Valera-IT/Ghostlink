@@ -38,6 +38,10 @@
 
     <string name="chat_empty">Скажите привет 👋</string>
     <string name="chat_input_hint">Сообщение</string>
+    <string name="chat_reply">Ответить</string>
+    <string name="chat_reply_you">Вы</string>
+    <string name="chat_reply_cancel">Отменить ответ</string>
+    <string name="chat_reply_original_unavailable">Исходное сообщение слишком старое</string>
     <string name="status_sending">Отправляется</string>
     <string name="status_sent">Отправлено</string>
     <string name="status_read">Прочитано</string>

@@ -9,6 +9,7 @@ import io.github.valerait.ghostlink.data.model.LINK_TTL_MS
 import io.github.valerait.ghostlink.data.model.LastMessage
 import io.github.valerait.ghostlink.data.model.LinkRequest
 import io.github.valerait.ghostlink.data.model.Message
+import io.github.valerait.ghostlink.data.model.ReplyTo
 import io.github.valerait.ghostlink.data.model.User
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
@@ -175,8 +176,9 @@ class InMemoryBackend(
         chatId: String,
         senderId: String,
         text: String,
+        replyTo: ReplyTo?,
     ) {
-        post(chatId, senderId, text, clock())
+        post(chatId, senderId, text, clock(), replyTo)
         val chat = chats.value[chatId] ?: return
         if (BOT_ID in chat.members && senderId != BOT_ID) replyAsBot(chatId)
     }
@@ -269,8 +271,9 @@ class InMemoryBackend(
         senderId: String,
         text: String,
         at: Long,
+        replyTo: ReplyTo? = null,
     ) {
-        val message = Message("m${nextId.incrementAndGet()}", senderId, text, at)
+        val message = Message("m${nextId.incrementAndGet()}", senderId, text, at, replyTo = replyTo)
         messages.update { it + (chatId to it[chatId].orEmpty() + message) }
         chats.update { all ->
             val chat = all[chatId] ?: return@update all

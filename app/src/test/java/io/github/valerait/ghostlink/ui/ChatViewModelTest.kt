@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import io.github.valerait.ghostlink.MainDispatcherRule
 import io.github.valerait.ghostlink.data.demo.InMemoryBackend
 import io.github.valerait.ghostlink.data.model.MessageStatus
+import io.github.valerait.ghostlink.data.model.ReplyTo
 import io.github.valerait.ghostlink.ui.chat.ChatRow
 import io.github.valerait.ghostlink.ui.chat.ChatUiState
 import io.github.valerait.ghostlink.ui.chat.ChatViewModel
@@ -60,6 +61,75 @@ class ChatViewModelTest {
                     .messages()
                     .single()
                     .status,
+            )
+        }
+
+    @Test
+    fun `reply carries a link to the original message and clears the reply bar`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            backend.sendMessage(chatId, FRIEND, "Встретимся\nв семь?")
+            val original =
+                vm.state.value
+                    .messages()
+                    .single()
+                    .message
+
+            vm.startReply(original.id)
+            assertEquals(
+                original.id,
+                vm.state.value.replyingTo
+                    ?.message
+                    ?.id,
+            )
+
+            vm.send("Да")
+            assertNull(vm.state.value.replyingTo)
+            val reply =
+                vm.state.value
+                    .messages()
+                    .last()
+            assertEquals(ReplyTo(original.id, FRIEND, "Встретимся в семь?"), reply.message.replyTo)
+            assertEquals(false, reply.replyToMine)
+        }
+
+    @Test
+    fun `reply to own message is marked as mine`() =
+        runTest {
+            val (_, _, vm) = setUp()
+            vm.send("первое")
+            val first =
+                vm.state.value
+                    .messages()
+                    .single()
+            vm.startReply(first.message.id)
+            vm.send("второе")
+            assertTrue(
+                vm.state.value
+                    .messages()
+                    .last()
+                    .replyToMine,
+            )
+        }
+
+    @Test
+    fun `cancelled reply sends a plain message`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            backend.sendMessage(chatId, FRIEND, "привет")
+            vm.startReply(
+                vm.state.value
+                    .messages()
+                    .single()
+                    .message.id,
+            )
+            vm.cancelReply()
+            vm.send("ответ")
+            assertNull(
+                vm.state.value
+                    .messages()
+                    .last()
+                    .message.replyTo,
             )
         }
 

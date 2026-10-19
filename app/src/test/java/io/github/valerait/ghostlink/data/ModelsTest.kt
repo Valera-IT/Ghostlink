@@ -6,6 +6,7 @@ import io.github.valerait.ghostlink.data.model.LastMessage
 import io.github.valerait.ghostlink.data.model.Message
 import io.github.valerait.ghostlink.data.model.MessageStatus
 import io.github.valerait.ghostlink.data.model.ONLINE_TIMEOUT_MS
+import io.github.valerait.ghostlink.data.model.ReplyTo
 import io.github.valerait.ghostlink.data.model.User
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -44,5 +45,22 @@ class ModelsTest {
         assertTrue(user.isOnline(now = 1_000 + ONLINE_TIMEOUT_MS - 1))
         assertFalse(user.isOnline(now = 1_000 + ONLINE_TIMEOUT_MS))
         assertFalse(user.copy(online = false).isOnline(now = 1_000))
+    }
+
+    @Test
+    fun `reply preview is one line`() {
+        assertEquals("раз два три", ReplyTo.previewOf("  раз\n\nдва\tтри  "))
+    }
+
+    @Test
+    fun `long reply preview is cut to the rules limit with an ellipsis`() {
+        val preview = ReplyTo.previewOf("слово ".repeat(50))
+        assertTrue(preview.length <= ReplyTo.PREVIEW_MAX_LENGTH)
+        assertTrue(preview.endsWith("…"))
+    }
+
+    @Test
+    fun `short reply preview is kept as is`() {
+        assertEquals("x".repeat(100), ReplyTo.previewOf("x".repeat(100)))
     }
 }

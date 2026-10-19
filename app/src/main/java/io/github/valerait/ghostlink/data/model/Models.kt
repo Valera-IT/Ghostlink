@@ -75,6 +75,7 @@ data class Message(
     val sentAt: Long?,
     /** Сообщение записано только локально и ещё не подтверждено сервером. */
     val pending: Boolean = false,
+    val replyTo: ReplyTo? = null,
 ) {
     fun status(partnerLastRead: Long?): MessageStatus =
         when {
@@ -85,6 +86,29 @@ data class Message(
 }
 
 enum class MessageStatus { SENDING, SENT, READ }
+
+/**
+ * Ссылка на сообщение, на которое отвечают. Превью хранится в самом ответе, чтобы цитату
+ * можно было показать без чтения исходного сообщения (оно могло выйти за лимит загрузки).
+ */
+data class ReplyTo(
+    val id: String,
+    val senderId: String,
+    val preview: String,
+) {
+    companion object {
+        /** Совпадает с ограничением в firestore.rules. */
+        const val PREVIEW_MAX_LENGTH = 100
+
+        fun of(message: Message): ReplyTo = ReplyTo(message.id, message.senderId, previewOf(message.text))
+
+        /** Одна строка без лишних пробелов, не длиннее [PREVIEW_MAX_LENGTH] вместе с многоточием. */
+        fun previewOf(text: String): String {
+            val line = text.trim().replace(Regex("\\s+"), " ")
+            return if (line.length <= PREVIEW_MAX_LENGTH) line else line.take(PREVIEW_MAX_LENGTH - 1).trimEnd() + "…"
+        }
+    }
+}
 
 object ChatIds {
     /** У пары пользователей ровно один чат: id не зависит от того, кто кого добавил. */
