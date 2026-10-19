@@ -27,7 +27,11 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       # Проверки идут на флейворе demo: ему не нужен ни Firebase, ни секреты.
-      - run: ./gradlew spotlessCheck detekt assembleDemoDebug testDemoDebugUnitTest lintDemoDebug --stacktrace
+      - run: ./gradlew spotlessCheck detekt assembleDemoDebug testDemoDebugUnitTest lintDemoDebug :app:koverXmlReportCi --stacktrace
+      - name: Покрытие в сводку
+        run: |
+          echo "### Покрытие (Kover, demoDebug)" >> "$GITHUB_STEP_SUMMARY"
+          ./gradlew -q :app:koverLogCi | grep -i coverage >> "$GITHUB_STEP_SUMMARY"
       # dev собирается с настоящим конфигом ghostlink-dev, если секрет доступен (в PR из форков его нет).
       - name: Сборка dev
         env:

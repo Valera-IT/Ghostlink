@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "ghostlink",
+      "bump-minor-pre-major": true,
+      "changelog-sections": [
+        { "type": "feat", "section": "Новое" },
+        { "type": "fix", "section": "Исправления" },
+        { "type": "perf", "section": "Производительность" },
+        { "type": "docs", "section": "Документация" },
+        { "type": "refactor", "section": "Рефакторинг", "hidden": true },
+        { "type": "test", "section": "Тесты", "hidden": true },
+        { "type": "build", "section": "Сборка", "hidden": true },
+        { "type": "ci", "section": "CI", "hidden": true },
+        { "type": "chore", "section": "Прочее", "hidden": true }
+      ],
+      "extra-files": [
+        { "type": "generic", "path": "app/build.gradle.kts" }
+      ]
+    }
+  }
+}
