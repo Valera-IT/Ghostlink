@@ -33,6 +33,15 @@
     <string name="chats_empty_body">Встретьтесь с другом и отсканируйте его код — или покажите ему свой.</string>
     <string name="chats_no_messages">Нет сообщений — напишите первым</string>
     <string name="chats_you_prefix">Вы: %1$s</string>
+    <string name="chats_pin">Закрепить</string>
+    <string name="chats_unpin">Открепить</string>
+    <string name="chats_pinned">Закреплён</string>
+    <string name="chats_mute">Выключить уведомления</string>
+    <string name="chats_unmute">Включить уведомления</string>
+    <string name="chats_muted">Уведомления выключены</string>
+    <string name="chats_remove">Удалить</string>
+    <string name="chats_remove_title">Удалить %1$s?</string>
+    <string name="chats_remove_body">Контакт и переписка исчезнут только у вас. Если собеседник напишет снова, чат появится с новыми сообщениями.</string>
 
     <string name="chat_empty">Скажите привет 👋</string>
     <string name="chat_input_hint">Сообщение</string>

@@ -3,6 +3,7 @@ rules_version = '2';
 // Правила для Ghostlink. Модель данных:
 //   users/{uid}                    name, online, lastSeen
 //   users/{uid}/devices/{id}       name, platform, lastActiveAt — реестр устройств аккаунта
+//   users/{uid}/chatPrefs/{a_b}    pinnedAt?, muted?, clearedAt?, hidden? — личные настройки чата
 //   linkRequests/{id}              owner, deviceName, platform, createdAt, expiresAt, payload, approvedBy
 //   chats/{a_b}                    members [a, b] (отсортированы), lastMessage, updatedAt, lastRead.{uid}
 //   chats/{a_b}/messages/{id}      senderId, text, sentAt, replyTo? {id, senderId, preview}, editedAt?, deletedAt?
@@ -45,6 +46,30 @@ service cloud.firestore {
           && shortString(request.resource.data.platform, 20)
           && request.resource.data.lastActiveAt == request.time;
       }
+    }
+
+    // Личные настройки чатов (закреплён, без звука, удалён из списка) видит и меняет только владелец:
+    // собеседник не узнаёт, что его заглушили или удалили.
+    match /users/{uid}/chatPrefs/{chatId} {
+      function prefsData() {
+        return request.resource.data;
+      }
+
+      // Отметки времени ставит сервер; уже стоящую можно оставить как есть.
+      function serverTimeOrSame(field) {
+        return !(field in prefsData())
+          || prefsData()[field] == request.time
+          || (resource != null && field in resource.data && prefsData()[field] == resource.data[field]);
+      }
+
+      allow read, delete: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn()
+        && request.auth.uid == uid
+        && prefsData().keys().hasOnly(['pinnedAt', 'muted', 'clearedAt', 'hidden'])
+        && (!('muted' in prefsData()) || prefsData().muted is bool)
+        && (!('hidden' in prefsData()) || prefsData().hidden is bool)
+        && serverTimeOrSame('pinnedAt')
+        && serverTimeOrSame('clearedAt');
     }
 
     // Заявка на вход с нового устройства. Новое устройство создаёт её под временным анонимным

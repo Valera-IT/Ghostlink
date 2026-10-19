@@ -4,6 +4,7 @@ import io.github.valerait.ghostlink.data.model.Account
 import io.github.valerait.ghostlink.data.model.AccountKey
 import io.github.valerait.ghostlink.data.model.Chat
 import io.github.valerait.ghostlink.data.model.ChatIds
+import io.github.valerait.ghostlink.data.model.ChatPrefs
 import io.github.valerait.ghostlink.data.model.Device
 import io.github.valerait.ghostlink.data.model.LINK_TTL_MS
 import io.github.valerait.ghostlink.data.model.LastMessage
@@ -52,6 +53,7 @@ class InMemoryBackend(
     private val users = MutableStateFlow<Map<String, User>>(emptyMap())
     private val chats = MutableStateFlow<Map<String, Chat>>(emptyMap())
     private val messages = MutableStateFlow<Map<String, List<Message>>>(emptyMap())
+    private val chatPrefs = MutableStateFlow<Map<String, Map<String, ChatPrefs>>>(emptyMap())
     private val nextId = AtomicInteger()
     private var botReplyIndex = 0
 
@@ -112,6 +114,7 @@ class InMemoryBackend(
         users.value = emptyMap()
         chats.value = emptyMap()
         messages.value = emptyMap()
+        chatPrefs.value = emptyMap()
         devices.value = emptyMap()
     }
 
@@ -230,6 +233,26 @@ class InMemoryBackend(
         }
     }
 
+    override fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>> =
+        chatPrefs.map { it[userId].orEmpty() }.distinctUntilChanged()
+
+    override fun setPinned(
+        userId: String,
+        chatId: String,
+        pinned: Boolean,
+    ) = updatePrefs(userId, chatId) { it.copy(pinnedAt = if (pinned) clock() else null) }
+
+    override fun setMuted(
+        userId: String,
+        chatId: String,
+        muted: Boolean,
+    ) = updatePrefs(userId, chatId) { it.copy(muted = muted) }
+
+    override fun removeChat(
+        userId: String,
+        chatId: String,
+    ) = updatePrefs(userId, chatId) { it.copy(hidden = true, clearedAt = clock(), pinnedAt = null) }
+
     override suspend fun startChat(
         userId: String,
         friendId: String,
@@ -239,7 +262,19 @@ class InMemoryBackend(
         chats.update { all ->
             if (id in all) all else all + (id to Chat(id, listOf(userId, friendId).sorted(), updatedAt = clock()))
         }
+        if (chatPrefs.value[userId]?.get(id)?.hidden == true) updatePrefs(userId, id) { it.copy(hidden = false) }
         return id
+    }
+
+    private fun updatePrefs(
+        userId: String,
+        chatId: String,
+        change: (ChatPrefs) -> ChatPrefs,
+    ) {
+        chatPrefs.update { all ->
+            val mine = all[userId].orEmpty()
+            all + (userId to mine + (chatId to change(mine[chatId] ?: ChatPrefs())))
+        }
     }
 
     // endregion

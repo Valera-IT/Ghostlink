@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.data.model.Chat
+import io.github.valerait.ghostlink.data.model.ChatPrefs
+import io.github.valerait.ghostlink.data.model.LastMessage
 import io.github.valerait.ghostlink.data.model.User
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
@@ -26,7 +28,11 @@ data class ChatListItem(
     val partnerId: String,
     val partner: User?,
     val unread: Boolean,
+    /** Последнее сообщение; null, если его нет или оно удалено вместе с чатом. */
+    val lastMessage: LastMessage?,
     val lastMessageIsMine: Boolean,
+    val pinned: Boolean = false,
+    val muted: Boolean = false,
 )
 
 data class ChatListState(
@@ -42,7 +48,7 @@ class ChatListViewModel
     constructor(
         auth: AuthRepository,
         users: UserRepository,
-        chats: ChatRepository,
+        private val chats: ChatRepository,
         config: AppConfig,
     ) : ViewModel() {
         private val me = auth.requireUserId()
@@ -59,21 +65,44 @@ class ChatListViewModel
                 .distinctUntilChanged()
                 .flatMapLatest { users.observeUsers(it) }
 
+        private val prefs = chats.observeChatPrefs(me)
+
         val state: StateFlow<ChatListState> =
-            combine(chatList, partners) { list, people ->
+            combine(chatList, partners, prefs) { list, people, prefs ->
                 ChatListState(
                     loading = false,
                     items =
-                        list.map { chat ->
-                            ChatListItem(
-                                chat = chat,
-                                partnerId = chat.partnerId(me),
-                                partner = people[chat.partnerId(me)],
-                                unread = chat.isUnreadFor(me),
-                                lastMessageIsMine = chat.lastMessage?.senderId == me,
-                            )
-                        },
+                        list
+                            .mapNotNull { chat ->
+                                val chatPrefs = prefs[chat.id] ?: ChatPrefs()
+                                if (!chatPrefs.isVisible(chat)) return@mapNotNull null
+                                val last = chat.lastMessage?.takeUnless { chatPrefs.isCleared(it.sentAt) }
+                                ChatListItem(
+                                    chat = chat,
+                                    partnerId = chat.partnerId(me),
+                                    partner = people[chat.partnerId(me)],
+                                    unread = last != null && chat.isUnreadFor(me),
+                                    lastMessage = last,
+                                    lastMessageIsMine = last?.senderId == me,
+                                    pinned = chatPrefs.pinned,
+                                    muted = chatPrefs.muted,
+                                )
+                            }
+                            // Закреплённые сверху (последний закреплённый первым), остальные — по свежести, как пришли.
+                            .sortedByDescending { prefs[it.chat.id]?.pinnedAt ?: Long.MIN_VALUE },
                     demoMode = config.demoMode,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatListState(demoMode = config.demoMode))
+
+        fun setPinned(
+            chatId: String,
+            pinned: Boolean,
+        ) = chats.setPinned(me, chatId, pinned)
+
+        fun setMuted(
+            chatId: String,
+            muted: Boolean,
+        ) = chats.setMuted(me, chatId, muted)
+
+        fun remove(chatId: String) = chats.removeChat(me, chatId)
     }
