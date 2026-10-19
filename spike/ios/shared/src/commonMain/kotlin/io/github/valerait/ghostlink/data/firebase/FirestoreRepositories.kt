@@ -110,7 +110,13 @@ private class ChatCreate(val members: List<String>, val updatedAt: BaseTimestamp
 private class ReplyToDto(val id: String = "", val senderId: String = "", val preview: String = "")
 
 @Serializable
-private class MessageDto(val senderId: String = "", val text: String = "", val sentAt: Timestamp? = null, val replyTo: ReplyToDto? = null)
+private class MessageDto(
+    val senderId: String = "",
+    val text: String = "",
+    val sentAt: Timestamp? = null,
+    val replyTo: ReplyToDto? = null,
+    val editedAt: Timestamp? = null,
+)
 
 @Serializable
 private class MessageWrite(val senderId: String, val text: String, val sentAt: BaseTimestamp)
@@ -141,6 +147,7 @@ private fun DocumentSnapshot.toMessage(): Message {
         sentAt = dto.sentAt?.millis(),
         pending = metadata.hasPendingWrites,
         replyTo = dto.replyTo?.let { ReplyTo(it.id, it.senderId, it.preview) },
+        editedAt = dto.editedAt?.millis(),
     )
 }
 
@@ -188,6 +195,38 @@ class FirestoreChatRepository(
                     )
                     .commit()
             }.onFailure { logWarning("Chats", "Send failed", it) }
+        }
+    }
+
+    override fun editMessage(chatId: String, messageId: String, text: String, isLatest: Boolean) {
+        val chatRef = chats.document(chatId)
+        scope.launch {
+            runCatching {
+                val batch = db.batch()
+                    .update(chatRef.collection("messages").document(messageId), "text" to text, "editedAt" to FieldValue.serverTimestamp)
+                if (isLatest) batch.update(chatRef, FieldPath("lastMessage", "text") to text)
+                batch.commit()
+            }.onFailure { logWarning("Chats", "Edit failed", it) }
+        }
+    }
+
+    override fun deleteMessage(chatId: String, messageId: String, isLatest: Boolean, previous: Message?) {
+        val chatRef = chats.document(chatId)
+        scope.launch {
+            runCatching {
+                val batch = db.batch().delete(chatRef.collection("messages").document(messageId))
+                if (isLatest) {
+                    val last: Any = previous?.let {
+                        mapOf(
+                            "text" to it.text,
+                            "senderId" to it.senderId,
+                            "sentAt" to (it.sentAt?.let { ms -> Timestamp.fromMilliseconds(ms.toDouble()) } ?: FieldValue.serverTimestamp),
+                        )
+                    } ?: FieldValue.delete
+                    batch.update(chatRef, "lastMessage" to last)
+                }
+                batch.commit()
+            }.onFailure { logWarning("Chats", "Delete failed", it) }
         }
     }
 

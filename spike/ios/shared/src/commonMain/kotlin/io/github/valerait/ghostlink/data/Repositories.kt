@@ -43,6 +43,11 @@ interface ChatRepository {
     fun observeChat(chatId: String): Flow<Chat?>
     fun observeMessages(chatId: String): Flow<List<Message>>
     fun sendMessage(chatId: String, senderId: String, text: String, replyTo: ReplyTo? = null)
+    /** Исправляет своё сообщение; [isLatest] — оно последнее, и превью в списке чатов правится тоже. */
+    fun editMessage(chatId: String, messageId: String, text: String, isLatest: Boolean)
+
+    /** Удаляет своё сообщение у обоих; если оно последнее, превью переходит на [previous] или пропадает. */
+    fun deleteMessage(chatId: String, messageId: String, isLatest: Boolean, previous: Message?)
     fun markRead(chatId: String, userId: String)
     suspend fun startChat(userId: String, friendId: String): String
 }
