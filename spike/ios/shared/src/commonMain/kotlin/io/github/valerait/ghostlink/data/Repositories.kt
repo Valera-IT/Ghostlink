@@ -6,6 +6,7 @@ import io.github.valerait.ghostlink.model.Chat
 import io.github.valerait.ghostlink.model.Device
 import io.github.valerait.ghostlink.model.LinkRequest
 import io.github.valerait.ghostlink.model.Message
+import io.github.valerait.ghostlink.model.ReplyTo
 import io.github.valerait.ghostlink.model.User
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,7 +42,7 @@ interface ChatRepository {
     fun observeChats(userId: String): Flow<List<Chat>>
     fun observeChat(chatId: String): Flow<Chat?>
     fun observeMessages(chatId: String): Flow<List<Message>>
-    fun sendMessage(chatId: String, senderId: String, text: String)
+    fun sendMessage(chatId: String, senderId: String, text: String, replyTo: ReplyTo? = null)
     fun markRead(chatId: String, userId: String)
     suspend fun startChat(userId: String, friendId: String): String
 }

@@ -22,6 +22,7 @@ import io.github.valerait.ghostlink.model.LINK_TTL_MS
 import io.github.valerait.ghostlink.model.LastMessage
 import io.github.valerait.ghostlink.model.LinkRequest
 import io.github.valerait.ghostlink.model.Message
+import io.github.valerait.ghostlink.model.ReplyTo
 import io.github.valerait.ghostlink.model.User
 import io.github.valerait.ghostlink.platform.approveWithPayload
 import io.github.valerait.ghostlink.platform.logWarning
@@ -106,10 +107,17 @@ private class ChatDto(
 private class ChatCreate(val members: List<String>, val updatedAt: BaseTimestamp, val lastRead: Map<String, String>)
 
 @Serializable
-private class MessageDto(val senderId: String = "", val text: String = "", val sentAt: Timestamp? = null)
+private class ReplyToDto(val id: String = "", val senderId: String = "", val preview: String = "")
+
+@Serializable
+private class MessageDto(val senderId: String = "", val text: String = "", val sentAt: Timestamp? = null, val replyTo: ReplyToDto? = null)
 
 @Serializable
 private class MessageWrite(val senderId: String, val text: String, val sentAt: BaseTimestamp)
+
+// Отдельный класс, а не replyTo = null в MessageWrite: правила не пускают поле replyTo со значением null.
+@Serializable
+private class ReplyWrite(val senderId: String, val text: String, val sentAt: BaseTimestamp, val replyTo: ReplyToDto)
 
 private fun DocumentSnapshot.toChat(): Chat? {
     if (!exists) return null
@@ -126,7 +134,14 @@ private fun DocumentSnapshot.toChat(): Chat? {
 
 private fun DocumentSnapshot.toMessage(): Message {
     val dto = data<MessageDto>(ESTIMATE)
-    return Message(id = id, senderId = dto.senderId, text = dto.text, sentAt = dto.sentAt?.millis(), pending = metadata.hasPendingWrites)
+    return Message(
+        id = id,
+        senderId = dto.senderId,
+        text = dto.text,
+        sentAt = dto.sentAt?.millis(),
+        pending = metadata.hasPendingWrites,
+        replyTo = dto.replyTo?.let { ReplyTo(it.id, it.senderId, it.preview) },
+    )
 }
 
 class FirestoreChatRepository(
@@ -153,13 +168,19 @@ class FirestoreChatRepository(
             .map { qs -> qs.documents.map { it.toMessage() } }
             .logErrors("messages of $chatId")
 
-    override fun sendMessage(chatId: String, senderId: String, text: String) {
+    override fun sendMessage(chatId: String, senderId: String, text: String, replyTo: ReplyTo?) {
         val chatRef = chats.document(chatId)
         val messageRef = chatRef.collection("messages").document(newId())
         scope.launch {
             runCatching {
-                db.batch()
-                    .set(messageRef, MessageWrite(senderId, text, Timestamp.ServerTimestamp))
+                val batch = db.batch()
+                if (replyTo == null) {
+                    batch.set(messageRef, MessageWrite(senderId, text, Timestamp.ServerTimestamp))
+                } else {
+                    val reply = ReplyToDto(replyTo.id, replyTo.senderId, replyTo.preview)
+                    batch.set(messageRef, ReplyWrite(senderId, text, Timestamp.ServerTimestamp, reply))
+                }
+                batch
                     .update(
                         chatRef,
                         "lastMessage" to mapOf("text" to text, "senderId" to senderId, "sentAt" to FieldValue.serverTimestamp),

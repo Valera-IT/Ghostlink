@@ -40,6 +40,9 @@ actual object DeviceInfo {
     }
 
     actual val platform: String = if (System.getProperty("os.name").startsWith("Mac")) "macos" else "windows"
+
+    // Версию в манифест jar пишет упаковщик Compose Desktop; при запуске из Gradle её нет.
+    actual val appVersion: String = DeviceInfo::class.java.`package`?.implementationVersion ?: "dev"
 }
 
 actual object SecureStore {

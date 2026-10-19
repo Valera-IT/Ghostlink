@@ -23,6 +23,7 @@ import platform.CoreFoundation.kCFTypeDictionaryKeyCallBacks
 import platform.CoreFoundation.kCFTypeDictionaryValueCallBacks
 import platform.Foundation.CFBridgingRelease
 import platform.Foundation.CFBridgingRetain
+import platform.Foundation.NSBundle
 import platform.Foundation.NSData
 import platform.Foundation.NSDate
 import platform.Foundation.NSDateFormatter
@@ -66,6 +67,13 @@ actual object DeviceInfo {
     actual val name: String get() = UIDevice.currentDevice.name
 
     actual val platform: String = "ios"
+
+    actual val appVersion: String by lazy {
+        val info = NSBundle.mainBundle.infoDictionary
+        val version = info?.get("CFBundleShortVersionString") as? String ?: "?"
+        val build = info?.get("CFBundleVersion") as? String
+        if (build != null) "$version ($build)" else version
+    }
 }
 
 actual object SecureStore {

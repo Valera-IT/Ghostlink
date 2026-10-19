@@ -11,6 +11,9 @@ expect object DeviceInfo {
     val id: String
     val name: String
     val platform: String
+
+    /** Версия приложения для подвала настроек, например «0.1.0 (1)». */
+    val appVersion: String
 }
 
 /** Ключ аккаунта в защищённом хранилище платформы (Keychain на iOS). */

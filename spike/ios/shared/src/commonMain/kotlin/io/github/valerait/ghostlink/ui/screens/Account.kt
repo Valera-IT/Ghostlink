@@ -151,7 +151,7 @@ fun SettingsScreen(onBack: () -> Unit, onDevices: () -> Unit, onTheme: () -> Uni
                 modifier = Modifier.clickable { confirmSignOut = true },
             )
             Text(
-                "Ghostlink для iOS · KMP-разведка",
+                "Ghostlink ${DeviceInfo.appVersion}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp),
