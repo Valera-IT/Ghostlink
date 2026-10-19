@@ -1,5 +1,6 @@
 package io.github.valerait.ghostlink.ui.link
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -94,6 +95,8 @@ fun LinkReceiveScreen(onBack: () -> Unit, viewModel: LinkReceiveViewModel = hilt
     }
 }
 
+// Ложное срабатывание lint: value присваивается внутри лямбды (до обновления Compose на этапе 3.1).
+@SuppressLint("ProduceStateDoesNotAssignValue")
 @Composable
 private fun Countdown(expiresAt: Long) {
     val secondsLeft by produceState(initialValue = secondsUntil(expiresAt), expiresAt) {

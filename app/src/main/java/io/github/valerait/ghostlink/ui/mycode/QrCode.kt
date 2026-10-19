@@ -1,5 +1,6 @@
 package io.github.valerait.ghostlink.ui.mycode
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,8 @@ import kotlinx.coroutines.withContext
 private val QrInk = Color(0xFF0E0F14)
 
 /** Белая карточка с QR-кодом и призраком в центре. */
+// Ложное срабатывание lint: value присваивается внутри лямбды (до обновления Compose на этапе 3.1).
+@SuppressLint("ProduceStateDoesNotAssignValue")
 @Composable
 fun QrCard(content: String, contentDescription: String, modifier: Modifier = Modifier) {
     // QR рисуем всегда тёмным по белому: камеры хуже читают инвертированные коды.
