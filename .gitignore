@@ -16,3 +16,7 @@ captures/
 # Конфиги Firebase-проектов (dev, prod): без них приложение запускается в демо-режиме
 app/google-services.json
 app/src/*/google-services.json
+
+# Конфиг Firebase для iOS-разведки
+spike/ios/iosApp/GoogleService-Info.plist
+spike/ios/iosApp/*.xcodeproj/
