@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Settings
@@ -77,15 +78,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
@@ -285,7 +293,14 @@ private fun EmptyChats(onMyCode: () -> Unit, onScan: () -> Unit, modifier: Modif
 
 const val MAX_MESSAGE_LENGTH = 4000
 
-data class MessageItem(val message: Message, val mine: Boolean, val status: MessageStatus?, val replyToMine: Boolean = false)
+data class MessageItem(
+    val message: Message,
+    val mine: Boolean,
+    val status: MessageStatus?,
+    val replyToMine: Boolean = false,
+    /** Исходное сообщение цитаты удалено — вместо превью показываем «Сообщение удалено». */
+    val replyToDeleted: Boolean = false,
+)
 
 sealed interface ChatRow {
     val key: String
@@ -324,16 +339,23 @@ class ChatViewModel(private val chatId: String) : ViewModel() {
 
     val state: StateFlow<ChatUiState> = combine(chat, messages, partner, replyingToId, editingId) { chat, messages, partner, replyingToId, editingId ->
         val partnerRead = chat?.lastRead?.get(chat.partnerId(me))
+        val deletedIds = messages.filter { it.deleted }.mapTo(HashSet()) { it.id }
         val items = messages.map { m ->
             val mine = m.senderId == me
-            MessageItem(m, mine, if (mine) m.status(partnerRead) else null, replyToMine = m.replyTo?.senderId == me)
+            MessageItem(
+                m,
+                mine,
+                if (mine) m.status(partnerRead) else null,
+                replyToMine = m.replyTo?.senderId == me,
+                replyToDeleted = m.replyTo?.id in deletedIds,
+            )
         }
         ChatUiState(
             loading = false,
             partner = partner,
             rows = buildRows(items),
-            replyingTo = replyingToId?.let { id -> items.firstOrNull { it.message.id == id } },
-            editing = editingId?.let { id -> items.firstOrNull { it.message.id == id && it.mine } },
+            replyingTo = replyingToId?.let { id -> items.firstOrNull { it.message.id == id && !it.message.deleted } },
+            editing = editingId?.let { id -> items.firstOrNull { it.message.id == id && it.mine && !it.message.deleted } },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
 
@@ -373,8 +395,14 @@ class ChatViewModel(private val chatId: String) : ViewModel() {
     fun delete(messageId: String) {
         val list = messages.replayCache.firstOrNull() ?: return
         val index = list.indexOfFirst { it.id == messageId }
-        if (index < 0 || list[index].senderId != me) return
-        chats.deleteMessage(chatId, messageId, isLatest = index == list.lastIndex, previous = list.getOrNull(index - 1))
+        if (index < 0 || list[index].senderId != me || list[index].deleted) return
+        // Превью в списке чатов показывает последнее неудалённое сообщение.
+        chats.deleteMessage(
+            chatId,
+            messageId,
+            isLatest = list.isLatestVisible(index),
+            previous = list.subList(0, index).lastOrNull { !it.deleted },
+        )
         if (replyingToId.value == messageId) replyingToId.value = null
         if (editingId.value == messageId) editingId.value = null
     }
@@ -387,7 +415,8 @@ class ChatViewModel(private val chatId: String) : ViewModel() {
         if (editing != null) {
             editingId.value = null
             if (trimmed == editing.message.text) return
-            val isLatest = messages.replayCache.firstOrNull()?.lastOrNull()?.id == editing.message.id
+            val list = messages.replayCache.firstOrNull().orEmpty()
+            val isLatest = list.isLatestVisible(list.indexOfFirst { it.id == editing.message.id })
             chats.editMessage(chatId, editing.message.id, trimmed, isLatest)
         } else {
             // Отвечать можно только на сообщение, уже записанное на сервер: у pending ещё нет стабильного места в чате.
@@ -396,6 +425,9 @@ class ChatViewModel(private val chatId: String) : ViewModel() {
             replyingToId.value = null
         }
     }
+
+    /** После сообщения с номером [index] остались только удалённые — значит, оно сейчас в превью чата. */
+    private fun List<Message>.isLatestVisible(index: Int): Boolean = index >= 0 && subList(index + 1, size).all { it.deleted }
 
     private fun buildRows(items: List<MessageItem>): List<ChatRow> {
         val rows = ArrayList<ChatRow>(items.size + 8)
@@ -438,6 +470,21 @@ fun ChatScreen(chatId: String, onBack: () -> Unit, viewModel: ChatViewModel = vi
                 highlightedId = id
                 delay(1_500)
                 highlightedId = null
+            }
+        }
+    }
+
+    // Протяжка ленты пальцем вниз прячет клавиатуру, как в Telegram.
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val hideKeyboardOnDrag = remember(keyboard, focusManager) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y > 0f) {
+                    keyboard?.hide()
+                    focusManager.clearFocus()
+                }
+                return Offset.Zero
             }
         }
     }
@@ -496,7 +543,7 @@ fun ChatScreen(chatId: String, onBack: () -> Unit, viewModel: ChatViewModel = vi
             state = listState,
             reverseLayout = true,
             contentPadding = PaddingValues(vertical = 8.dp),
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding).nestedScroll(hideKeyboardOnDrag),
         ) {
             items(state.rows, key = { it.key }) { row ->
                 when (row) {
@@ -524,7 +571,7 @@ fun ChatScreen(chatId: String, onBack: () -> Unit, viewModel: ChatViewModel = vi
         AlertDialog(
             onDismissRequest = { confirmDeleteId = null },
             title = { Text("Удалить сообщение?") },
-            text = { Text("Сообщение исчезнет у вас и у собеседника.") },
+            text = { Text("Сообщение исчезнет у вас и у собеседника, на его месте останется отметка «Сообщение удалено».") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDeleteId = null
@@ -610,6 +657,7 @@ private fun MessageBubble(item: MessageItem, highlighted: Boolean, quoteAuthor: 
                 shape = shape,
                 border = if (mine) null else BorderStroke(1.dp, chatStyle.incomingBorder),
                 modifier = Modifier.widthIn(max = 300.dp).clip(shape).combinedClickable(
+                    enabled = !item.message.deleted,
                     onLongClickLabel = "Действия с сообщением",
                     onLongClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -622,12 +670,17 @@ private fun MessageBubble(item: MessageItem, highlighted: Boolean, quoteAuthor: 
                     item.message.replyTo?.let { reply ->
                         ReplyQuote(
                             author = quoteAuthor,
-                            preview = reply.preview,
+                            preview = if (item.replyToDeleted) DELETED_TEXT else reply.preview,
+                            previewDeleted = item.replyToDeleted,
                             accent = LocalContentColor.current,
                             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp).clickable { onQuoteClick(reply.id) },
                         )
                     }
-                    Text(item.message.text, style = MaterialTheme.typography.bodyLarge)
+                    if (item.message.deleted) {
+                        DeletedText()
+                    } else {
+                        Text(item.message.text, style = MaterialTheme.typography.bodyLarge)
+                    }
                     Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                         if (item.message.editedAt != null) {
                             Text("изменено", style = MaterialTheme.typography.labelSmall, color = LocalContentColor.current.copy(alpha = 0.6f))
@@ -636,7 +689,7 @@ private fun MessageBubble(item: MessageItem, highlighted: Boolean, quoteAuthor: 
                         item.message.sentAt?.let {
                             Text(formatTime(it), style = MaterialTheme.typography.labelSmall.mono(), color = LocalContentColor.current.copy(alpha = 0.6f))
                         }
-                        item.status?.let {
+                        item.status?.takeUnless { item.message.deleted }?.let {
                             Spacer(Modifier.width(4.dp))
                             StatusIcon(it)
                         }
@@ -652,6 +705,19 @@ private fun MessageBubble(item: MessageItem, highlighted: Boolean, quoteAuthor: 
                 actions = actions,
             )
         }
+    }
+}
+
+private const val DELETED_TEXT = "Сообщение удалено"
+
+/** На месте удалённого сообщения — курсивная отметка, как в мессенджерах. */
+@Composable
+private fun DeletedText() {
+    val muted = LocalContentColor.current.copy(alpha = 0.6f)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.Block, contentDescription = null, tint = muted, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(DELETED_TEXT, style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic), color = muted)
     }
 }
 
@@ -671,7 +737,7 @@ private fun StatusIcon(status: MessageStatus) {
 }
 
 @Composable
-private fun ReplyQuote(author: String, preview: String, accent: Color, modifier: Modifier = Modifier) {
+private fun ReplyQuote(author: String, preview: String, accent: Color, modifier: Modifier = Modifier, previewDeleted: Boolean = false) {
     Row(modifier.height(IntrinsicSize.Min).clip(RoundedCornerShape(8.dp)).background(accent.copy(alpha = 0.1f))) {
         Box(Modifier.width(3.dp).fillMaxHeight().background(accent))
         Column(Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
@@ -679,6 +745,7 @@ private fun ReplyQuote(author: String, preview: String, accent: Color, modifier:
             Text(
                 preview,
                 style = MaterialTheme.typography.bodySmall,
+                fontStyle = if (previewDeleted) FontStyle.Italic else null,
                 color = LocalContentColor.current.copy(alpha = 0.75f),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

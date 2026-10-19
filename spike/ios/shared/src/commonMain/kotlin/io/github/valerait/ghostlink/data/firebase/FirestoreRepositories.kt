@@ -116,6 +116,7 @@ private class MessageDto(
     val sentAt: Timestamp? = null,
     val replyTo: ReplyToDto? = null,
     val editedAt: Timestamp? = null,
+    val deletedAt: Timestamp? = null,
 )
 
 @Serializable
@@ -148,6 +149,7 @@ private fun DocumentSnapshot.toMessage(): Message {
         pending = metadata.hasPendingWrites,
         replyTo = dto.replyTo?.let { ReplyTo(it.id, it.senderId, it.preview) },
         editedAt = dto.editedAt?.millis(),
+        deletedAt = dto.deletedAt?.millis(),
     )
 }
 
@@ -214,7 +216,14 @@ class FirestoreChatRepository(
         val chatRef = chats.document(chatId)
         scope.launch {
             runCatching {
-                val batch = db.batch().delete(chatRef.collection("messages").document(messageId))
+                // Сообщение не стирается целиком: остаётся отметка «Сообщение удалено».
+                val batch = db.batch().update(
+                    chatRef.collection("messages").document(messageId),
+                    "text" to FieldValue.delete,
+                    "replyTo" to FieldValue.delete,
+                    "editedAt" to FieldValue.delete,
+                    "deletedAt" to FieldValue.serverTimestamp,
+                )
                 if (isLatest) {
                     val last: Any = previous?.let {
                         mapOf(
