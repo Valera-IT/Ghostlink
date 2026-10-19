@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/Valera-IT/Ghostlink/compare/ghostlink-v0.2.0...ghostlink-v0.3.0) (2026-10-19)
+
+
+### Новое
+
+* **chat:** "message deleted" placeholder and swipe down to hide keyboard ([#20](https://github.com/Valera-IT/Ghostlink/issues/20)) ([95bd53d](https://github.com/Valera-IT/Ghostlink/commit/95bd53d71c77ab4f052fcd3654bf01f7cd281704))
+
 ## [0.2.0](https://github.com/Valera-IT/Ghostlink/compare/ghostlink-v0.1.0...ghostlink-v0.2.0) (2026-10-19)
 
 
