@@ -13,11 +13,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import io.github.valerait.ghostlink.data.model.ScannedCode
 import io.github.valerait.ghostlink.ui.chat.ChatScreen
 import io.github.valerait.ghostlink.ui.chats.ChatListScreen
 import io.github.valerait.ghostlink.ui.connect.ConnectScreen
 import io.github.valerait.ghostlink.ui.devices.DevicesScreen
+import io.github.valerait.ghostlink.ui.group.GroupInfoScreen
+import io.github.valerait.ghostlink.ui.group.PickMembersScreen
 import io.github.valerait.ghostlink.ui.link.LinkApproveScreen
 import io.github.valerait.ghostlink.ui.link.LinkReceiveScreen
 import io.github.valerait.ghostlink.ui.mycode.MyCodeScreen
@@ -31,6 +34,15 @@ import kotlinx.serialization.Serializable
 @Serializable data object ChatsRoute
 
 @Serializable data class ChatRoute(
+    val chatId: String,
+)
+
+/** chatId == null — создать новую группу, иначе добавить участников в эту. */
+@Serializable data class PickMembersRoute(
+    val chatId: String? = null,
+)
+
+@Serializable data class GroupInfoRoute(
     val chatId: String,
 )
 
@@ -112,12 +124,31 @@ private fun MainNavHost(
             ChatListScreen(
                 onOpenChat = { nav.navigate(ChatRoute(it)) },
                 onMyCode = { nav.navigate(MyCodeRoute) },
+                onNewGroup = { nav.navigate(PickMembersRoute()) },
                 onScan = { nav.navigate(ScanRoute) },
                 onSettings = { nav.navigate(SettingsRoute) },
             )
         }
-        composable<ChatRoute> {
-            ChatScreen(onBack = { nav.navigateUp() })
+        composable<ChatRoute> { entry ->
+            val chatId = entry.toRoute<ChatRoute>().chatId
+            ChatScreen(onBack = { nav.navigateUp() }, onGroupInfo = { nav.navigate(GroupInfoRoute(chatId)) })
+        }
+        composable<PickMembersRoute> { entry ->
+            val adding = entry.toRoute<PickMembersRoute>().chatId != null
+            PickMembersScreen(
+                onBack = { nav.navigateUp() },
+                onDone = { chatId ->
+                    if (adding) nav.navigateUp() else nav.navigate(ChatRoute(chatId)) { popUpTo<ChatsRoute>() }
+                },
+            )
+        }
+        composable<GroupInfoRoute> { entry ->
+            val chatId = entry.toRoute<GroupInfoRoute>().chatId
+            GroupInfoScreen(
+                onBack = { nav.navigateUp() },
+                onAddMembers = { nav.navigate(PickMembersRoute(chatId)) },
+                onLeft = { nav.popBackStack<ChatsRoute>(inclusive = false) },
+            )
         }
         composable<MyCodeRoute> {
             MyCodeScreen(onBack = { nav.navigateUp() }, onScan = { nav.navigate(ScanRoute) })

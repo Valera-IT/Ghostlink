@@ -13,6 +13,7 @@ import io.github.valerait.ghostlink.data.model.Chat
 import io.github.valerait.ghostlink.data.model.ChatIds
 import io.github.valerait.ghostlink.data.model.ChatPrefs
 import io.github.valerait.ghostlink.data.model.DisappearingTimer
+import io.github.valerait.ghostlink.data.model.GroupInfo
 import io.github.valerait.ghostlink.data.model.LastMessage
 import io.github.valerait.ghostlink.data.model.Message
 import io.github.valerait.ghostlink.data.model.ReplyTo
@@ -24,7 +25,8 @@ import java.util.Date
 /**
  * Схема:
  *  chats/{a_b}            members, lastMessage{text, senderId, sentAt, ttl?}, updatedAt, lastRead.{uid}, typing.{uid}, ttl?
- *  chats/{a_b}/messages   senderId, text, sentAt, replyTo?{id, senderId, preview}, editedAt?, deletedAt?, ttl?
+ *  chats/{autoId}         то же + type: "group", name, owner — групповой чат
+ *  chats/{id}/messages   senderId, text, sentAt, replyTo?{id, senderId, preview}, editedAt?, deletedAt?, ttl?
  *  users/{uid}/chatPrefs/{a_b}  pinnedAt?, muted?, clearedAt?, hidden? — личные настройки, видны только владельцу
  */
 class FirebaseChatRepository(
@@ -190,6 +192,60 @@ class FirebaseChatRepository(
         }
     }
 
+    override suspend fun createGroup(
+        ownerId: String,
+        name: String,
+        memberIds: List<String>,
+    ): String {
+        val ref = chats.document()
+        ref
+            .set(
+                mapOf(
+                    "type" to GROUP_TYPE,
+                    "name" to name,
+                    "owner" to ownerId,
+                    "members" to (memberIds + ownerId).distinct().sorted(),
+                    "updatedAt" to FieldValue.serverTimestamp(),
+                    "lastRead" to emptyMap<String, Any>(),
+                ),
+            ).await()
+        return ref.id
+    }
+
+    override fun renameGroup(
+        chatId: String,
+        name: String,
+    ) {
+        chats
+            .document(chatId)
+            .update("name", name)
+            .addOnFailureListener { Log.w(TAG, "renameGroup failed", it) }
+    }
+
+    @Suppress("SpreadOperator") // arrayUnion принимает только vararg; участников не больше 20.
+    override fun addMembers(
+        chatId: String,
+        userIds: List<String>,
+    ) {
+        chats
+            .document(chatId)
+            .update("members", FieldValue.arrayUnion(*userIds.toTypedArray()))
+            .addOnFailureListener { Log.w(TAG, "addMembers failed", it) }
+    }
+
+    override fun removeMember(
+        chatId: String,
+        userId: String,
+        newOwnerId: String?,
+    ) {
+        val fields = mutableMapOf<String, Any>("members" to FieldValue.arrayRemove(userId))
+        if (newOwnerId != null) fields["owner"] = newOwnerId
+        chats
+            .document(chatId)
+            .update(fields)
+            .addOnFailureListener { Log.w(TAG, "removeMember failed", it) }
+    }
+
     override fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>> =
         prefs(userId).observe { qs -> qs.documents.associate { it.id to it.toChatPrefs() } }
 
@@ -240,6 +296,7 @@ class FirebaseChatRepository(
         const val TAG = "Chats"
         const val MESSAGES_LIMIT = 300L
         const val BATCH_LIMIT = 500
+        const val GROUP_TYPE = "group"
     }
 }
 
@@ -264,6 +321,12 @@ private fun DocumentSnapshot.toChat(): Chat? {
         lastRead = lastRead,
         typing = get("typing", ServerTimestampBehavior.ESTIMATE).toMillisMap(),
         disappearing = DisappearingTimer.of(getLong("ttl")),
+        group =
+            if (getString("type") == "group") {
+                GroupInfo(name = getString("name").orEmpty(), ownerId = getString("owner").orEmpty())
+            } else {
+                null
+            },
     )
 }
 

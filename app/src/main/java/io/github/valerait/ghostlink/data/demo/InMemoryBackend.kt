@@ -7,6 +7,7 @@ import io.github.valerait.ghostlink.data.model.ChatIds
 import io.github.valerait.ghostlink.data.model.ChatPrefs
 import io.github.valerait.ghostlink.data.model.Device
 import io.github.valerait.ghostlink.data.model.DisappearingTimer
+import io.github.valerait.ghostlink.data.model.GroupInfo
 import io.github.valerait.ghostlink.data.model.LINK_TTL_MS
 import io.github.valerait.ghostlink.data.model.LastMessage
 import io.github.valerait.ghostlink.data.model.LinkRequest
@@ -267,6 +268,54 @@ class InMemoryBackend(
         }
     }
 
+    override suspend fun createGroup(
+        ownerId: String,
+        name: String,
+        memberIds: List<String>,
+    ): String {
+        val id = "g${nextId.incrementAndGet()}"
+        val chat =
+            Chat(
+                id = id,
+                members = (memberIds + ownerId).distinct().sorted(),
+                updatedAt = clock(),
+                group = GroupInfo(name, ownerId),
+            )
+        chats.update { it + (id to chat) }
+        return id
+    }
+
+    override fun renameGroup(
+        chatId: String,
+        name: String,
+    ) = updateGroup(chatId) { it.copy(group = it.group?.copy(name = name)) }
+
+    override fun addMembers(
+        chatId: String,
+        userIds: List<String>,
+    ) = updateGroup(chatId) { it.copy(members = (it.members + userIds).distinct()) }
+
+    override fun removeMember(
+        chatId: String,
+        userId: String,
+        newOwnerId: String?,
+    ) = updateGroup(chatId) { chat ->
+        chat.copy(
+            members = chat.members - userId,
+            group = chat.group?.let { if (newOwnerId != null) it.copy(ownerId = newOwnerId) else it },
+        )
+    }
+
+    private fun updateGroup(
+        chatId: String,
+        change: (Chat) -> Chat,
+    ) {
+        chats.update { all ->
+            val chat = all[chatId]?.takeIf { it.isGroup } ?: return@update all
+            all + (chatId to change(chat))
+        }
+    }
+
     override fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>> =
         chatPrefs.map { it[userId].orEmpty() }.distinctUntilChanged()
 
@@ -421,6 +470,12 @@ class InMemoryBackend(
         post(anyaChat, ANYA_ID, "Жду 👀", now - 2 * HOUR)
         devices.value = mapOf(me to mapOf(DEMO_LAPTOP to Device(DEMO_LAPTOP, "MacBook Air", "macos", now - 3 * HOUR)))
         post(botChat, BOT_ID, "Бу! Я Призрак — собеседник для демо-режима. Напиши мне что-нибудь 👻", now - 10 * MINUTE)
+        val group = "g-demo"
+        chats.update {
+            it + (group to Chat(group, listOf(me, ANYA_ID, BOT_ID).sorted(), updatedAt = now, group = GroupInfo("Митап 👻", ANYA_ID)))
+        }
+        post(group, ANYA_ID, "Собрала всех с митапа в одну группу", now - HOUR)
+        post(group, BOT_ID, "Бу! Я тоже тут", now - HOUR / 2)
     }
 
     companion object {

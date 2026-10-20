@@ -24,10 +24,10 @@ class ModelsTest {
     fun `message status follows server ack and partner read time`() {
         val pending = Message("1", "me", "hi", sentAt = 100, pending = true)
         val sent = pending.copy(pending = false)
-        assertEquals(MessageStatus.SENDING, pending.status(partnerLastRead = 500))
-        assertEquals(MessageStatus.SENT, sent.status(partnerLastRead = null))
-        assertEquals(MessageStatus.SENT, sent.status(partnerLastRead = 99))
-        assertEquals(MessageStatus.READ, sent.status(partnerLastRead = 100))
+        assertEquals(MessageStatus.SENDING, pending.status(readUpTo = 500))
+        assertEquals(MessageStatus.SENT, sent.status(readUpTo = null))
+        assertEquals(MessageStatus.SENT, sent.status(readUpTo = 99))
+        assertEquals(MessageStatus.READ, sent.status(readUpTo = 100))
     }
 
     @Test

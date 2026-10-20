@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.GroupAdd
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.PushPin
@@ -72,6 +73,7 @@ import io.github.valerait.ghostlink.ui.theme.LogoTextStyle
 fun ChatListScreen(
     onOpenChat: (String) -> Unit,
     onMyCode: () -> Unit,
+    onNewGroup: () -> Unit,
     onScan: () -> Unit,
     onSettings: () -> Unit,
     viewModel: ChatListViewModel = hiltViewModel(),
@@ -91,6 +93,9 @@ fun ChatListScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNewGroup) {
+                        Icon(Icons.Outlined.GroupAdd, contentDescription = stringResource(R.string.group_new))
+                    }
                     IconButton(onClick = onScan) {
                         Icon(Icons.Filled.QrCodeScanner, contentDescription = stringResource(R.string.action_scan))
                     }
@@ -141,7 +146,8 @@ fun ChatListScreen(
             removing = null
         } else {
             RemoveChatDialog(
-                name = item.partner?.name ?: "…",
+                name = item.title ?: "…",
+                isGroup = item.chat.isGroup,
                 onConfirm = {
                     viewModel.remove(chatId)
                     removing = null
@@ -162,7 +168,7 @@ private fun ChatRow(
     onMute: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    val name = item.partner?.name ?: "…"
+    val name = item.title ?: "…"
     val haptics = LocalHapticFeedback.current
     var menu by remember { mutableStateOf(false) }
     Box {
@@ -225,7 +231,12 @@ private fun ChatRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val typing = rememberIsTyping(item.typingUntil)
                     Text(
-                        text = if (typing) stringResource(R.string.chat_typing) else previewText(item),
+                        text =
+                            when {
+                                !typing -> previewText(item)
+                                item.typingName != null -> stringResource(R.string.chat_typing_named, item.typingName)
+                                else -> stringResource(R.string.chat_typing)
+                            },
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (typing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = if (item.unread) FontWeight.SemiBold else FontWeight.Normal,
@@ -284,7 +295,12 @@ private fun ChatMenu(
             },
         )
         DropdownMenuItem(
-            text = { Text(stringResource(R.string.chats_remove), color = MaterialTheme.colorScheme.error) },
+            text = {
+                Text(
+                    stringResource(if (item.chat.isGroup) R.string.group_leave else R.string.chats_remove),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            },
             leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             onClick = {
                 onDismiss()
@@ -297,16 +313,17 @@ private fun ChatMenu(
 @Composable
 private fun RemoveChatDialog(
     name: String,
+    isGroup: Boolean,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.chats_remove_title)) },
-        text = { Text(stringResource(R.string.chats_remove_body, name)) },
+        title = { Text(stringResource(if (isGroup) R.string.group_leave_title else R.string.chats_remove_title)) },
+        text = { Text(stringResource(if (isGroup) R.string.group_leave_body else R.string.chats_remove_body, name)) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.chats_remove), color = MaterialTheme.colorScheme.error)
+                Text(stringResource(if (isGroup) R.string.group_leave else R.string.chats_remove), color = MaterialTheme.colorScheme.error)
             }
         },
         dismissButton = {
@@ -357,6 +374,7 @@ private fun previewText(item: ChatListItem): String {
     return when {
         last == null -> stringResource(R.string.chats_no_messages)
         item.lastMessageIsMine -> stringResource(R.string.chats_you_prefix, last.text)
+        item.lastSenderName != null -> stringResource(R.string.chats_sender_prefix, item.lastSenderName, last.text)
         else -> last.text
     }
 }
