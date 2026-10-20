@@ -27,6 +27,12 @@ import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
+import io.github.valerait.ghostlink.data.leaveGroup
+import io.github.valerait.ghostlink.model.DisappearingTimer
+import io.github.valerait.ghostlink.model.MessageStatus
+import io.github.valerait.ghostlink.model.ReplyTo
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.TimeSource
@@ -100,6 +106,54 @@ class DesktopEmulatorTest {
         desktop.chats.sendMessage(chatId, phoneId, "Привет с JVM")
         withTimeout(TIMEOUT) { friend.chats.observeMessages(chatId).first { list -> list.any { it.text == "Привет с JVM" && it.sentAt != null } } }
         println("desktop → friend: ${mark.elapsedNow()}")
+    }
+
+    /** Группа, «печатает…», таймер и исчезновение — все записи проходят боевые правила. */
+    @Test
+    fun groupWithTypingAndDisappearingMessages() = runBlocking<Unit> {
+        val admin = Client("admin")
+        val anna = Client("anna")
+        val boris = Client("boris")
+        val adminId = admin.authRepo.createAccount().id.also { admin.users.saveProfile(it, "Admin") }
+        val annaId = anna.authRepo.createAccount().id.also { anna.users.saveProfile(it, "Anna") }
+        val borisId = boris.authRepo.createAccount().id.also { boris.users.saveProfile(it, "Boris") }
+
+        val groupId = admin.chats.createGroup(adminId, "Spike", listOf(annaId))
+        withTimeout(TIMEOUT) { anna.chats.observeChat(groupId).first { it?.group?.name == "Spike" } }
+
+        admin.chats.renameGroup(groupId, "Spike 2")
+        admin.chats.addMembers(groupId, listOf(borisId))
+        // Читать группу можно только участнику: Борис подписывается, когда сервер уже записал его в состав.
+        withTimeout(TIMEOUT) { anna.chats.observeChat(groupId).first { it?.group?.name == "Spike 2" && borisId in it.members } }
+        withTimeout(TIMEOUT) { boris.chats.observeChat(groupId).first { it?.group?.name == "Spike 2" } }
+
+        anna.chats.setTyping(groupId, annaId, true)
+        withTimeout(TIMEOUT) { admin.chats.observeChat(groupId).first { it?.typingOther(adminId)?.first == annaId } }
+
+        anna.chats.setDisappearing(groupId, DisappearingTimer.HOUR)
+        withTimeout(TIMEOUT) { admin.chats.observeChat(groupId).first { it?.disappearing == DisappearingTimer.HOUR } }
+
+        // Отправка снимает «печатает…» и несёт ttl в сообщении и превью.
+        anna.chats.sendMessage(groupId, annaId, "Исчезну", ttl = DisappearingTimer.HOUR.seconds)
+        val message = withTimeout(TIMEOUT) {
+            boris.chats.observeMessages(groupId).map { list -> list.firstOrNull { it.text == "Исчезну" && it.sentAt != null } }.filterNotNull().first()
+        }
+        assertEquals(DisappearingTimer.HOUR.seconds, message.ttl)
+        withTimeout(TIMEOUT) { admin.chats.observeChat(groupId).first { it?.typing?.isEmpty() == true && it.lastMessage?.ttl == 3_600L } }
+
+        // Ответ с цитатой — replyTo и ttl пишутся только когда заданы.
+        boris.chats.sendMessage(groupId, borisId, "Ответ", ReplyTo.of(message))
+        withTimeout(TIMEOUT) { admin.chats.observeMessages(groupId).first { list -> list.any { it.replyTo?.id == message.id && it.sentAt != null } } }
+
+        // Все прочитали — у автора три галочки.
+        listOf(admin to adminId, boris to borisId).forEach { (client, id) -> client.chats.markRead(groupId, id) }
+        withTimeout(TIMEOUT) {
+            anna.chats.observeChat(groupId).first { chat -> chat != null && message.status(chat.othersReadUpTo(annaId), chat.allReadUpTo(annaId)) == MessageStatus.READ_ALL }
+        }
+
+        // Админ выходит — права переходят следующему участнику.
+        admin.chats.leaveGroup(admin.chats.observeChat(groupId).filterNotNull().first(), adminId)
+        withTimeout(TIMEOUT) { anna.chats.observeChat(groupId).first { it != null && adminId !in it.members && it.group?.ownerId != adminId } }
     }
 
     private companion object {

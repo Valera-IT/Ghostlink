@@ -122,10 +122,12 @@ service cloud.firestore {
         && chatId == request.resource.data.members[0] + '_' + request.resource.data.members[1];
 
       // «Печатает…»: только своя отметка и только серверным временем (или снятие отметки).
+      // Время проверяется, только если отметку меняют: пока она стоит, остальные поля обновлять можно.
       function validTyping() {
         let after = request.resource.data.get('typing', {});
-        return after.diff(resource.data.get('typing', {})).affectedKeys().hasOnly([request.auth.uid])
-          && (!(request.auth.uid in after) || after[request.auth.uid] == request.time);
+        let changed = after.diff(resource.data.get('typing', {})).affectedKeys();
+        return changed.hasOnly([request.auth.uid])
+          && (!(request.auth.uid in changed) || !(request.auth.uid in after) || after[request.auth.uid] == request.time);
       }
 
       function validGroupName(name) {

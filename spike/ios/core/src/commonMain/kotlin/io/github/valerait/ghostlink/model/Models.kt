@@ -3,6 +3,12 @@ package io.github.valerait.ghostlink.model
 /** Сколько «в сети» живёт без нового heartbeat: на случай, если приложение убили, не успев выставить offline. */
 const val ONLINE_TIMEOUT_MS = 150_000L
 
+/** Сколько живёт отметка «печатает…» без обновления: приложение могли закрыть посреди набора. */
+const val TYPING_TIMEOUT_MS = 6_000L
+
+/** Как часто обновлять отметку, пока пользователь набирает текст; меньше [TYPING_TIMEOUT_MS] с запасом на задержку сети. */
+const val TYPING_REFRESH_MS = 4_000L
+
 data class Account(
     val id: String,
     /** Анонимный — временный аккаунт нового устройства или аккаунт из версии до привязки устройств. */
@@ -47,7 +53,38 @@ data class LastMessage(
     val text: String,
     val senderId: String,
     val sentAt: Long?,
-)
+    /** Срок жизни исчезающего сообщения, секунды; null — сообщение не исчезает. */
+    val ttl: Long? = null,
+) {
+    fun isExpired(now: Long): Boolean = expiresAt(sentAt, ttl)?.let { now >= it } == true
+}
+
+/** Таймер исчезающих сообщений чата. Значения совпадают с разрешёнными в firestore.rules. */
+enum class DisappearingTimer(val seconds: Long) {
+    HOUR(3_600),
+    DAY(86_400),
+    WEEK(604_800),
+    ;
+
+    companion object {
+        fun of(seconds: Long?): DisappearingTimer? = entries.firstOrNull { it.seconds == seconds }
+    }
+}
+
+/** Когда исчезнет сообщение; null — не исчезает или ещё не подтверждено сервером (отсчёт идёт от серверного времени). */
+fun expiresAt(sentAt: Long?, ttl: Long?): Long? = if (sentAt == null || ttl == null) null else sentAt + ttl * 1_000
+
+data class GroupInfo(
+    val name: String,
+    /** Админ: добавляет и удаляет участников, меняет название. */
+    val ownerId: String,
+) {
+    companion object {
+        /** Совпадают с ограничениями в firestore.rules. */
+        const val NAME_MAX_LENGTH = 64
+        const val MAX_MEMBERS = 20
+    }
+}
 
 data class Chat(
     val id: String,
@@ -56,8 +93,31 @@ data class Chat(
     val updatedAt: Long? = null,
     /** userId -> время, до которого участник прочитал чат. */
     val lastRead: Map<String, Long> = emptyMap(),
+    /** userId -> когда участник последний раз набирал текст. */
+    val typing: Map<String, Long> = emptyMap(),
+    /** Таймер исчезающих сообщений; null — выключен. */
+    val disappearing: DisappearingTimer? = null,
+    /** Название и админ группы; null — личный чат пары. */
+    val group: GroupInfo? = null,
 ) {
+    val isGroup: Boolean get() = group != null
+
+    /** Собеседник в личном чате; в группе — первый другой участник, поэтому для групп не используется. */
     fun partnerId(me: String): String = members.firstOrNull { it != me } ?: me
+
+    /** До какого момента своё сообщение считается прочитанным: хватает одного прочитавшего. */
+    fun othersReadUpTo(me: String): Long? = lastRead.filterKeys { it != me && it in members }.values.maxOrNull()
+
+    /** В группе — до какого момента прочитали все остальные участники; в личном чате null. */
+    fun allReadUpTo(me: String): Long? {
+        val others = members.filter { it != me }
+        val reads = others.mapNotNull { lastRead[it] }
+        return if (isGroup && others.isNotEmpty() && reads.size == others.size) reads.min() else null
+    }
+
+    /** Кто из других участников сейчас печатает, и до какого момента; null — никто. */
+    fun typingOther(me: String): Pair<String, Long>? =
+        typing.filterKeys { it != me && it in members }.maxByOrNull { it.value }?.let { (id, at) -> id to at + TYPING_TIMEOUT_MS }
 
     fun isUnreadFor(me: String): Boolean {
         val last = lastMessage ?: return false
@@ -80,17 +140,26 @@ data class Message(
     val editedAt: Long? = null,
     /** Когда автор удалил сообщение у обоих; от него остаётся только отметка «Сообщение удалено». */
     val deletedAt: Long? = null,
+    /** Срок жизни исчезающего сообщения, секунды; null — сообщение не исчезает. */
+    val ttl: Long? = null,
 ) {
     val deleted: Boolean get() = deletedAt != null
 
-    fun status(partnerLastRead: Long?): MessageStatus = when {
+    val expiresAt: Long? get() = expiresAt(sentAt, ttl)
+
+    fun isExpired(now: Long): Boolean = expiresAt?.let { now >= it } == true
+
+    /** [readUpTo] — прочитал хоть один получатель; [allReadUpTo] — прочитали все (только в группах). */
+    fun status(readUpTo: Long?, allReadUpTo: Long? = null): MessageStatus = when {
         pending || sentAt == null -> MessageStatus.SENDING
-        partnerLastRead != null && partnerLastRead >= sentAt -> MessageStatus.READ
+        allReadUpTo != null && allReadUpTo >= sentAt -> MessageStatus.READ_ALL
+        readUpTo != null && readUpTo >= sentAt -> MessageStatus.READ
         else -> MessageStatus.SENT
     }
 }
 
-enum class MessageStatus { SENDING, SENT, READ }
+/** READ — прочитал хоть один (две галочки), READ_ALL — в группе прочитали все (три галочки). */
+enum class MessageStatus { SENDING, SENT, READ, READ_ALL }
 
 /**
  * Ссылка на сообщение, на которое отвечают. Превью хранится в самом ответе, чтобы цитату

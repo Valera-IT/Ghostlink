@@ -29,6 +29,8 @@ import io.github.valerait.ghostlink.ui.screens.ChatListScreen
 import io.github.valerait.ghostlink.ui.screens.ChatScreen
 import io.github.valerait.ghostlink.ui.screens.ConnectScreen
 import io.github.valerait.ghostlink.ui.screens.DevicesScreen
+import io.github.valerait.ghostlink.ui.screens.GroupInfoScreen
+import io.github.valerait.ghostlink.ui.screens.PickMembersScreen
 import io.github.valerait.ghostlink.ui.screens.LinkApproveScreen
 import io.github.valerait.ghostlink.ui.screens.LinkReceiveScreen
 import io.github.valerait.ghostlink.ui.screens.MyCodeScreen
@@ -79,6 +81,9 @@ private sealed interface Screen {
     data object Recovery : Screen
     data object Chats : Screen
     data class Chat(val chatId: String) : Screen
+    /** Новая группа ([chatId] == null) или добавление участников в группу. */
+    data class PickMembers(val chatId: String?) : Screen
+    data class GroupInfo(val chatId: String) : Screen
     data object MyCode : Screen
     data object Scan : Screen
     data class Connect(val userId: String) : Screen
@@ -175,8 +180,19 @@ private fun Content(screen: Screen, stack: BackStack) {
             onMyCode = { stack.push(Screen.MyCode) },
             onScan = { stack.push(Screen.Scan) },
             onSettings = { stack.push(Screen.Settings) },
+            onNewGroup = { stack.push(Screen.PickMembers(null)) },
         )
-        is Screen.Chat -> ChatScreen(screen.chatId, onBack = back)
+        is Screen.Chat -> ChatScreen(screen.chatId, onBack = back, onGroupInfo = { stack.push(Screen.GroupInfo(screen.chatId)) })
+        is Screen.PickMembers -> PickMembersScreen(screen.chatId, onBack = back, onDone = { chatId ->
+            // Новая группа открывается вместо экрана выбора; после добавления возвращаемся в карточку.
+            if (screen.chatId == null) stack.replaceAbove(1, Screen.Chat(chatId)) else stack.pop()
+        })
+        is Screen.GroupInfo -> GroupInfoScreen(
+            screen.chatId,
+            onBack = back,
+            onAddMembers = { stack.push(Screen.PickMembers(screen.chatId)) },
+            onLeft = { stack.replaceAbove(0, Screen.Chats) },
+        )
         Screen.MyCode -> MyCodeScreen(onBack = back, onScan = { stack.push(Screen.Scan) })
         Screen.Scan -> ScanScreen(onBack = back, onScanned = { code ->
             val next = when (code) {

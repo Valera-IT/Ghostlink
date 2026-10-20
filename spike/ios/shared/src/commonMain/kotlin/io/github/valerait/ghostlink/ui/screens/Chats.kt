@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.outlined.GroupAdd
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Delete
@@ -109,6 +110,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.valerait.ghostlink.app.AppGraph
 import io.github.valerait.ghostlink.data.requireUserId
 import io.github.valerait.ghostlink.model.Chat
+import io.github.valerait.ghostlink.model.DisappearingTimer
+import io.github.valerait.ghostlink.model.GroupInfo
+import io.github.valerait.ghostlink.model.LastMessage
+import io.github.valerait.ghostlink.model.expiresAt
+import io.github.valerait.ghostlink.platform.nowMillis
 import io.github.valerait.ghostlink.model.Message
 import io.github.valerait.ghostlink.model.MessageStatus
 import io.github.valerait.ghostlink.model.ReplyTo
@@ -138,11 +144,31 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 
 // ---------- Список чатов ----------
 
-data class ChatListItem(val chat: Chat, val partnerId: String, val partner: User?, val unread: Boolean, val lastMessageIsMine: Boolean)
+data class ChatListItem(
+    val chat: Chat,
+    /** Собеседник в личном чате; в группе — id чата (для цвета аватара). */
+    val partnerId: String,
+    /** Собеседник в личном чате; в группе null. */
+    val partner: User?,
+    val unread: Boolean,
+    /** Последнее сообщение; null, если его нет или оно уже исчезло. */
+    val lastMessage: LastMessage?,
+    val lastMessageIsMine: Boolean,
+    /** До какого момента кто-то из собеседников «печатает…»; null — никто. */
+    val typingUntil: Long? = null,
+    /** Кто печатает в группе; в личном чате null. */
+    val typingName: String? = null,
+    /** Автор последнего сообщения в группе, если это не я; в личном чате null. */
+    val lastSenderName: String? = null,
+) {
+    /** Имя собеседника или название группы. */
+    val title: String? get() = chat.group?.name ?: partner?.name
+}
 
 data class ChatListState(val loading: Boolean = true, val items: List<ChatListItem> = emptyList())
 
@@ -151,20 +177,54 @@ class ChatListViewModel : ViewModel() {
     private val me = AppGraph.auth.requireUserId()
     private val chatList = AppGraph.chats.observeChats(me).shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
-    // Подписка на собеседников пересоздаётся только при смене состава чатов.
-    private val partners = chatList
-        .map { list -> list.map { it.partnerId(me) }.distinct().sorted() }
+    // Подписка на людей пересоздаётся только при смене состава чатов.
+    private val people = chatList
+        .map { list -> list.flatMap { it.members }.filter { it != me }.distinct().sorted() }
         .distinctUntilChanged()
         .flatMapLatest { AppGraph.users.observeUsers(it) }
 
-    val state: StateFlow<ChatListState> = combine(chatList, partners) { list, people ->
-        ChatListState(
-            loading = false,
-            items = list.map { chat ->
-                ChatListItem(chat, chat.partnerId(me), people[chat.partnerId(me)], chat.isUnreadFor(me), chat.lastMessage?.senderId == me)
-            },
+    // Превью исчезающего сообщения пропадает в его срок, даже если в базе ничего не поменялось.
+    val state: StateFlow<ChatListState> = combine(chatList, people, ::Pair)
+        .transformLatest { (list, people) ->
+            while (true) {
+                val now = nowMillis()
+                emit(ChatListState(loading = false, items = list.map { item(it, people, now) }))
+                val next = list.mapNotNull { chat -> chat.lastMessage?.let { expiresAt(it.sentAt, it.ttl) } }.filter { it > now }.minOrNull() ?: break
+                delay(next - now)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatListState())
+
+    private fun item(chat: Chat, people: Map<String, User>, now: Long): ChatListItem {
+        val last = chat.lastMessage?.takeUnless { it.isExpired(now) }
+        val typing = chat.typingOther(me)
+        return ChatListItem(
+            chat = chat,
+            partnerId = if (chat.isGroup) chat.id else chat.partnerId(me),
+            partner = if (chat.isGroup) null else people[chat.partnerId(me)],
+            unread = last != null && chat.isUnreadFor(me),
+            lastMessage = last,
+            lastMessageIsMine = last?.senderId == me,
+            typingUntil = typing?.second,
+            typingName = if (chat.isGroup) typing?.let { people[it.first]?.name } else null,
+            lastSenderName = last?.takeIf { chat.isGroup && it.senderId != me }?.let { people[it.senderId]?.name },
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatListState())
+    }
+}
+
+/** Пока не наступил [until], возвращает true и сама сбрасывается в срок — для «печатает…». */
+@Composable
+fun rememberIsTyping(until: Long?): Boolean {
+    var typing by remember { mutableStateOf(false) }
+    LaunchedEffect(until) {
+        val left = (until ?: 0L) - nowMillis()
+        typing = left > 0
+        if (left > 0) {
+            delay(left)
+            typing = false
+        }
+    }
+    return typing
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -174,6 +234,7 @@ fun ChatListScreen(
     onMyCode: () -> Unit,
     onScan: () -> Unit,
     onSettings: () -> Unit,
+    onNewGroup: () -> Unit,
     viewModel: ChatListViewModel = viewModel { ChatListViewModel() },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -189,6 +250,9 @@ fun ChatListScreen(
                     }
                 },
                 actions = {
+                    if (state.items.any { !it.chat.isGroup }) {
+                        IconButton(onClick = onNewGroup) { Icon(Icons.Outlined.GroupAdd, contentDescription = "Новая группа") }
+                    }
                     IconButton(onClick = onScan) { Icon(Icons.Filled.QrCodeScanner, contentDescription = "Сканировать код") }
                     IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, contentDescription = "Настройки") }
                 },
@@ -216,7 +280,8 @@ fun ChatListScreen(
 
 @Composable
 private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit) {
-    val name = item.partner?.name ?: "…"
+    val name = item.title ?: "…"
+    val typing = rememberIsTyping(item.typingUntil)
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -235,7 +300,7 @@ private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                item.chat.lastMessage?.sentAt?.let {
+                item.lastMessage?.sentAt?.let {
                     Text(
                         formatChatListTime(it, now),
                         style = MaterialTheme.typography.labelMedium,
@@ -245,16 +310,19 @@ private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit) {
             }
             Spacer(Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val last = item.chat.lastMessage
+                val last = item.lastMessage
                 val preview = when {
+                    typing && item.typingName != null -> "${item.typingName} печатает…"
+                    typing -> "печатает…"
                     last == null -> "Нет сообщений — напишите первым"
                     item.lastMessageIsMine -> "Вы: ${last.text}"
+                    item.lastSenderName != null -> "${item.lastSenderName}: ${last.text}"
                     else -> last.text
                 }
                 Text(
                     preview,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (typing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = if (item.unread) FontWeight.SemiBold else FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -300,6 +368,8 @@ data class MessageItem(
     val replyToMine: Boolean = false,
     /** Исходное сообщение цитаты удалено — вместо превью показываем «Сообщение удалено». */
     val replyToDeleted: Boolean = false,
+    /** Имя автора над чужим сообщением в группе; в личном чате null. */
+    val senderName: String? = null,
 )
 
 sealed interface ChatRow {
@@ -316,7 +386,20 @@ sealed interface ChatRow {
 
 data class ChatUiState(
     val loading: Boolean = true,
+    val chatId: String = "",
+    /** Собеседник в личном чате; в группе null. */
     val partner: User? = null,
+    /** Группа: название и админ; в личном чате null. */
+    val group: GroupInfo? = null,
+    val memberCount: Int = 0,
+    /** userId -> имя для всех, кого видно в чате, кроме меня. */
+    val names: Map<String, String> = emptyMap(),
+    /** До какого момента кто-то из собеседников «печатает…»; null — никто. */
+    val typingUntil: Long? = null,
+    /** Кто печатает в группе; в личном чате null. */
+    val typingName: String? = null,
+    /** Таймер исчезающих сообщений чата; null — выключен. */
+    val disappearing: DisappearingTimer? = null,
     val rows: List<ChatRow> = emptyList(),
     val replyingTo: MessageItem? = null,
     /** Своё сообщение, которое сейчас исправляют; взаимоисключается с [replyingTo]. */
@@ -331,28 +414,64 @@ class ChatViewModel(private val chatId: String) : ViewModel() {
     private val replyingToId = MutableStateFlow<String?>(null)
     private val editingId = MutableStateFlow<String?>(null)
 
-    private val chat = chats.observeChat(chatId).shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
-    private val messages = chats.observeMessages(chatId).shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
-    private val partner = chat.mapNotNull { it?.partnerId(me) }.distinctUntilChanged()
-        .flatMapLatest { AppGraph.users.observeUser(it) }
-        .onStart { emit(null) }
+    private val typing = TypingNotifier(viewModelScope) { chats.setTyping(chatId, me, it) }
 
-    val state: StateFlow<ChatUiState> = combine(chat, messages, partner, replyingToId, editingId) { chat, messages, partner, replyingToId, editingId ->
-        val partnerRead = chat?.lastRead?.get(chat.partnerId(me))
+    private val chat = chats.observeChat(chatId).shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+    // Исчезнувшие сообщения, которые этот клиент уже попросил стереть из базы.
+    private val expiredRequested = HashSet<String>()
+
+    // Исчезающие пропадают ровно в свой срок, даже если из базы ничего нового не пришло.
+    private val messages = chats.observeMessages(chatId)
+        .transformLatest { list ->
+            while (true) {
+                val now = nowMillis()
+                val (expired, alive) = list.partition { it.isExpired(now) }
+                // Стирать из базы может любой участник; локально сообщение уже скрыто.
+                val erase = expired.filter { !it.pending && expiredRequested.add(it.id) }.map { it.id }
+                if (erase.isNotEmpty()) chats.deleteExpired(chatId, erase)
+                emit(alive)
+                val next = alive.mapNotNull { it.expiresAt }.minOrNull() ?: break
+                delay(next - now)
+            }
+        }
+        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+    // Собеседник в личном чате или все участники группы (и бывшие — их имена нужны у старых сообщений).
+    private val people = combine(chat.mapNotNull { it?.members }, messages) { members, messages ->
+        (members + messages.map { it.senderId }).filter { it != me }.distinct().sorted()
+    }
+        .distinctUntilChanged()
+        .flatMapLatest { AppGraph.users.observeUsers(it) }
+        .onStart { emit(emptyMap()) }
+
+    val state: StateFlow<ChatUiState> = combine(chat, messages, people, replyingToId, editingId) { chat, messages, people, replyingToId, editingId ->
+        val readUpTo = chat?.othersReadUpTo(me)
+        val allReadUpTo = chat?.allReadUpTo(me)
+        val isGroup = chat?.isGroup == true
         val deletedIds = messages.filter { it.deleted }.mapTo(HashSet()) { it.id }
         val items = messages.map { m ->
             val mine = m.senderId == me
             MessageItem(
                 m,
                 mine,
-                if (mine) m.status(partnerRead) else null,
+                if (mine) m.status(readUpTo, allReadUpTo) else null,
                 replyToMine = m.replyTo?.senderId == me,
                 replyToDeleted = m.replyTo?.id in deletedIds,
+                senderName = if (isGroup && !mine) people[m.senderId]?.name else null,
             )
         }
+        val typingOther = chat?.typingOther(me)
         ChatUiState(
             loading = false,
-            partner = partner,
+            chatId = chatId,
+            partner = if (isGroup) null else chat?.let { people[it.partnerId(me)] },
+            group = chat?.group,
+            memberCount = chat?.members?.size ?: 0,
+            names = people.mapValues { it.value.name },
+            typingUntil = typingOther?.second,
+            typingName = if (isGroup) typingOther?.let { people[it.first]?.name } else null,
+            disappearing = chat?.disappearing,
             rows = buildRows(items),
             replyingTo = replyingToId?.let { id -> items.firstOrNull { it.message.id == id && !it.message.deleted } },
             editing = editingId?.let { id -> items.firstOrNull { it.message.id == id && it.mine && !it.message.deleted } },
@@ -372,7 +491,14 @@ class ChatViewModel(private val chatId: String) : ViewModel() {
 
     fun onVisibilityChanged(isVisible: Boolean) {
         visible.value = isVisible
+        if (!isVisible) typing.stop()
     }
+
+    /** Текст в поле ввода изменился. Правка своего сообщения — тоже набор. */
+    fun onDraftChanged(text: String) = typing.onDraftChanged(text)
+
+    /** Таймер общий для чата: собеседники увидят его, и их сообщения тоже начнут исчезать. */
+    fun setDisappearing(timer: DisappearingTimer?) = chats.setDisappearing(chatId, timer)
 
     fun startReply(messageId: String) {
         editingId.value = null
@@ -414,6 +540,7 @@ class ChatViewModel(private val chatId: String) : ViewModel() {
         val editing = state.value.editing
         if (editing != null) {
             editingId.value = null
+            typing.stop()
             if (trimmed == editing.message.text) return
             val list = messages.replayCache.firstOrNull().orEmpty()
             val isLatest = list.isLatestVisible(list.indexOfFirst { it.id == editing.message.id })
@@ -421,7 +548,8 @@ class ChatViewModel(private val chatId: String) : ViewModel() {
         } else {
             // Отвечать можно только на сообщение, уже записанное на сервер: у pending ещё нет стабильного места в чате.
             val replyTo = state.value.replyingTo?.message?.takeUnless { it.pending }?.let(ReplyTo::of)
-            chats.sendMessage(chatId, me, trimmed, replyTo)
+            typing.onSent()
+            chats.sendMessage(chatId, me, trimmed, replyTo, chat.replayCache.firstOrNull()?.disappearing?.seconds)
             replyingToId.value = null
         }
     }
@@ -449,7 +577,7 @@ class ChatViewModel(private val chatId: String) : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen(chatId: String, onBack: () -> Unit, viewModel: ChatViewModel = viewModel(key = chatId) { ChatViewModel(chatId) }) {
+fun ChatScreen(chatId: String, onBack: () -> Unit, onGroupInfo: () -> Unit, viewModel: ChatViewModel = viewModel(key = chatId) { ChatViewModel(chatId) }) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val now by rememberNow()
     val listState = rememberLazyListState()
@@ -458,6 +586,7 @@ fun ChatScreen(chatId: String, onBack: () -> Unit, viewModel: ChatViewModel = vi
     var highlightedId by remember { mutableStateOf<String?>(null) }
     var confirmDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
     val partnerName = state.partner?.name.orEmpty()
+    val authorName: (String, Boolean) -> String = { senderId, mine -> if (mine) "Вы" else state.names[senderId] ?: partnerName }
 
     // Нажатие на цитату — прокрутка к исходному сообщению и короткая подсветка.
     val showOriginal: (String) -> Unit = { id ->
@@ -504,33 +633,19 @@ fun ChatScreen(chatId: String, onBack: () -> Unit, viewModel: ChatViewModel = vi
         topBar = {
             TopAppBar(
                 navigationIcon = { BackButton(onBack) },
-                title = {
-                    val partner = state.partner
-                    if (partner != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Avatar(partner.name, partner.id, size = 40.dp)
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text(partner.name, style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    presenceText(partner, now),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (partner.isOnline(now)) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                },
+                title = { ChatTitle(state, now, onGroupInfo) },
+                actions = { DisappearingMenu(state.disappearing, viewModel::setDisappearing) },
             )
         },
         bottomBar = {
             MessageInput(
                 replyingTo = state.replyingTo,
                 editing = state.editing,
-                replyAuthor = { if (it.mine) "Вы" else partnerName },
+                replyAuthor = { authorName(it.message.senderId, it.mine) },
                 onCancelReply = viewModel::cancelReply,
                 onCancelEdit = viewModel::cancelEdit,
                 onSend = viewModel::send,
+                onDraftChanged = viewModel::onDraftChanged,
             )
         },
     ) { padding ->
@@ -553,7 +668,7 @@ fun ChatScreen(chatId: String, onBack: () -> Unit, viewModel: ChatViewModel = vi
                         MessageBubble(
                             item = row.item,
                             highlighted = id == highlightedId,
-                            quoteAuthor = if (row.item.replyToMine) "Вы" else partnerName,
+                            quoteAuthor = row.item.message.replyTo?.let { authorName(it.senderId, row.item.replyToMine) }.orEmpty(),
                             onQuoteClick = showOriginal,
                             actions = MessageActions(
                                 onReply = { viewModel.startReply(id) },
@@ -571,7 +686,7 @@ fun ChatScreen(chatId: String, onBack: () -> Unit, viewModel: ChatViewModel = vi
         AlertDialog(
             onDismissRequest = { confirmDeleteId = null },
             title = { Text("Удалить сообщение?") },
-            text = { Text("Сообщение исчезнет у вас и у собеседника, на его месте останется отметка «Сообщение удалено».") },
+            text = { Text("Сообщение исчезнет у всех в чате, на его месте останется отметка «Сообщение удалено».") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDeleteId = null
@@ -667,6 +782,9 @@ private fun MessageBubble(item: MessageItem, highlighted: Boolean, quoteAuthor: 
                 ),
             ) {
                 Column(Modifier.width(IntrinsicSize.Max).padding(start = 12.dp, end = 10.dp, top = 8.dp, bottom = 6.dp)) {
+                    item.senderName?.let {
+                        Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, maxLines = 1, modifier = Modifier.padding(bottom = 2.dp))
+                    }
                     item.message.replyTo?.let { reply ->
                         ReplyQuote(
                             author = quoteAuthor,
@@ -723,17 +841,22 @@ private fun DeletedText() {
 
 @Composable
 private fun StatusIcon(status: MessageStatus) {
+    val read = status == MessageStatus.READ || status == MessageStatus.READ_ALL
+    val tint = if (read) LocalChatStyle.current.readTick else LocalContentColor.current.copy(alpha = 0.6f)
+    if (status == MessageStatus.READ_ALL) {
+        // Три галочки: двойная поверх одинарной со сдвигом влево.
+        Box(Modifier.width(22.dp).height(16.dp)) {
+            Icon(Icons.Filled.Done, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+            Icon(Icons.Filled.DoneAll, contentDescription = "Прочитали все", tint = tint, modifier = Modifier.size(16.dp).align(Alignment.CenterEnd))
+        }
+        return
+    }
     val (icon, description) = when (status) {
         MessageStatus.SENDING -> Icons.Filled.Schedule to "Отправляется"
         MessageStatus.SENT -> Icons.Filled.Done to "Отправлено"
-        MessageStatus.READ -> Icons.Filled.DoneAll to "Прочитано"
+        else -> Icons.Filled.DoneAll to "Прочитано"
     }
-    Icon(
-        icon,
-        contentDescription = description,
-        tint = if (status == MessageStatus.READ) LocalChatStyle.current.readTick else LocalContentColor.current.copy(alpha = 0.6f),
-        modifier = Modifier.size(16.dp),
-    )
+    Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(16.dp))
 }
 
 @Composable
@@ -762,6 +885,7 @@ private fun MessageInput(
     onCancelReply: () -> Unit,
     onCancelEdit: () -> Unit,
     onSend: (String) -> Unit,
+    onDraftChanged: (String) -> Unit,
 ) {
     var text by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
     // Черновик, отложенный на время правки: после неё он возвращается в поле, как в Telegram.
@@ -798,7 +922,11 @@ private fun MessageInput(
             Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.Bottom) {
                 TextField(
                     value = text,
-                    onValueChange = { text = if (it.text.length > MAX_MESSAGE_LENGTH) it.copy(text = it.text.take(MAX_MESSAGE_LENGTH)) else it },
+                    onValueChange = {
+                        val changed = it.text != text.text
+                        text = if (it.text.length > MAX_MESSAGE_LENGTH) it.copy(text = it.text.take(MAX_MESSAGE_LENGTH)) else it
+                        if (changed) onDraftChanged(text.text)
+                    },
                     placeholder = { Text("Сообщение") },
                     maxLines = 5,
                     shape = RoundedCornerShape(24.dp),

@@ -18,6 +18,8 @@ import io.github.valerait.ghostlink.data.UserRepository
 import io.github.valerait.ghostlink.model.Chat
 import io.github.valerait.ghostlink.model.ChatIds
 import io.github.valerait.ghostlink.model.Device
+import io.github.valerait.ghostlink.model.DisappearingTimer
+import io.github.valerait.ghostlink.model.GroupInfo
 import io.github.valerait.ghostlink.model.LINK_TTL_MS
 import io.github.valerait.ghostlink.model.LastMessage
 import io.github.valerait.ghostlink.model.LinkRequest
@@ -93,7 +95,7 @@ class FirestoreUserRepository(db: FirebaseFirestore) : UserRepository {
 // ---------- chats ----------
 
 @Serializable
-private class LastMessageDto(val text: String = "", val senderId: String = "", val sentAt: Timestamp? = null)
+private class LastMessageDto(val text: String = "", val senderId: String = "", val sentAt: Timestamp? = null, val ttl: Long? = null)
 
 @Serializable
 private class ChatDto(
@@ -101,10 +103,25 @@ private class ChatDto(
     val lastMessage: LastMessageDto? = null,
     val updatedAt: Timestamp? = null,
     val lastRead: Map<String, Timestamp> = emptyMap(),
+    val typing: Map<String, Timestamp> = emptyMap(),
+    val ttl: Long? = null,
+    val type: String? = null,
+    val name: String? = null,
+    val owner: String? = null,
 )
 
 @Serializable
 private class ChatCreate(val members: List<String>, val updatedAt: BaseTimestamp, val lastRead: Map<String, String>)
+
+@Serializable
+private class GroupCreate(
+    val type: String,
+    val name: String,
+    val owner: String,
+    val members: List<String>,
+    val updatedAt: BaseTimestamp,
+    val lastRead: Map<String, String>,
+)
 
 @Serializable
 private class ReplyToDto(val id: String = "", val senderId: String = "", val preview: String = "")
@@ -117,14 +134,18 @@ private class MessageDto(
     val replyTo: ReplyToDto? = null,
     val editedAt: Timestamp? = null,
     val deletedAt: Timestamp? = null,
+    val ttl: Long? = null,
 )
 
+// Пишется без значений по умолчанию: правила не пускают поля replyTo и ttl со значением null.
 @Serializable
-private class MessageWrite(val senderId: String, val text: String, val sentAt: BaseTimestamp)
-
-// Отдельный класс, а не replyTo = null в MessageWrite: правила не пускают поле replyTo со значением null.
-@Serializable
-private class ReplyWrite(val senderId: String, val text: String, val sentAt: BaseTimestamp, val replyTo: ReplyToDto)
+private class MessageWrite(
+    val senderId: String,
+    val text: String,
+    val sentAt: BaseTimestamp,
+    val replyTo: ReplyToDto? = null,
+    val ttl: Long? = null,
+)
 
 private fun DocumentSnapshot.toChat(): Chat? {
     if (!exists) return null
@@ -133,9 +154,12 @@ private fun DocumentSnapshot.toChat(): Chat? {
     return Chat(
         id = id,
         members = dto.members,
-        lastMessage = dto.lastMessage?.let { LastMessage(it.text, it.senderId, it.sentAt?.millis()) },
+        lastMessage = dto.lastMessage?.let { LastMessage(it.text, it.senderId, it.sentAt?.millis(), it.ttl) },
         updatedAt = dto.updatedAt?.millis(),
         lastRead = dto.lastRead.mapValues { it.value.millis() },
+        typing = dto.typing.mapValues { it.value.millis() },
+        disappearing = DisappearingTimer.of(dto.ttl),
+        group = if (dto.type == GROUP_TYPE) GroupInfo(dto.name.orEmpty(), dto.owner.orEmpty()) else null,
     )
 }
 
@@ -150,8 +174,11 @@ private fun DocumentSnapshot.toMessage(): Message {
         replyTo = dto.replyTo?.let { ReplyTo(it.id, it.senderId, it.preview) },
         editedAt = dto.editedAt?.millis(),
         deletedAt = dto.deletedAt?.millis(),
+        ttl = dto.ttl,
     )
 }
+
+private const val GROUP_TYPE = "group"
 
 class FirestoreChatRepository(
     private val db: FirebaseFirestore,
@@ -177,23 +204,32 @@ class FirestoreChatRepository(
             .map { qs -> qs.documents.map { it.toMessage() } }
             .logErrors("messages of $chatId")
 
-    override fun sendMessage(chatId: String, senderId: String, text: String, replyTo: ReplyTo?) {
+    override fun sendMessage(chatId: String, senderId: String, text: String, replyTo: ReplyTo?, ttl: Long?) {
         val chatRef = chats.document(chatId)
         val messageRef = chatRef.collection("messages").document(newId())
+        val message = MessageWrite(
+            senderId,
+            text,
+            Timestamp.ServerTimestamp,
+            replyTo = replyTo?.let { ReplyToDto(it.id, it.senderId, it.preview) },
+            ttl = ttl,
+        )
+        val last = buildMap<String, Any> {
+            put("text", text)
+            put("senderId", senderId)
+            put("sentAt", FieldValue.serverTimestamp)
+            ttl?.let { put("ttl", it) }
+        }
         scope.launch {
             runCatching {
-                val batch = db.batch()
-                if (replyTo == null) {
-                    batch.set(messageRef, MessageWrite(senderId, text, Timestamp.ServerTimestamp))
-                } else {
-                    val reply = ReplyToDto(replyTo.id, replyTo.senderId, replyTo.preview)
-                    batch.set(messageRef, ReplyWrite(senderId, text, Timestamp.ServerTimestamp, reply))
-                }
-                batch
+                db.batch()
+                    .set(messageRef, message) { encodeDefaults = false }
                     .update(
                         chatRef,
-                        "lastMessage" to mapOf("text" to text, "senderId" to senderId, "sentAt" to FieldValue.serverTimestamp),
-                        "updatedAt" to FieldValue.serverTimestamp,
+                        FieldPath("lastMessage") to last,
+                        FieldPath("updatedAt") to FieldValue.serverTimestamp,
+                        // Сообщение отправлено — «печатает…» снимаем той же записью.
+                        FieldPath("typing", senderId) to FieldValue.delete,
                     )
                     .commit()
             }.onFailure { logWarning("Chats", "Send failed", it) }
@@ -226,11 +262,12 @@ class FirestoreChatRepository(
                 )
                 if (isLatest) {
                     val last: Any = previous?.let {
-                        mapOf(
-                            "text" to it.text,
-                            "senderId" to it.senderId,
-                            "sentAt" to (it.sentAt?.let { ms -> Timestamp.fromMilliseconds(ms.toDouble()) } ?: FieldValue.serverTimestamp),
-                        )
+                        buildMap<String, Any> {
+                            put("text", it.text)
+                            put("senderId", it.senderId)
+                            put("sentAt", it.sentAt?.let { ms -> Timestamp.fromMilliseconds(ms.toDouble()) } ?: FieldValue.serverTimestamp)
+                            it.ttl?.let { ttl -> put("ttl", ttl) }
+                        }
                     } ?: FieldValue.delete
                     batch.update(chatRef, "lastMessage" to last)
                 }
@@ -246,6 +283,58 @@ class FirestoreChatRepository(
         }
     }
 
+    override fun setTyping(chatId: String, userId: String, typing: Boolean) {
+        launchUpdate("setTyping") {
+            chats.document(chatId).update(FieldPath("typing", userId) to if (typing) FieldValue.serverTimestamp else FieldValue.delete)
+        }
+    }
+
+    override fun setDisappearing(chatId: String, timer: DisappearingTimer?) {
+        launchUpdate("setDisappearing") { chats.document(chatId).update("ttl" to (timer?.seconds ?: FieldValue.delete)) }
+    }
+
+    override fun deleteExpired(chatId: String, messageIds: List<String>) {
+        if (messageIds.isEmpty()) return
+        val messages = chats.document(chatId).collection("messages")
+        // Участники могут стирать одно и то же одновременно — повторное удаление безвредно.
+        messageIds.chunked(BATCH_LIMIT).forEach { ids ->
+            launchUpdate("deleteExpired") {
+                val batch = db.batch()
+                ids.forEach { batch.delete(messages.document(it)) }
+                batch.commit()
+            }
+        }
+    }
+
+    override suspend fun createGroup(ownerId: String, name: String, memberIds: List<String>): String {
+        val ref = chats.document(newId())
+        ref.set(GroupCreate(GROUP_TYPE, name, ownerId, (memberIds + ownerId).distinct().sorted(), Timestamp.ServerTimestamp, emptyMap()))
+        return ref.id
+    }
+
+    override fun renameGroup(chatId: String, name: String) {
+        launchUpdate("renameGroup") { chats.document(chatId).update("name" to name) }
+    }
+
+    override fun addMembers(chatId: String, userIds: List<String>) {
+        launchUpdate("addMembers") { chats.document(chatId).update("members" to FieldValue.arrayUnion(*userIds.toTypedArray())) }
+    }
+
+    override fun removeMember(chatId: String, userId: String, newOwnerId: String?) {
+        launchUpdate("removeMember") {
+            val members = "members" to FieldValue.arrayRemove(userId)
+            if (newOwnerId == null) {
+                chats.document(chatId).update(members)
+            } else {
+                chats.document(chatId).update(members, "owner" to newOwnerId)
+            }
+        }
+    }
+
+    private fun launchUpdate(what: String, block: suspend () -> Unit) {
+        scope.launch { runCatching { block() }.onFailure { logWarning("Chats", "$what failed", it) } }
+    }
+
     override suspend fun startChat(userId: String, friendId: String): String {
         require(userId != friendId) { "Cannot start a chat with yourself" }
         val id = ChatIds.of(userId, friendId)
@@ -258,6 +347,7 @@ class FirestoreChatRepository(
 
     private companion object {
         const val MESSAGES_LIMIT = 300L
+        const val BATCH_LIMIT = 500
     }
 }
 

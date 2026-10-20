@@ -4,6 +4,7 @@ import io.github.valerait.ghostlink.model.Account
 import io.github.valerait.ghostlink.model.AccountKey
 import io.github.valerait.ghostlink.model.Chat
 import io.github.valerait.ghostlink.model.Device
+import io.github.valerait.ghostlink.model.DisappearingTimer
 import io.github.valerait.ghostlink.model.LinkRequest
 import io.github.valerait.ghostlink.model.Message
 import io.github.valerait.ghostlink.model.ReplyTo
@@ -42,14 +43,34 @@ interface ChatRepository {
     fun observeChats(userId: String): Flow<List<Chat>>
     fun observeChat(chatId: String): Flow<Chat?>
     fun observeMessages(chatId: String): Flow<List<Message>>
-    fun sendMessage(chatId: String, senderId: String, text: String, replyTo: ReplyTo? = null)
+    /** [ttl] — срок жизни исчезающего сообщения в секундах; null — не исчезает. */
+    fun sendMessage(chatId: String, senderId: String, text: String, replyTo: ReplyTo? = null, ttl: Long? = null)
     /** Исправляет своё сообщение; [isLatest] — оно последнее, и превью в списке чатов правится тоже. */
     fun editMessage(chatId: String, messageId: String, text: String, isLatest: Boolean)
 
     /** Удаляет своё сообщение у обоих; если оно последнее, превью переходит на [previous] или пропадает. */
     fun deleteMessage(chatId: String, messageId: String, isLatest: Boolean, previous: Message?)
     fun markRead(chatId: String, userId: String)
+    /** Отметка «печатает…»: true ставит серверное время, false снимает. */
+    fun setTyping(chatId: String, userId: String, typing: Boolean)
+    /** Таймер общий для чата; null выключает. */
+    fun setDisappearing(chatId: String, timer: DisappearingTimer?)
+    /** Стирает из базы сообщения, срок которых вышел; это может сделать любой участник. */
+    fun deleteExpired(chatId: String, messageIds: List<String>)
     suspend fun startChat(userId: String, friendId: String): String
+
+    suspend fun createGroup(ownerId: String, name: String, memberIds: List<String>): String
+    fun renameGroup(chatId: String, name: String)
+    fun addMembers(chatId: String, userIds: List<String>)
+    /** Убирает участника; при выходе админа [newOwnerId] — кому передать права. */
+    fun removeMember(chatId: String, userId: String, newOwnerId: String? = null)
+}
+
+/** Выход из группы. Админ передаёт права следующему участнику; последний участник остаётся как есть. */
+fun ChatRepository.leaveGroup(chat: Chat, me: String) {
+    val others = chat.members.filter { it != me }
+    if (others.isEmpty()) return
+    removeMember(chat.id, me, if (chat.group?.ownerId == me) others.first() else null)
 }
 
 interface DeviceRepository {
