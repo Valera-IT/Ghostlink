@@ -5,6 +5,7 @@ import io.github.valerait.ghostlink.MainDispatcherRule
 import io.github.valerait.ghostlink.data.demo.InMemoryBackend
 import io.github.valerait.ghostlink.data.model.MessageStatus
 import io.github.valerait.ghostlink.data.model.ReplyTo
+import io.github.valerait.ghostlink.data.model.TYPING_TIMEOUT_MS
 import io.github.valerait.ghostlink.ui.chat.ChatRow
 import io.github.valerait.ghostlink.ui.chat.ChatUiState
 import io.github.valerait.ghostlink.ui.chat.ChatViewModel
@@ -366,6 +367,41 @@ class ChatViewModelTest {
                 vm.state.value.rows
                     .count { it is ChatRow.Day },
             )
+        }
+
+    @Test
+    fun `typing mark is set while drafting and cleared by sending or erasing`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            val me = backend.account.value!!.id
+
+            suspend fun typing() = backend.observeChat(chatId).first()!!.typing
+
+            vm.onDraftChanged("при")
+            assertEquals(setOf(me), typing().keys)
+            vm.send("привет")
+            assertTrue(typing().isEmpty())
+
+            vm.onDraftChanged("ещё")
+            vm.onDraftChanged("")
+            assertTrue(typing().isEmpty())
+
+            vm.onDraftChanged("и ещё")
+            vm.onVisibilityChanged(false)
+            assertTrue(typing().isEmpty())
+        }
+
+    @Test
+    fun `partner typing is shown until the mark expires`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            assertNull(vm.state.value.partnerTypingUntil)
+
+            backend.setTyping(chatId, FRIEND, true)
+            assertEquals(now + TYPING_TIMEOUT_MS, vm.state.value.partnerTypingUntil)
+
+            backend.sendMessage(chatId, FRIEND, "готово")
+            assertNull(vm.state.value.partnerTypingUntil)
         }
 
     private companion object {

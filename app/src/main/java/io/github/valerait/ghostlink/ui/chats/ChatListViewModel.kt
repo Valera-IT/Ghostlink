@@ -33,6 +33,8 @@ data class ChatListItem(
     val lastMessageIsMine: Boolean,
     val pinned: Boolean = false,
     val muted: Boolean = false,
+    /** До какого момента собеседник «печатает…»; null — не печатает. */
+    val typingUntil: Long? = null,
 )
 
 data class ChatListState(
@@ -86,6 +88,7 @@ class ChatListViewModel
                                     lastMessageIsMine = last?.senderId == me,
                                     pinned = chatPrefs.pinned,
                                     muted = chatPrefs.muted,
+                                    typingUntil = chat.typingUntil(chat.partnerId(me)),
                                 )
                             }
                             // Закреплённые сверху (последний закреплённый первым), остальные — по свежести, как пришли.

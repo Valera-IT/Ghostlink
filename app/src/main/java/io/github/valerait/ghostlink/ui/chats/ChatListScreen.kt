@@ -63,6 +63,7 @@ import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.DemoModeBanner
 import io.github.valerait.ghostlink.ui.common.GhostLogo
 import io.github.valerait.ghostlink.ui.common.formatChatListTime
+import io.github.valerait.ghostlink.ui.common.rememberIsTyping
 import io.github.valerait.ghostlink.ui.common.rememberNow
 import io.github.valerait.ghostlink.ui.theme.LogoTextStyle
 
@@ -222,17 +223,11 @@ private fun ChatRow(
                 }
                 Spacer(Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    val last = item.lastMessage
-                    val preview =
-                        when {
-                            last == null -> stringResource(R.string.chats_no_messages)
-                            item.lastMessageIsMine -> stringResource(R.string.chats_you_prefix, last.text)
-                            else -> last.text
-                        }
+                    val typing = rememberIsTyping(item.typingUntil)
                     Text(
-                        text = preview,
+                        text = if (typing) stringResource(R.string.chat_typing) else previewText(item),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (typing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = if (item.unread) FontWeight.SemiBold else FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -353,5 +348,15 @@ private fun EmptyState(
             Spacer(Modifier.width(8.dp))
             Text(stringResource(R.string.action_scan))
         }
+    }
+}
+
+@Composable
+private fun previewText(item: ChatListItem): String {
+    val last = item.lastMessage
+    return when {
+        last == null -> stringResource(R.string.chats_no_messages)
+        item.lastMessageIsMine -> stringResource(R.string.chats_you_prefix, last.text)
+        else -> last.text
     }
 }

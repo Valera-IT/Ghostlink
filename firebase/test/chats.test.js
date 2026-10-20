@@ -54,6 +54,21 @@ describe('chats/{a_b}', () => {
     await assertFails(updateDoc(doc(account('alice'), `chats/${CHAT}`), { 'lastRead.bob': serverTimestamp() }));
   });
 
+  test('участник ставит и снимает свою отметку «печатает…»', async () => {
+    await seedChat();
+    const ref = doc(account('alice'), `chats/${CHAT}`);
+    await assertSucceeds(updateDoc(ref, { 'typing.alice': serverTimestamp() }));
+    await assertSucceeds(updateDoc(ref, { 'typing.alice': deleteField() }));
+  });
+
+  test('«печатает…» — только своё и только серверное время', async () => {
+    await seedChat();
+    const ref = doc(account('alice'), `chats/${CHAT}`);
+    await assertFails(updateDoc(ref, { 'typing.bob': serverTimestamp() }));
+    await assertFails(updateDoc(ref, { 'typing.alice': Timestamp.fromMillis(Date.now() + 3_600_000) }));
+    await assertFails(updateDoc(ref, { 'typing.alice': true }));
+  });
+
   test('состав чата не меняется', async () => {
     await seedChat();
     await assertFails(updateDoc(doc(account('alice'), `chats/${CHAT}`), { members: ['alice', 'mallory'] }));

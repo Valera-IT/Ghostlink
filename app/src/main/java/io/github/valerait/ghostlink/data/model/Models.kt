@@ -3,6 +3,12 @@ package io.github.valerait.ghostlink.data.model
 /** Сколько «в сети» живёт без нового heartbeat: на случай, если приложение убили, не успев выставить offline. */
 const val ONLINE_TIMEOUT_MS = 150_000L
 
+/** Сколько живёт отметка «печатает…» без обновления: приложение могли закрыть посреди набора. */
+const val TYPING_TIMEOUT_MS = 6_000L
+
+/** Как часто обновлять отметку, пока пользователь набирает текст; меньше [TYPING_TIMEOUT_MS] с запасом на задержку сети. */
+const val TYPING_REFRESH_MS = 4_000L
+
 data class Account(
     val id: String,
     /** Анонимный — временный аккаунт нового устройства или аккаунт из версии до привязки устройств. */
@@ -54,6 +60,8 @@ data class Chat(
     val updatedAt: Long? = null,
     /** userId -> время, до которого участник прочитал чат. */
     val lastRead: Map<String, Long> = emptyMap(),
+    /** userId -> когда участник последний раз набирал текст. */
+    val typing: Map<String, Long> = emptyMap(),
 ) {
     fun partnerId(me: String): String = members.firstOrNull { it != me } ?: me
 
@@ -64,6 +72,14 @@ data class Chat(
         val read = lastRead[me] ?: return true
         return sentAt > read
     }
+
+    /** До какого момента показывать, что [userId] печатает; null — не печатает. */
+    fun typingUntil(userId: String): Long? = typing[userId]?.plus(TYPING_TIMEOUT_MS)
+
+    fun isTyping(
+        userId: String,
+        now: Long,
+    ): Boolean = typingUntil(userId)?.let { now < it } == true
 }
 
 /**

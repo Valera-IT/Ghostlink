@@ -97,6 +97,7 @@ import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.dayLabel
 import io.github.valerait.ghostlink.ui.common.formatTime
 import io.github.valerait.ghostlink.ui.common.presenceText
+import io.github.valerait.ghostlink.ui.common.rememberIsTyping
 import io.github.valerait.ghostlink.ui.common.rememberNow
 import io.github.valerait.ghostlink.ui.theme.LocalChatStyle
 import kotlinx.coroutines.delay
@@ -181,9 +182,10 @@ fun ChatScreen(
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text(partner.name, style = MaterialTheme.typography.titleMedium)
-                                val online = partner.isOnline(now)
+                                val typing = rememberIsTyping(state.partnerTypingUntil)
+                                val online = typing || partner.isOnline(now)
                                 Text(
-                                    text = presenceText(partner, now),
+                                    text = if (typing) stringResource(R.string.chat_typing) else presenceText(partner, now),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = if (online) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -201,6 +203,7 @@ fun ChatScreen(
                 replyAuthor = { if (it.mine) you else partnerName },
                 onCancelReply = viewModel::cancelReply,
                 onCancelEdit = viewModel::cancelEdit,
+                onDraftChanged = viewModel::onDraftChanged,
                 onSend = viewModel::send,
             )
         },
@@ -440,6 +443,7 @@ private fun MessageInput(
     replyAuthor: (MessageItem) -> String,
     onCancelReply: () -> Unit,
     onCancelEdit: () -> Unit,
+    onDraftChanged: (String) -> Unit,
     onSend: (String) -> Unit,
 ) {
     var text by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
@@ -495,6 +499,7 @@ private fun MessageInput(
                     onValueChange = {
                         text =
                             if (it.text.length > MAX_MESSAGE_LENGTH) it.copy(text = it.text.take(MAX_MESSAGE_LENGTH)) else it
+                        onDraftChanged(text.text)
                     },
                     placeholder = { Text(stringResource(R.string.chat_input_hint)) },
                     maxLines = 5,
