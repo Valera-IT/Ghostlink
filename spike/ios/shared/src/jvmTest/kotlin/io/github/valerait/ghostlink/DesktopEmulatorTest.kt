@@ -156,6 +156,39 @@ class DesktopEmulatorTest {
         withTimeout(TIMEOUT) { anna.chats.observeChat(groupId).first { it != null && adminId !in it.members && it.group?.ownerId != adminId } }
     }
 
+    /** Меню чата: закрепить, выключить уведомления, удалить и вернуть чат новым сообщением. */
+    @Test
+    fun pinMuteAndRemoveChat() = runBlocking<Unit> {
+        val me = Client("me")
+        val friend = Client("pal")
+        val meId = me.authRepo.createAccount().id.also { me.users.saveProfile(it, "Me") }
+        val friendId = friend.authRepo.createAccount().id.also { friend.users.saveProfile(it, "Pal") }
+        val chatId = me.chats.startChat(meId, friendId)
+
+        me.chats.setPinned(meId, chatId, true)
+        me.chats.setMuted(meId, chatId, true)
+        withTimeout(TIMEOUT) { me.chats.observeChatPrefs(meId).first { it[chatId]?.let { p -> p.pinned && p.muted } == true } }
+
+        friend.chats.sendMessage(chatId, friendId, "Старое")
+        withTimeout(TIMEOUT) { me.chats.observeChat(chatId).first { it?.lastMessage?.sentAt != null } }
+
+        me.chats.removeChat(meId, chatId)
+        val removed = withTimeout(TIMEOUT) { me.chats.observeChatPrefs(meId).map { it[chatId] }.first { it != null && it.hidden && it.clearedAt != null } }!!
+        assertEquals(false, removed.pinned)
+        val chat = me.chats.observeChat(chatId).filterNotNull().first()
+        assertEquals(false, removed.isVisible(chat))
+
+        // Собеседник пишет снова — чат возвращается, старое сообщение остаётся скрытым.
+        friend.chats.sendMessage(chatId, friendId, "Новое")
+        withTimeout(TIMEOUT) {
+            me.chats.observeChat(chatId).filterNotNull().first { it.lastMessage?.let { m -> m.text == "Новое" && m.sentAt != null } == true && removed.isVisible(it) }
+        }
+
+        // Повторное добавление друга снимает hidden.
+        me.chats.startChat(meId, friendId)
+        withTimeout(TIMEOUT) { me.chats.observeChatPrefs(meId).first { it[chatId]?.hidden == false } }
+    }
+
     private companion object {
         const val HOST = "127.0.0.1"
         const val TIMEOUT = 15_000L

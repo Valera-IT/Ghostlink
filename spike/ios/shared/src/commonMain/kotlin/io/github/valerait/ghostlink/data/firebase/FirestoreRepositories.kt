@@ -17,6 +17,7 @@ import io.github.valerait.ghostlink.data.LinkRepository
 import io.github.valerait.ghostlink.data.UserRepository
 import io.github.valerait.ghostlink.model.Chat
 import io.github.valerait.ghostlink.model.ChatIds
+import io.github.valerait.ghostlink.model.ChatPrefs
 import io.github.valerait.ghostlink.model.Device
 import io.github.valerait.ghostlink.model.DisappearingTimer
 import io.github.valerait.ghostlink.model.GroupInfo
@@ -147,6 +148,14 @@ private class MessageWrite(
     val ttl: Long? = null,
 )
 
+@Serializable
+private class ChatPrefsDto(val pinnedAt: Timestamp? = null, val muted: Boolean = false, val clearedAt: Timestamp? = null, val hidden: Boolean = false)
+
+private fun DocumentSnapshot.toChatPrefs(): ChatPrefs {
+    val dto = data<ChatPrefsDto>(ESTIMATE)
+    return ChatPrefs(dto.pinnedAt?.millis(), dto.muted, dto.clearedAt?.millis(), dto.hidden)
+}
+
 private fun DocumentSnapshot.toChat(): Chat? {
     if (!exists) return null
     val dto = data<ChatDto>(ESTIMATE)
@@ -185,6 +194,24 @@ class FirestoreChatRepository(
     private val scope: CoroutineScope,
 ) : ChatRepository {
     private val chats = db.collection("chats")
+
+    private fun prefs(userId: String) = db.collection("users").document(userId).collection("chatPrefs")
+
+    // Личные настройки пишутся слиянием: документа может ещё не быть.
+    private fun updatePrefs(userId: String, chatId: String, vararg fields: Pair<String, Any>) {
+        launchUpdate("chatPrefs") { prefs(userId).document(chatId).set(mapOf(*fields), merge = true) }
+    }
+
+    override fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>> =
+        prefs(userId).snapshots.map { qs -> qs.documents.associate { it.id to it.toChatPrefs() } }.logErrors("chatPrefs of $userId")
+
+    override fun setPinned(userId: String, chatId: String, pinned: Boolean) =
+        updatePrefs(userId, chatId, "pinnedAt" to if (pinned) FieldValue.serverTimestamp else FieldValue.delete)
+
+    override fun setMuted(userId: String, chatId: String, muted: Boolean) = updatePrefs(userId, chatId, "muted" to muted)
+
+    override fun removeChat(userId: String, chatId: String) =
+        updatePrefs(userId, chatId, "hidden" to true, "clearedAt" to FieldValue.serverTimestamp, "pinnedAt" to FieldValue.delete)
 
     // Сортируем на клиенте, чтобы не требовать составной индекс members + updatedAt.
     override fun observeChats(userId: String): Flow<List<Chat>> =
@@ -342,6 +369,9 @@ class FirestoreChatRepository(
         if (!ref.get().exists) {
             ref.set(ChatCreate(listOf(userId, friendId).sorted(), Timestamp.ServerTimestamp, emptyMap()))
         }
+        val prefsRef = prefs(userId).document(id)
+        val prefsDoc = prefsRef.get()
+        if (prefsDoc.exists && prefsDoc.toChatPrefs().hidden) prefsRef.update("hidden" to false)
         return id
     }
 
