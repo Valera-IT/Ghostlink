@@ -1,5 +1,7 @@
 package io.github.valerait.ghostlink.data.model
 
+import java.time.Duration
+
 /** Сколько «в сети» живёт без нового heartbeat: на случай, если приложение убили, не успев выставить offline. */
 const val ONLINE_TIMEOUT_MS = 150_000L
 
@@ -51,7 +53,33 @@ data class LastMessage(
     val text: String,
     val senderId: String,
     val sentAt: Long?,
-)
+    /** Срок жизни исчезающего сообщения, секунды; null — сообщение не исчезает. */
+    val ttl: Long? = null,
+) {
+    fun isExpired(now: Long): Boolean = expiresAt(sentAt, ttl)?.let { now >= it } == true
+}
+
+/** Таймер исчезающих сообщений чата. Значения совпадают с разрешёнными в firestore.rules. */
+enum class DisappearingTimer(
+    val seconds: Long,
+) {
+    HOUR(Duration.ofHours(1).seconds),
+    DAY(Duration.ofDays(1).seconds),
+    WEEK(Duration.ofDays(DAYS_IN_WEEK).seconds),
+    ;
+
+    companion object {
+        fun of(seconds: Long?): DisappearingTimer? = entries.firstOrNull { it.seconds == seconds }
+    }
+}
+
+/** Когда исчезнет сообщение; null — не исчезает или ещё не подтверждено сервером (отсчёт идёт от серверного времени). */
+fun expiresAt(
+    sentAt: Long?,
+    ttl: Long?,
+): Long? = if (sentAt == null || ttl == null) null else sentAt + Duration.ofSeconds(ttl).toMillis()
+
+private const val DAYS_IN_WEEK = 7L
 
 data class Chat(
     val id: String,
@@ -62,6 +90,8 @@ data class Chat(
     val lastRead: Map<String, Long> = emptyMap(),
     /** userId -> когда участник последний раз набирал текст. */
     val typing: Map<String, Long> = emptyMap(),
+    /** Таймер исчезающих сообщений; null — выключен. */
+    val disappearing: DisappearingTimer? = null,
 ) {
     fun partnerId(me: String): String = members.firstOrNull { it != me } ?: me
 
@@ -114,8 +144,14 @@ data class Message(
     val editedAt: Long? = null,
     /** Когда автор удалил сообщение у обоих; от него остаётся только отметка «Сообщение удалено». */
     val deletedAt: Long? = null,
+    /** Срок жизни исчезающего сообщения, секунды; null — сообщение не исчезает. */
+    val ttl: Long? = null,
 ) {
     val deleted: Boolean get() = deletedAt != null
+
+    val expiresAt: Long? get() = expiresAt(sentAt, ttl)
+
+    fun isExpired(now: Long): Boolean = expiresAt?.let { now >= it } == true
 
     fun status(partnerLastRead: Long?): MessageStatus =
         when {

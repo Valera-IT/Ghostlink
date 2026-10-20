@@ -234,3 +234,52 @@ describe('chats/{a_b}/messages/{id}', () => {
     await assertFails(deleteDoc(doc(account('mallory'), `chats/${CHAT}/messages/m1`)));
   });
 });
+
+describe('исчезающие сообщения', () => {
+  const MESSAGES = `chats/${CHAT}/messages`;
+
+  test('участник включает и выключает таймер, только час, день или неделя', async () => {
+    await seedChat();
+    const ref = doc(account('bob'), `chats/${CHAT}`);
+    await assertSucceeds(updateDoc(ref, { ttl: 86400 }));
+    await assertSucceeds(updateDoc(ref, { ttl: deleteField() }));
+    await assertFails(updateDoc(ref, { ttl: 5 }));
+    await assertFails(updateDoc(ref, { ttl: '3600' }));
+  });
+
+  test('сообщение с ttl отправляется вместе с lastMessage', async () => {
+    await seedChat();
+    const db = account('alice');
+    const batch = writeBatch(db);
+    batch.set(doc(collection(db, MESSAGES)), { senderId: 'alice', text: 'пуф', sentAt: serverTimestamp(), ttl: 3600 });
+    batch.update(doc(db, `chats/${CHAT}`), {
+      lastMessage: { text: 'пуф', senderId: 'alice', sentAt: serverTimestamp(), ttl: 3600 }, updatedAt: serverTimestamp(),
+    });
+    await assertSucceeds(batch.commit());
+    await assertFails(addDoc(collection(db, MESSAGES), { senderId: 'alice', text: 'x', sentAt: serverTimestamp(), ttl: 60 }));
+  });
+
+  test('чужое исчезнувшее сообщение стирает любой участник, неистёкшее — нет', async () => {
+    await seedChat();
+    const old = Timestamp.fromMillis(Date.now() - 2 * 3_600_000);
+    await seed(async (db) => {
+      await setDoc(doc(db, `${MESSAGES}/gone`), { senderId: 'alice', text: 'был', sentAt: old, ttl: 3600 });
+      await setDoc(doc(db, `${MESSAGES}/alive`), { senderId: 'alice', text: 'есть', sentAt: Timestamp.now(), ttl: 3600 });
+      await setDoc(doc(db, `${MESSAGES}/plain`), { senderId: 'alice', text: 'навсегда', sentAt: old });
+    });
+    const bob = account('bob');
+    await assertSucceeds(deleteDoc(doc(bob, `${MESSAGES}/gone`)));
+    await assertFails(deleteDoc(doc(bob, `${MESSAGES}/alive`)));
+    await assertFails(deleteDoc(doc(bob, `${MESSAGES}/plain`)));
+    await assertFails(deleteDoc(doc(account('eve'), `${MESSAGES}/gone`)));
+  });
+
+  test('при удалении у обоих ttl сохраняется', async () => {
+    await seedChat();
+    await seed((db) => setDoc(doc(db, `${MESSAGES}/m`), { senderId: 'alice', text: 'а', sentAt: Timestamp.now(), ttl: 3600 }));
+    const ref = doc(account('alice'), `${MESSAGES}/m`);
+    await assertFails(updateDoc(ref, { text: deleteField(), ttl: deleteField(), deletedAt: serverTimestamp() }));
+    await assertSucceeds(updateDoc(ref, { text: deleteField(), deletedAt: serverTimestamp() }));
+  });
+});
+

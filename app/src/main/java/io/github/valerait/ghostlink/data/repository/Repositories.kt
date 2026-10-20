@@ -5,6 +5,7 @@ import io.github.valerait.ghostlink.data.model.AccountKey
 import io.github.valerait.ghostlink.data.model.Chat
 import io.github.valerait.ghostlink.data.model.ChatPrefs
 import io.github.valerait.ghostlink.data.model.Device
+import io.github.valerait.ghostlink.data.model.DisappearingTimer
 import io.github.valerait.ghostlink.data.model.LinkRequest
 import io.github.valerait.ghostlink.data.model.Message
 import io.github.valerait.ghostlink.data.model.ReplyTo
@@ -92,19 +93,40 @@ interface ChatPrefsRepository {
     )
 }
 
-interface ChatRepository : ChatPrefsRepository {
+/** Исчезающие сообщения: таймер чата общий для обоих участников. */
+interface DisappearingRepository {
+    /** Включает или выключает исчезающие сообщения в чате — для обоих участников. */
+    fun setDisappearing(
+        chatId: String,
+        timer: DisappearingTimer?,
+    )
+
+    /** Стирает из базы исчезнувшие сообщения: на Spark нет TTL, поэтому за этим следят сами клиенты. */
+    fun deleteExpired(
+        chatId: String,
+        messageIds: List<String>,
+    )
+}
+
+interface ChatRepository :
+    ChatPrefsRepository,
+    DisappearingRepository {
     fun observeChats(userId: String): Flow<List<Chat>>
 
     fun observeChat(chatId: String): Flow<Chat?>
 
     fun observeMessages(chatId: String): Flow<List<Message>>
 
-    /** Не ждёт сервера: сообщение сразу появляется локально со статусом SENDING. */
+    /**
+     * Не ждёт сервера: сообщение сразу появляется локально со статусом SENDING.
+     * [ttl] — срок жизни исчезающего сообщения в секундах (таймер чата в момент отправки).
+     */
     fun sendMessage(
         chatId: String,
         senderId: String,
         text: String,
         replyTo: ReplyTo? = null,
+        ttl: Long? = null,
     )
 
     /**
