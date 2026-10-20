@@ -103,6 +103,11 @@ service cloud.firestore {
       allow delete: if signedIn() && request.auth.uid == resource.data.owner;
     }
 
+    // Срок жизни исчезающих сообщений, секунды: час, день или неделя (DisappearingTimer).
+    function validTtl(data) {
+      return !('ttl' in data) || data.ttl in [3600, 86400, 604800];
+    }
+
     match /chats/{chatId} {
       // resource == null — проверка «есть ли уже чат» перед созданием.
       allow read: if signedIn()
@@ -122,12 +127,13 @@ service cloud.firestore {
           && (!(request.auth.uid in after) || after[request.auth.uid] == request.time);
       }
 
-      // Участники обновляют lastMessage / updatedAt / свой lastRead / свой typing, но не состав чата.
+      // Участники обновляют lastMessage / updatedAt / свой lastRead / свой typing / таймер ttl, но не состав чата.
       allow update: if signedIn()
         && request.auth.uid in resource.data.members
         && request.resource.data.members == resource.data.members
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['lastMessage', 'updatedAt', 'lastRead', 'typing'])
+             .hasOnly(['lastMessage', 'updatedAt', 'lastRead', 'typing', 'ttl'])
+        && validTtl(request.resource.data)
         && request.resource.data.get('lastRead', {}).diff(resource.data.get('lastRead', {})).affectedKeys()
              .hasOnly([request.auth.uid])
         && validTyping();
@@ -161,7 +167,8 @@ service cloud.firestore {
         // Писать можно только от своего имени и только с серверным временем.
         allow create: if signedIn()
           && isMember()
-          && request.resource.data.keys().hasOnly(['senderId', 'text', 'sentAt', 'replyTo'])
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'sentAt', 'replyTo', 'ttl'])
+          && validTtl(request.resource.data)
           && request.resource.data.senderId == request.auth.uid
           && validText(request.resource.data.text)
           && request.resource.data.sentAt == request.time
@@ -177,9 +184,10 @@ service cloud.firestore {
         // Удаление у обоих участников: от сообщения остаются автор, время и отметка deletedAt,
         // чтобы в чате было видно «Сообщение удалено».
         function isSoftDelete() {
-          return request.resource.data.keys().hasOnly(['senderId', 'sentAt', 'deletedAt'])
+          return request.resource.data.keys().hasOnly(['senderId', 'sentAt', 'deletedAt', 'ttl'])
             && request.resource.data.senderId == resource.data.senderId
             && request.resource.data.sentAt == resource.data.sentAt
+            && request.resource.data.get('ttl', null) == resource.data.get('ttl', null)
             && request.resource.data.deletedAt == request.time;
         }
 
@@ -190,10 +198,16 @@ service cloud.firestore {
           && !('deletedAt' in resource.data)
           && (isEdit() || isSoftDelete());
 
-        // Полное удаление — для клиентов до появления отметки «Сообщение удалено».
+        // Исчезающее сообщение, чей срок вышел, стирает любой участник: TTL-политик на Spark нет.
+        function isExpired() {
+          return 'ttl' in resource.data
+            && request.time >= resource.data.sentAt + duration.value(resource.data.ttl, 's');
+        }
+
+        // Полное удаление — для клиентов до появления отметки «Сообщение удалено» и для исчезнувших сообщений.
         allow delete: if signedIn()
           && isMember()
-          && resource.data.senderId == request.auth.uid;
+          && (resource.data.senderId == request.auth.uid || isExpired());
       }
     }
   }

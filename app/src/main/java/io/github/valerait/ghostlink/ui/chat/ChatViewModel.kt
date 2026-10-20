@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.valerait.ghostlink.data.model.Clock
+import io.github.valerait.ghostlink.data.model.DisappearingTimer
 import io.github.valerait.ghostlink.data.model.Message
 import io.github.valerait.ghostlink.data.model.MessageStatus
 import io.github.valerait.ghostlink.data.model.ReplyTo
@@ -13,6 +15,7 @@ import io.github.valerait.ghostlink.data.repository.ChatRepository
 import io.github.valerait.ghostlink.data.repository.UserRepository
 import io.github.valerait.ghostlink.data.repository.requireUserId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +28,7 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -70,6 +74,8 @@ data class ChatUiState(
     val editing: MessageItem? = null,
     /** До какого момента собеседник «печатает…»; null — не печатает. */
     val partnerTypingUntil: Long? = null,
+    /** Таймер исчезающих сообщений чата; null — выключен. */
+    val disappearing: DisappearingTimer? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -81,6 +87,7 @@ class ChatViewModel
         auth: AuthRepository,
         users: UserRepository,
         private val chats: ChatRepository,
+        private val clock: Clock,
     ) : ViewModel() {
         // Аргумент типобезопасного маршрута ChatRoute(chatId) лежит в SavedStateHandle под именем поля.
         private val chatId: String = checkNotNull(savedStateHandle["chatId"])
@@ -96,13 +103,28 @@ class ChatViewModel
                 .observeChat(chatId)
                 .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
+        // Исчезнувшие сообщения, которые этот клиент уже попросил стереть из базы.
+        private val expiredRequested = HashSet<String>()
+
         // Сообщения до удаления чата из списка (ChatPrefs.clearedAt) у этого пользователя больше не показываем.
+        // Исчезающие пропадают ровно в свой срок, даже если из базы ничего нового не пришло.
         private val messages =
             combine(
                 chats.observeMessages(chatId),
                 chats.observeChatPrefs(me).map { it[chatId] }.distinctUntilChanged(),
             ) { messages, prefs ->
                 if (prefs?.clearedAt == null) messages else messages.filterNot { prefs.isCleared(it.sentAt) }
+            }.transformLatest { list ->
+                while (true) {
+                    val now = clock.now()
+                    val (expired, alive) = list.partition { it.isExpired(now) }
+                    // Стирать из базы может любой участник; локально сообщение уже скрыто.
+                    val erase = expired.filter { !it.pending && expiredRequested.add(it.id) }.map { it.id }
+                    if (erase.isNotEmpty()) chats.deleteExpired(chatId, erase)
+                    emit(alive)
+                    val next = alive.mapNotNull { it.expiresAt }.minOrNull() ?: break
+                    delay(next - now)
+                }
             }.shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
         private val partner =
             chat
@@ -133,6 +155,7 @@ class ChatViewModel
                     replyingTo = replyingToId?.let { id -> items.firstOrNull { it.message.id == id && !it.message.deleted } },
                     editing = editingId?.let { id -> items.firstOrNull { it.message.id == id && it.mine && !it.message.deleted } },
                     partnerTypingUntil = chat?.typingUntil(chat.partnerId(me)),
+                    disappearing = chat?.disappearing,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
 
@@ -158,6 +181,9 @@ class ChatViewModel
 
         /** Текст в поле ввода изменился. Правка своего сообщения — тоже набор. */
         fun onDraftChanged(text: String) = typing.onDraftChanged(text)
+
+        /** Таймер общий для чата: собеседник увидит его и его сообщения тоже начнут исчезать. */
+        fun setDisappearing(timer: DisappearingTimer?) = chats.setDisappearing(chatId, timer)
 
         fun startReply(messageId: String) {
             editingId.value = null
@@ -207,7 +233,12 @@ class ChatViewModel
                         ?.takeUnless { it.pending }
                         ?.let(ReplyTo::of)
                 typing.onSent()
-                chats.sendMessage(chatId, me, trimmed, replyTo)
+                val ttl =
+                    chat.replayCache
+                        .firstOrNull()
+                        ?.disappearing
+                        ?.seconds
+                chats.sendMessage(chatId, me, trimmed, replyTo, ttl)
                 replyingToId.value = null
             }
         }
@@ -223,9 +254,6 @@ class ChatViewModel
             val isLatest = list.isLatestVisible(list.indexOfFirst { it.id == message.id })
             chats.editMessage(chatId, message.id, text, isLatest)
         }
-
-        /** После сообщения с номером [index] остались только удалённые — значит, оно сейчас в превью чата. */
-        private fun List<Message>.isLatestVisible(index: Int): Boolean = index >= 0 && subList(index + 1, size).all { it.deleted }
     }
 
 /** Сообщения с разделителями дней, новые первыми. */
@@ -253,3 +281,6 @@ private fun buildRows(
     }
     return rows.asReversed()
 }
+
+/** После сообщения с номером [index] остались только удалённые — значит, оно сейчас в превью чата. */
+private fun List<Message>.isLatestVisible(index: Int): Boolean = index >= 0 && subList(index + 1, size).all { it.deleted }

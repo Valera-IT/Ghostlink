@@ -19,6 +19,7 @@ import io.github.valerait.ghostlink.data.firebase.FirebaseChatRepository
 import io.github.valerait.ghostlink.data.firebase.FirebaseDeviceRepository
 import io.github.valerait.ghostlink.data.firebase.FirebaseLinkRepository
 import io.github.valerait.ghostlink.data.firebase.FirebaseUserRepository
+import io.github.valerait.ghostlink.data.model.Clock
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
 import io.github.valerait.ghostlink.data.repository.DeviceRepository
@@ -103,6 +104,9 @@ object BackendModule {
     fun provideThisDevice(
         @ApplicationContext context: Context,
     ): ThisDevice = ThisDevice.from(context)
+
+    @Provides
+    fun provideClock(): Clock = Clock.System
 
     @Provides
     fun provideAuthRepository(backend: Backend): AuthRepository = backend.auth

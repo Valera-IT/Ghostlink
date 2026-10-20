@@ -68,6 +68,11 @@
 
     <string name="presence_online">в сети</string>
     <string name="chat_typing">печатает…</string>
+    <string name="disappearing_title">Исчезающие сообщения</string>
+    <string name="disappearing_off">Выключены</string>
+    <string name="disappearing_hour">Через 1 час</string>
+    <string name="disappearing_day">Через 1 день</string>
+    <string name="disappearing_week">Через 1 неделю</string>
     <string name="presence_last_seen_today">был(а) в сети в %1$s</string>
     <string name="presence_last_seen_date">был(а) в сети %1$s</string>
     <string name="presence_long_ago">был(а) в сети давно</string>

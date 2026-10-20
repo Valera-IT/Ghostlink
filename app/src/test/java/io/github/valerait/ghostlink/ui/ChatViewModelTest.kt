@@ -3,6 +3,7 @@ package io.github.valerait.ghostlink.ui
 import androidx.lifecycle.SavedStateHandle
 import io.github.valerait.ghostlink.MainDispatcherRule
 import io.github.valerait.ghostlink.data.demo.InMemoryBackend
+import io.github.valerait.ghostlink.data.model.DisappearingTimer
 import io.github.valerait.ghostlink.data.model.MessageStatus
 import io.github.valerait.ghostlink.data.model.ReplyTo
 import io.github.valerait.ghostlink.data.model.TYPING_TIMEOUT_MS
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -33,7 +35,7 @@ class ChatViewModelTest {
         backend.saveProfile(me, "Я")
         backend.saveProfile(FRIEND, "Друг")
         val chatId = backend.startChat(me, FRIEND)
-        val vm = ChatViewModel(SavedStateHandle(mapOf("chatId" to chatId)), backend, backend, backend)
+        val vm = ChatViewModel(SavedStateHandle(mapOf("chatId" to chatId)), backend, backend, backend, { now })
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         return Triple(backend, chatId, vm)
     }
@@ -402,6 +404,42 @@ class ChatViewModelTest {
 
             backend.sendMessage(chatId, FRIEND, "готово")
             assertNull(vm.state.value.partnerTypingUntil)
+        }
+
+    @Test
+    fun `disappearing messages vanish on time and are erased from the backend`() =
+        runTest {
+            val (backend, chatId, vm) = setUp()
+            vm.send("навсегда")
+            vm.setDisappearing(DisappearingTimer.HOUR)
+            assertEquals(DisappearingTimer.HOUR, vm.state.value.disappearing)
+            vm.send("пуф")
+            assertEquals(
+                listOf("навсегда", "пуф"),
+                vm.state.value
+                    .messages()
+                    .map { it.message.text },
+            )
+
+            now += DisappearingTimer.HOUR.seconds * 1_000
+            advanceTimeBy(DisappearingTimer.HOUR.seconds * 1_000 + 1)
+            assertEquals(
+                listOf("навсегда"),
+                vm.state.value
+                    .messages()
+                    .map { it.message.text },
+            )
+            assertEquals(listOf("навсегда"), backend.observeMessages(chatId).first().map { it.text })
+
+            vm.setDisappearing(null)
+            vm.send("опять навсегда")
+            assertNull(
+                backend
+                    .observeMessages(chatId)
+                    .first()
+                    .last()
+                    .ttl,
+            )
         }
 
     private companion object {

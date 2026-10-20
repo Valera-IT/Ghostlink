@@ -12,6 +12,7 @@ import com.google.firebase.firestore.SetOptions
 import io.github.valerait.ghostlink.data.model.Chat
 import io.github.valerait.ghostlink.data.model.ChatIds
 import io.github.valerait.ghostlink.data.model.ChatPrefs
+import io.github.valerait.ghostlink.data.model.DisappearingTimer
 import io.github.valerait.ghostlink.data.model.LastMessage
 import io.github.valerait.ghostlink.data.model.Message
 import io.github.valerait.ghostlink.data.model.ReplyTo
@@ -22,8 +23,8 @@ import java.util.Date
 
 /**
  * Схема:
- *  chats/{a_b}            members, lastMessage, updatedAt, lastRead.{uid}, typing.{uid}
- *  chats/{a_b}/messages   senderId, text, sentAt, replyTo?{id, senderId, preview}, editedAt?, deletedAt?
+ *  chats/{a_b}            members, lastMessage{text, senderId, sentAt, ttl?}, updatedAt, lastRead.{uid}, typing.{uid}, ttl?
+ *  chats/{a_b}/messages   senderId, text, sentAt, replyTo?{id, senderId, preview}, editedAt?, deletedAt?, ttl?
  *  users/{uid}/chatPrefs/{a_b}  pinnedAt?, muted?, clearedAt?, hidden? — личные настройки, видны только владельцу
  */
 class FirebaseChatRepository(
@@ -66,6 +67,7 @@ class FirebaseChatRepository(
         senderId: String,
         text: String,
         replyTo: ReplyTo?,
+        ttl: Long?,
     ) {
         val chatRef = chats.document(chatId)
         val messageRef = chatRef.collection("messages").document()
@@ -74,13 +76,18 @@ class FirebaseChatRepository(
         if (replyTo != null) {
             message["replyTo"] = mapOf("id" to replyTo.id, "senderId" to replyTo.senderId, "preview" to replyTo.preview)
         }
+        val last = mutableMapOf<String, Any>("text" to text, "senderId" to senderId, "sentAt" to now)
+        if (ttl != null) {
+            message["ttl"] = ttl
+            last["ttl"] = ttl
+        }
         db
             .batch()
             .set(messageRef, message)
             .update(
                 chatRef,
                 mapOf(
-                    "lastMessage" to mapOf("text" to text, "senderId" to senderId, "sentAt" to now),
+                    "lastMessage" to last,
                     "updatedAt" to now,
                     // Сообщение отправлено — «печатает…» снимаем той же записью.
                     "typing.$senderId" to FieldValue.delete(),
@@ -124,11 +131,12 @@ class FirebaseChatRepository(
         if (isLatest) {
             val last: Any =
                 previous?.let {
-                    mapOf(
-                        "text" to it.text,
-                        "senderId" to it.senderId,
-                        "sentAt" to (it.sentAt?.let { ms -> Timestamp(Date(ms)) } ?: FieldValue.serverTimestamp()),
-                    )
+                    buildMap {
+                        put("text", it.text)
+                        put("senderId", it.senderId)
+                        put("sentAt", it.sentAt?.let { ms -> Timestamp(Date(ms)) } ?: FieldValue.serverTimestamp())
+                        it.ttl?.let { ttl -> put("ttl", ttl) }
+                    }
                 } ?: FieldValue.delete()
             batch.update(chatRef, "lastMessage", last)
         }
@@ -154,6 +162,32 @@ class FirebaseChatRepository(
             .document(chatId)
             .update("typing.$userId", if (typing) FieldValue.serverTimestamp() else FieldValue.delete())
             .addOnFailureListener { Log.w(TAG, "setTyping failed", it) }
+    }
+
+    override fun setDisappearing(
+        chatId: String,
+        timer: DisappearingTimer?,
+    ) {
+        chats
+            .document(chatId)
+            .update("ttl", timer?.seconds ?: FieldValue.delete())
+            .addOnFailureListener { Log.w(TAG, "setDisappearing failed", it) }
+    }
+
+    override fun deleteExpired(
+        chatId: String,
+        messageIds: List<String>,
+    ) {
+        if (messageIds.isEmpty()) return
+        val messages = chats.document(chatId).collection("messages")
+        // Оба участника могут стирать одно и то же одновременно — повторное удаление безвредно.
+        messageIds.chunked(BATCH_LIMIT).forEach { ids ->
+            db
+                .batch()
+                .apply { ids.forEach { delete(messages.document(it)) } }
+                .commit()
+                .addOnFailureListener { Log.w(TAG, "deleteExpired failed", it) }
+        }
     }
 
     override fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>> =
@@ -205,6 +239,7 @@ class FirebaseChatRepository(
     private companion object {
         const val TAG = "Chats"
         const val MESSAGES_LIMIT = 300L
+        const val BATCH_LIMIT = 500
     }
 }
 
@@ -217,6 +252,7 @@ private fun DocumentSnapshot.toChat(): Chat? {
                 text = it["text"] as? String ?: "",
                 senderId = it["senderId"] as? String ?: "",
                 sentAt = (it["sentAt"] as? Timestamp)?.millis,
+                ttl = (it["ttl"] as? Number)?.toLong(),
             )
         }
     val lastRead = get("lastRead", ServerTimestampBehavior.ESTIMATE).toMillisMap()
@@ -227,6 +263,7 @@ private fun DocumentSnapshot.toChat(): Chat? {
         updatedAt = getTimestamp("updatedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
         lastRead = lastRead,
         typing = get("typing", ServerTimestampBehavior.ESTIMATE).toMillisMap(),
+        disappearing = DisappearingTimer.of(getLong("ttl")),
     )
 }
 
@@ -256,6 +293,7 @@ private fun DocumentSnapshot.toMessage() =
         pending = metadata.hasPendingWrites(),
         editedAt = getTimestamp("editedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
         deletedAt = getTimestamp("deletedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
+        ttl = getLong("ttl"),
         replyTo =
             (get("replyTo") as? Map<*, *>)?.let {
                 ReplyTo(
