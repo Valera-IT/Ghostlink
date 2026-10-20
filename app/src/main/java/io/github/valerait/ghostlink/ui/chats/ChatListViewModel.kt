@@ -14,6 +14,7 @@ import io.github.valerait.ghostlink.data.repository.ChatRepository
 import io.github.valerait.ghostlink.data.repository.UserRepository
 import io.github.valerait.ghostlink.data.repository.requireUserId
 import io.github.valerait.ghostlink.di.AppConfig
+import io.github.valerait.ghostlink.ui.group.leaveGroup
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,7 +30,9 @@ import javax.inject.Inject
 
 data class ChatListItem(
     val chat: Chat,
+    /** Собеседник в личном чате; в группе — id чата (для цвета аватара). */
     val partnerId: String,
+    /** Собеседник в личном чате; в группе null. */
     val partner: User?,
     val unread: Boolean,
     /** Последнее сообщение; null, если его нет или оно удалено вместе с чатом. */
@@ -37,9 +40,16 @@ data class ChatListItem(
     val lastMessageIsMine: Boolean,
     val pinned: Boolean = false,
     val muted: Boolean = false,
-    /** До какого момента собеседник «печатает…»; null — не печатает. */
+    /** До какого момента кто-то из собеседников «печатает…»; null — никто. */
     val typingUntil: Long? = null,
-)
+    /** Кто печатает в группе; в личном чате null. */
+    val typingName: String? = null,
+    /** Автор последнего сообщения в группе, если это не я; в личном чате null. */
+    val lastSenderName: String? = null,
+) {
+    /** Имя собеседника или название группы. */
+    val title: String? get() = chat.group?.name ?: partner?.name
+}
 
 data class ChatListState(
     val loading: Boolean = true,
@@ -68,8 +78,13 @@ class ChatListViewModel
         // Подписка на собеседников пересоздаётся только при смене состава чатов, а не на каждое сообщение.
         private val partners =
             chatList
-                .map { list -> list.map { it.partnerId(me) }.distinct().sorted() }
-                .distinctUntilChanged()
+                .map { list ->
+                    list
+                        .flatMap { it.members }
+                        .filter { it != me }
+                        .distinct()
+                        .sorted()
+                }.distinctUntilChanged()
                 .flatMapLatest { users.observeUsers(it) }
 
         private val prefs = chats.observeChatPrefs(me)
@@ -103,16 +118,19 @@ class ChatListViewModel
                         val chatPrefs = prefs[chat.id] ?: ChatPrefs()
                         if (!chatPrefs.isVisible(chat)) return@mapNotNull null
                         val last = chat.lastMessage?.takeUnless { chatPrefs.isCleared(it.sentAt) || it.isExpired(now) }
+                        val typing = chat.typingOther(me)
                         ChatListItem(
                             chat = chat,
-                            partnerId = chat.partnerId(me),
-                            partner = people[chat.partnerId(me)],
+                            partnerId = if (chat.isGroup) chat.id else chat.partnerId(me),
+                            partner = if (chat.isGroup) null else people[chat.partnerId(me)],
                             unread = last != null && chat.isUnreadFor(me),
                             lastMessage = last,
                             lastMessageIsMine = last?.senderId == me,
                             pinned = chatPrefs.pinned,
                             muted = chatPrefs.muted,
-                            typingUntil = chat.typingUntil(chat.partnerId(me)),
+                            typingUntil = typing?.second,
+                            typingName = if (chat.isGroup) typing?.let { people[it.first]?.name } else null,
+                            lastSenderName = last?.takeIf { chat.isGroup && it.senderId != me }?.let { people[it.senderId]?.name },
                         )
                     }
                     // Закреплённые сверху (последний закреплённый первым), остальные — по свежести, как пришли.
@@ -130,5 +148,13 @@ class ChatListViewModel
             muted: Boolean,
         ) = chats.setMuted(me, chatId, muted)
 
-        fun remove(chatId: String) = chats.removeChat(me, chatId)
+        /** Личный чат прячется только у меня; из группы я выхожу (админ передаёт права следующему участнику). */
+        fun remove(chatId: String) {
+            val chat =
+                state.value.items
+                    .firstOrNull { it.chat.id == chatId }
+                    ?.chat
+            if (chat?.isGroup == true) leaveGroup(chats, chat, me)
+            chats.removeChat(me, chatId)
+        }
     }

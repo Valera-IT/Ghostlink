@@ -108,9 +108,40 @@ interface DisappearingRepository {
     )
 }
 
+/** Групповые чаты. Управляет составом и названием только админ; выйти может любой участник. */
+interface GroupRepository {
+    /** Создаёт группу с админом [ownerId] и возвращает её id. */
+    suspend fun createGroup(
+        ownerId: String,
+        name: String,
+        memberIds: List<String>,
+    ): String
+
+    fun renameGroup(
+        chatId: String,
+        name: String,
+    )
+
+    fun addMembers(
+        chatId: String,
+        userIds: List<String>,
+    )
+
+    /**
+     * Убирает участника: админ — любого, остальные — только себя (выход из группы).
+     * Если выходит админ, права переходят к [newOwnerId].
+     */
+    fun removeMember(
+        chatId: String,
+        userId: String,
+        newOwnerId: String? = null,
+    )
+}
+
 interface ChatRepository :
     ChatPrefsRepository,
-    DisappearingRepository {
+    DisappearingRepository,
+    GroupRepository {
     fun observeChats(userId: String): Flow<List<Chat>>
 
     fun observeChat(chatId: String): Flow<Chat?>

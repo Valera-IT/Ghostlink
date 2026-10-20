@@ -93,11 +93,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.data.model.MessageStatus
 import io.github.valerait.ghostlink.data.model.ReplyTo
-import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.dayLabel
 import io.github.valerait.ghostlink.ui.common.formatTime
-import io.github.valerait.ghostlink.ui.common.presenceText
-import io.github.valerait.ghostlink.ui.common.rememberIsTyping
 import io.github.valerait.ghostlink.ui.common.rememberNow
 import io.github.valerait.ghostlink.ui.theme.LocalChatStyle
 import kotlinx.coroutines.delay
@@ -107,6 +104,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChatScreen(
     onBack: () -> Unit,
+    onGroupInfo: () -> Unit,
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -117,7 +115,7 @@ fun ChatScreen(
     var highlightedId by remember { mutableStateOf<String?>(null) }
     var confirmDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
 
-    val partnerName = state.partner?.name.orEmpty()
+    val nameOf: (String) -> String = { state.names[it].orEmpty() }
     val you = stringResource(R.string.chat_reply_you)
     val originalUnavailable = stringResource(R.string.chat_reply_original_unavailable)
 
@@ -175,25 +173,7 @@ fun ChatScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
-                title = {
-                    val partner = state.partner
-                    if (partner != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Avatar(partner.name, partner.id, size = 40.dp)
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text(partner.name, style = MaterialTheme.typography.titleMedium)
-                                val typing = rememberIsTyping(state.partnerTypingUntil)
-                                val online = typing || partner.isOnline(now)
-                                Text(
-                                    text = if (typing) stringResource(R.string.chat_typing) else presenceText(partner, now),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (online) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                },
+                title = { ChatTitle(state, now, onGroupInfo) },
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -201,7 +181,7 @@ fun ChatScreen(
             MessageInput(
                 replyingTo = state.replyingTo,
                 editing = state.editing,
-                replyAuthor = { if (it.mine) you else partnerName },
+                replyAuthor = { if (it.mine) you else nameOf(it.message.senderId) },
                 onCancelReply = viewModel::cancelReply,
                 onCancelEdit = viewModel::cancelEdit,
                 onDraftChanged = viewModel::onDraftChanged,
@@ -232,7 +212,7 @@ fun ChatScreen(
                         MessageBubble(
                             item = row.item,
                             highlighted = message.id == highlightedId,
-                            quoteAuthor = if (row.item.replyToMine) you else partnerName,
+                            quoteAuthor = if (row.item.replyToMine) you else nameOf(message.replyTo?.senderId.orEmpty()),
                             onQuoteClick = showOriginal,
                             actions =
                                 MessageActions(
@@ -321,6 +301,7 @@ private fun MessageBubble(
                         ),
             ) {
                 Column(Modifier.width(IntrinsicSize.Max).padding(start = 12.dp, end = 10.dp, top = 8.dp, bottom = 6.dp)) {
+                    SenderName(item.senderName)
                     item.message.replyTo?.let { reply ->
                         ReplyQuote(
                             author = quoteAuthor,
@@ -393,16 +374,31 @@ private fun TextStyle.mono(): TextStyle = copy(fontFamily = FontFamily.Monospace
 
 @Composable
 private fun StatusIcon(status: MessageStatus) {
+    val read = status == MessageStatus.READ || status == MessageStatus.READ_ALL
+    val tint = if (read) LocalChatStyle.current.readTick else mutedContentColor()
+    if (status == MessageStatus.READ_ALL) {
+        // Три галочки: двойная поверх одинарной со сдвигом влево.
+        Box(Modifier.width(22.dp).height(16.dp)) {
+            Icon(Icons.Filled.Done, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+            Icon(
+                Icons.Filled.DoneAll,
+                contentDescription = stringResource(R.string.status_read_all),
+                tint = tint,
+                modifier = Modifier.size(16.dp).align(Alignment.CenterEnd),
+            )
+        }
+        return
+    }
     val (icon, description) =
         when (status) {
             MessageStatus.SENDING -> Icons.Filled.Schedule to R.string.status_sending
             MessageStatus.SENT -> Icons.Filled.Done to R.string.status_sent
-            MessageStatus.READ -> Icons.Filled.DoneAll to R.string.status_read
+            else -> Icons.Filled.DoneAll to R.string.status_read
         }
     Icon(
         imageVector = icon,
         contentDescription = stringResource(description),
-        tint = if (status == MessageStatus.READ) LocalChatStyle.current.readTick else mutedContentColor(),
+        tint = tint,
         modifier = Modifier.size(16.dp),
     )
 }

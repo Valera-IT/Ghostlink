@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.data.model.Clock
 import io.github.valerait.ghostlink.data.model.DisappearingTimer
+import io.github.valerait.ghostlink.data.model.GroupInfo
 import io.github.valerait.ghostlink.data.model.Message
 import io.github.valerait.ghostlink.data.model.MessageStatus
 import io.github.valerait.ghostlink.data.model.ReplyTo
@@ -45,6 +46,8 @@ data class MessageItem(
     val replyToMine: Boolean = false,
     /** Исходное сообщение цитаты удалено — вместо превью показываем «Сообщение удалено». */
     val replyToDeleted: Boolean = false,
+    /** Имя автора над чужим сообщением в группе; в личном чате null. */
+    val senderName: String? = null,
 )
 
 sealed interface ChatRow {
@@ -65,14 +68,23 @@ sealed interface ChatRow {
 
 data class ChatUiState(
     val loading: Boolean = true,
+    val chatId: String = "",
+    /** Собеседник в личном чате; в группе null. */
     val partner: User? = null,
+    /** Группа: название и админ; в личном чате null. */
+    val group: GroupInfo? = null,
+    val memberCount: Int = 0,
+    /** userId -> имя для всех, кого видно в чате, кроме меня. */
+    val names: Map<String, String> = emptyMap(),
+    /** Кто печатает в группе (имя); в личном чате null — там достаточно [partnerTypingUntil]. */
+    val typingName: String? = null,
     /** Новые сообщения в начале списка — под LazyColumn(reverseLayout = true). */
     val rows: List<ChatRow> = emptyList(),
     /** Сообщение, на которое пользователь сейчас отвечает (плашка над полем ввода). */
     val replyingTo: MessageItem? = null,
     /** Своё сообщение, которое пользователь сейчас исправляет; взаимоисключается с [replyingTo]. */
     val editing: MessageItem? = null,
-    /** До какого момента собеседник «печатает…»; null — не печатает. */
+    /** До какого момента кто-то из собеседников «печатает…»; null — никто. */
     val partnerTypingUntil: Long? = null,
     /** Таймер исчезающих сообщений чата; null — выключен. */
     val disappearing: DisappearingTimer? = null,
@@ -126,16 +138,20 @@ class ChatViewModel
                     delay(next - now)
                 }
             }.shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
-        private val partner =
-            chat
-                .mapNotNull { it?.partnerId(me) }
-                .distinctUntilChanged()
-                .flatMapLatest { users.observeUser(it) }
-                .onStart { emit(null) }
+
+        // Собеседник в личном чате или все участники группы (и бывшие — их имена нужны у старых сообщений).
+        private val people =
+            combine(chat.mapNotNull { it?.members }, messages) { members, messages ->
+                (members + messages.map { it.senderId }).filter { it != me }.distinct().sorted()
+            }.distinctUntilChanged()
+                .flatMapLatest { users.observeUsers(it) }
+                .onStart { emit(emptyMap()) }
 
         val state: StateFlow<ChatUiState> =
-            combine(chat, messages, partner, replyingToId, editingId) { chat, messages, partner, replyingToId, editingId ->
-                val partnerRead = chat?.lastRead?.get(chat.partnerId(me))
+            combine(chat, messages, people, replyingToId, editingId) { chat, messages, people, replyingToId, editingId ->
+                val readUpTo = chat?.othersReadUpTo(me)
+                val allReadUpTo = chat?.allReadUpTo(me)
+                val isGroup = chat?.isGroup == true
                 val deletedIds = messages.filter { it.deleted }.mapTo(HashSet()) { it.id }
                 val items =
                     messages.map { message ->
@@ -143,18 +159,25 @@ class ChatViewModel
                         MessageItem(
                             message = message,
                             mine = mine,
-                            status = if (mine) message.status(partnerRead) else null,
+                            status = if (mine) message.status(readUpTo, allReadUpTo) else null,
                             replyToMine = message.replyTo?.senderId == me,
                             replyToDeleted = message.replyTo?.id in deletedIds,
+                            senderName = if (isGroup && !mine) people[message.senderId]?.name else null,
                         )
                     }
+                val typing = chat?.typingOther(me)
                 ChatUiState(
                     loading = false,
-                    partner = partner,
+                    chatId = chatId,
+                    partner = if (isGroup) null else chat?.let { people[it.partnerId(me)] },
+                    group = chat?.group,
+                    memberCount = chat?.members?.size ?: 0,
+                    names = people.mapValues { it.value.name },
+                    typingName = if (isGroup) typing?.let { people[it.first]?.name } else null,
                     rows = buildRows(items, zone),
                     replyingTo = replyingToId?.let { id -> items.firstOrNull { it.message.id == id && !it.message.deleted } },
                     editing = editingId?.let { id -> items.firstOrNull { it.message.id == id && it.mine && !it.message.deleted } },
-                    partnerTypingUntil = chat?.typingUntil(chat.partnerId(me)),
+                    partnerTypingUntil = typing?.second,
                     disappearing = chat?.disappearing,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())

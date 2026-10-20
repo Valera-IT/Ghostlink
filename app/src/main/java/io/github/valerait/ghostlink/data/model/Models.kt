@@ -92,8 +92,30 @@ data class Chat(
     val typing: Map<String, Long> = emptyMap(),
     /** Таймер исчезающих сообщений; null — выключен. */
     val disappearing: DisappearingTimer? = null,
+    /** Название и админ группы; null — личный чат пары. */
+    val group: GroupInfo? = null,
 ) {
+    val isGroup: Boolean get() = group != null
+
+    /** Собеседник в личном чате; в группе — первый другой участник, поэтому для групп не используется. */
     fun partnerId(me: String): String = members.firstOrNull { it != me } ?: me
+
+    /** До какого момента своё сообщение считается прочитанным: хватает одного прочитавшего, как в Telegram. */
+    fun othersReadUpTo(me: String): Long? = lastRead.filterKeys { it != me && it in members }.values.maxOrNull()
+
+    /** В группе — до какого момента прочитали все остальные участники; в личном чате null. */
+    fun allReadUpTo(me: String): Long? {
+        val others = members.filter { it != me }
+        val reads = others.mapNotNull { lastRead[it] }
+        return if (isGroup && others.isNotEmpty() && reads.size == others.size) reads.min() else null
+    }
+
+    /** Кто из других участников сейчас печатает, и до какого момента; null — никто. */
+    fun typingOther(me: String): Pair<String, Long>? =
+        typing
+            .filterKeys { it != me && it in members }
+            .maxByOrNull { it.value }
+            ?.let { (id, at) -> id to at + TYPING_TIMEOUT_MS }
 
     fun isUnreadFor(me: String): Boolean {
         val last = lastMessage ?: return false
@@ -110,6 +132,18 @@ data class Chat(
         userId: String,
         now: Long,
     ): Boolean = typingUntil(userId)?.let { now < it } == true
+}
+
+data class GroupInfo(
+    val name: String,
+    /** Админ: добавляет и удаляет участников, меняет название. */
+    val ownerId: String,
+) {
+    companion object {
+        /** Совпадают с ограничениями в firestore.rules. */
+        const val NAME_MAX_LENGTH = 64
+        const val MAX_MEMBERS = 20
+    }
 }
 
 /**
@@ -153,15 +187,24 @@ data class Message(
 
     fun isExpired(now: Long): Boolean = expiresAt?.let { now >= it } == true
 
-    fun status(partnerLastRead: Long?): MessageStatus =
+    /**
+     * [readUpTo] — до какого момента прочитал хоть один получатель;
+     * [allReadUpTo] — до какого прочитали все (только в группах, в личном чате null).
+     */
+    fun status(
+        readUpTo: Long?,
+        allReadUpTo: Long? = null,
+    ): MessageStatus =
         when {
             pending || sentAt == null -> MessageStatus.SENDING
-            partnerLastRead != null && partnerLastRead >= sentAt -> MessageStatus.READ
+            allReadUpTo != null && allReadUpTo >= sentAt -> MessageStatus.READ_ALL
+            readUpTo != null && readUpTo >= sentAt -> MessageStatus.READ
             else -> MessageStatus.SENT
         }
 }
 
-enum class MessageStatus { SENDING, SENT, READ }
+/** READ — прочитал хоть один (две галочки), READ_ALL — в группе прочитали все (три галочки). */
+enum class MessageStatus { SENDING, SENT, READ, READ_ALL }
 
 /**
  * Ссылка на сообщение, на которое отвечают. Превью хранится в самом ответе, чтобы цитату
