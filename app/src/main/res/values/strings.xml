@@ -67,6 +67,7 @@
     <string name="day_yesterday">Вчера</string>
 
     <string name="presence_online">в сети</string>
+    <string name="chat_typing">печатает…</string>
     <string name="presence_last_seen_today">был(а) в сети в %1$s</string>
     <string name="presence_last_seen_date">был(а) в сети %1$s</string>
     <string name="presence_long_ago">был(а) в сети давно</string>

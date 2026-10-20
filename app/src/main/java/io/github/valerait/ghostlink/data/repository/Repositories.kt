@@ -135,6 +135,13 @@ interface ChatRepository : ChatPrefsRepository {
         userId: String,
     )
 
+    /** Отметка «печатает…» для собеседника; с [typing] = false снимается сразу, иначе гаснет сама. */
+    fun setTyping(
+        chatId: String,
+        userId: String,
+        typing: Boolean,
+    )
+
     /** Создаёт чат пары (если его ещё нет), возвращает его в список, если он был удалён, и возвращает его id. */
     suspend fun startChat(
         userId: String,

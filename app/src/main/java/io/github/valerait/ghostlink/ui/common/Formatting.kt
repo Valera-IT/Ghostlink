@@ -1,8 +1,13 @@
 package io.github.valerait.ghostlink.ui.common
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.data.model.User
@@ -79,3 +84,16 @@ fun rememberNow(): State<Long> =
             value = System.currentTimeMillis()
         }
     }
+
+/** Отметка «печатает…» видна, пока не наступил [until]; гаснет сама, даже если новых данных не пришло. */
+@Composable
+fun rememberIsTyping(until: Long?): Boolean {
+    var typing by remember(until) { mutableStateOf(until != null && System.currentTimeMillis() < until) }
+    LaunchedEffect(until) {
+        if (until != null) {
+            delay(until - System.currentTimeMillis())
+            typing = false
+        }
+    }
+    return typing
+}

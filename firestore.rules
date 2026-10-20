@@ -115,14 +115,22 @@ service cloud.firestore {
         && request.resource.data.members[0] < request.resource.data.members[1]
         && chatId == request.resource.data.members[0] + '_' + request.resource.data.members[1];
 
-      // Участники обновляют lastMessage / updatedAt / свой lastRead, но не состав чата.
+      // «Печатает…»: только своя отметка и только серверным временем (или снятие отметки).
+      function validTyping() {
+        let after = request.resource.data.get('typing', {});
+        return after.diff(resource.data.get('typing', {})).affectedKeys().hasOnly([request.auth.uid])
+          && (!(request.auth.uid in after) || after[request.auth.uid] == request.time);
+      }
+
+      // Участники обновляют lastMessage / updatedAt / свой lastRead / свой typing, но не состав чата.
       allow update: if signedIn()
         && request.auth.uid in resource.data.members
         && request.resource.data.members == resource.data.members
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['lastMessage', 'updatedAt', 'lastRead'])
-        && request.resource.data.lastRead.diff(resource.data.get('lastRead', {})).affectedKeys()
-             .hasOnly([request.auth.uid]);
+             .hasOnly(['lastMessage', 'updatedAt', 'lastRead', 'typing'])
+        && request.resource.data.get('lastRead', {}).diff(resource.data.get('lastRead', {})).affectedKeys()
+             .hasOnly([request.auth.uid])
+        && validTyping();
 
       match /messages/{messageId} {
         function members() {

@@ -233,6 +233,17 @@ class InMemoryBackend(
         }
     }
 
+    override fun setTyping(
+        chatId: String,
+        userId: String,
+        typing: Boolean,
+    ) {
+        chats.update { all ->
+            val chat = all[chatId] ?: return@update all
+            all + (chatId to chat.copy(typing = if (typing) chat.typing + (userId to clock()) else chat.typing - userId))
+        }
+    }
+
     override fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>> =
         chatPrefs.map { it[userId].orEmpty() }.distinctUntilChanged()
 
@@ -349,7 +360,7 @@ class InMemoryBackend(
         messages.update { it + (chatId to it[chatId].orEmpty() + message) }
         chats.update { all ->
             val chat = all[chatId] ?: return@update all
-            all + (chatId to chat.copy(lastMessage = LastMessage(text, senderId, at), updatedAt = at))
+            all + (chatId to chat.copy(lastMessage = LastMessage(text, senderId, at), updatedAt = at, typing = chat.typing - senderId))
         }
     }
 
@@ -357,6 +368,7 @@ class InMemoryBackend(
         scope.launch {
             delay(700)
             markRead(chatId, BOT_ID)
+            setTyping(chatId, BOT_ID, true)
             delay(1_200)
             post(chatId, BOT_ID, BOT_REPLIES[botReplyIndex++ % BOT_REPLIES.size], clock())
         }

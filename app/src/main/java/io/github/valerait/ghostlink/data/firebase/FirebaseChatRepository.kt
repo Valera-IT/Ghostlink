@@ -22,7 +22,7 @@ import java.util.Date
 
 /**
  * Схема:
- *  chats/{a_b}            members, lastMessage, updatedAt, lastRead.{uid}
+ *  chats/{a_b}            members, lastMessage, updatedAt, lastRead.{uid}, typing.{uid}
  *  chats/{a_b}/messages   senderId, text, sentAt, replyTo?{id, senderId, preview}, editedAt?, deletedAt?
  *  users/{uid}/chatPrefs/{a_b}  pinnedAt?, muted?, clearedAt?, hidden? — личные настройки, видны только владельцу
  */
@@ -82,6 +82,8 @@ class FirebaseChatRepository(
                 mapOf(
                     "lastMessage" to mapOf("text" to text, "senderId" to senderId, "sentAt" to now),
                     "updatedAt" to now,
+                    // Сообщение отправлено — «печатает…» снимаем той же записью.
+                    "typing.$senderId" to FieldValue.delete(),
                 ),
             ).commit()
             .addOnFailureListener { Log.w(TAG, "Send failed", it) }
@@ -141,6 +143,17 @@ class FirebaseChatRepository(
             .document(chatId)
             .update("lastRead.$userId", FieldValue.serverTimestamp())
             .addOnFailureListener { Log.w(TAG, "markRead failed", it) }
+    }
+
+    override fun setTyping(
+        chatId: String,
+        userId: String,
+        typing: Boolean,
+    ) {
+        chats
+            .document(chatId)
+            .update("typing.$userId", if (typing) FieldValue.serverTimestamp() else FieldValue.delete())
+            .addOnFailureListener { Log.w(TAG, "setTyping failed", it) }
     }
 
     override fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>> =
@@ -206,22 +219,25 @@ private fun DocumentSnapshot.toChat(): Chat? {
                 sentAt = (it["sentAt"] as? Timestamp)?.millis,
             )
         }
-    val lastRead =
-        (get("lastRead", ServerTimestampBehavior.ESTIMATE) as? Map<*, *>)
-            ?.mapNotNull { (key, value) ->
-                val uid = key as? String ?: return@mapNotNull null
-                val ts = value as? Timestamp ?: return@mapNotNull null
-                uid to ts.millis
-            }?.toMap()
-            .orEmpty()
+    val lastRead = get("lastRead", ServerTimestampBehavior.ESTIMATE).toMillisMap()
     return Chat(
         id = id,
         members = members,
         lastMessage = last,
         updatedAt = getTimestamp("updatedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
         lastRead = lastRead,
+        typing = get("typing", ServerTimestampBehavior.ESTIMATE).toMillisMap(),
     )
 }
+
+private fun Any?.toMillisMap(): Map<String, Long> =
+    (this as? Map<*, *>)
+        ?.mapNotNull { (key, value) ->
+            val uid = key as? String ?: return@mapNotNull null
+            val ts = value as? Timestamp ?: return@mapNotNull null
+            uid to ts.millis
+        }?.toMap()
+        .orEmpty()
 
 private fun DocumentSnapshot.toChatPrefs() =
     ChatPrefs(

@@ -68,6 +68,8 @@ data class ChatUiState(
     val replyingTo: MessageItem? = null,
     /** Своё сообщение, которое пользователь сейчас исправляет; взаимоисключается с [replyingTo]. */
     val editing: MessageItem? = null,
+    /** До какого момента собеседник «печатает…»; null — не печатает. */
+    val partnerTypingUntil: Long? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -87,6 +89,7 @@ class ChatViewModel
         private val visible = MutableStateFlow(false)
         private val replyingToId = MutableStateFlow<String?>(null)
         private val editingId = MutableStateFlow<String?>(null)
+        private val typing = TypingNotifier(viewModelScope) { chats.setTyping(chatId, me, it) }
 
         private val chat =
             chats
@@ -126,9 +129,10 @@ class ChatViewModel
                 ChatUiState(
                     loading = false,
                     partner = partner,
-                    rows = buildRows(items),
+                    rows = buildRows(items, zone),
                     replyingTo = replyingToId?.let { id -> items.firstOrNull { it.message.id == id && !it.message.deleted } },
                     editing = editingId?.let { id -> items.firstOrNull { it.message.id == id && it.mine && !it.message.deleted } },
+                    partnerTypingUntil = chat?.typingUntil(chat.partnerId(me)),
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
 
@@ -149,7 +153,11 @@ class ChatViewModel
 
         fun onVisibilityChanged(isVisible: Boolean) {
             visible.value = isVisible
+            if (!isVisible) typing.stop()
         }
+
+        /** Текст в поле ввода изменился. Правка своего сообщения — тоже набор. */
+        fun onDraftChanged(text: String) = typing.onDraftChanged(text)
 
         fun startReply(messageId: String) {
             editingId.value = null
@@ -198,6 +206,7 @@ class ChatViewModel
                         ?.message
                         ?.takeUnless { it.pending }
                         ?.let(ReplyTo::of)
+                typing.onSent()
                 chats.sendMessage(chatId, me, trimmed, replyTo)
                 replyingToId.value = null
             }
@@ -208,6 +217,7 @@ class ChatViewModel
             text: String,
         ) {
             editingId.value = null
+            typing.stop()
             if (text == message.text) return
             val list = messages.replayCache.firstOrNull().orEmpty()
             val isLatest = list.isLatestVisible(list.indexOfFirst { it.id == message.id })
@@ -216,26 +226,30 @@ class ChatViewModel
 
         /** После сообщения с номером [index] остались только удалённые — значит, оно сейчас в превью чата. */
         private fun List<Message>.isLatestVisible(index: Int): Boolean = index >= 0 && subList(index + 1, size).all { it.deleted }
-
-        private fun buildRows(items: List<MessageItem>): List<ChatRow> {
-            val rows = ArrayList<ChatRow>(items.size + 8)
-            var lastDay: Long? = null
-            for (item in items) {
-                val sentAt = item.message.sentAt
-                if (sentAt != null) {
-                    val day =
-                        Instant
-                            .ofEpochMilli(sentAt)
-                            .atZone(zone)
-                            .toLocalDate()
-                            .toEpochDay()
-                    if (day != lastDay) {
-                        rows += ChatRow.Day(sentAt)
-                        lastDay = day
-                    }
-                }
-                rows += ChatRow.Msg(item)
-            }
-            return rows.asReversed()
-        }
     }
+
+/** Сообщения с разделителями дней, новые первыми. */
+private fun buildRows(
+    items: List<MessageItem>,
+    zone: ZoneId,
+): List<ChatRow> {
+    val rows = ArrayList<ChatRow>(items.size)
+    var lastDay: Long? = null
+    for (item in items) {
+        val sentAt = item.message.sentAt
+        if (sentAt != null) {
+            val day =
+                Instant
+                    .ofEpochMilli(sentAt)
+                    .atZone(zone)
+                    .toLocalDate()
+                    .toEpochDay()
+            if (day != lastDay) {
+                rows += ChatRow.Day(sentAt)
+                lastDay = day
+            }
+        }
+        rows += ChatRow.Msg(item)
+    }
+    return rows.asReversed()
+}
