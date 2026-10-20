@@ -307,8 +307,8 @@ private fun RemoveChatDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.chats_remove_title, name)) },
-        text = { Text(stringResource(R.string.chats_remove_body)) },
+        title = { Text(stringResource(R.string.chats_remove_title)) },
+        text = { Text(stringResource(R.string.chats_remove_body, name)) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(stringResource(R.string.chats_remove), color = MaterialTheme.colorScheme.error)

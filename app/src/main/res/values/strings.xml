@@ -40,8 +40,8 @@
     <string name="chats_unmute">Включить уведомления</string>
     <string name="chats_muted">Уведомления выключены</string>
     <string name="chats_remove">Удалить</string>
-    <string name="chats_remove_title">Удалить %1$s?</string>
-    <string name="chats_remove_body">Контакт и переписка исчезнут только у вас. Если собеседник напишет снова, чат появится с новыми сообщениями.</string>
+    <string name="chats_remove_title">Удалить контакт?</string>
+    <string name="chats_remove_body">«%1$s» и переписка исчезнут только у вас. Если собеседник напишет снова, чат появится с новыми сообщениями.</string>
 
     <string name="chat_empty">Скажите привет 👋</string>
     <string name="chat_input_hint">Сообщение</string>
