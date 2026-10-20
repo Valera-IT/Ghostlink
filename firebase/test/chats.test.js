@@ -61,6 +61,14 @@ describe('chats/{a_b}', () => {
     await assertSucceeds(updateDoc(ref, { 'typing.alice': deleteField() }));
   });
 
+  test('пока стоит «печатает…», можно отметить прочитанным и включить таймер', async () => {
+    await seedChat();
+    const ref = doc(account('alice'), `chats/${CHAT}`);
+    await assertSucceeds(updateDoc(ref, { 'typing.alice': serverTimestamp() }));
+    await assertSucceeds(updateDoc(ref, { 'lastRead.alice': serverTimestamp() }));
+    await assertSucceeds(updateDoc(ref, { ttl: 3600 }));
+  });
+
   test('«печатает…» — только своё и только серверное время', async () => {
     await seedChat();
     const ref = doc(account('alice'), `chats/${CHAT}`);
