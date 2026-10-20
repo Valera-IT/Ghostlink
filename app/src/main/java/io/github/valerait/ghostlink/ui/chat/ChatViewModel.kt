@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
@@ -91,10 +92,15 @@ class ChatViewModel
             chats
                 .observeChat(chatId)
                 .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
+        // Сообщения до удаления чата из списка (ChatPrefs.clearedAt) у этого пользователя больше не показываем.
         private val messages =
-            chats
-                .observeMessages(chatId)
-                .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+            combine(
+                chats.observeMessages(chatId),
+                chats.observeChatPrefs(me).map { it[chatId] }.distinctUntilChanged(),
+            ) { messages, prefs ->
+                if (prefs?.clearedAt == null) messages else messages.filterNot { prefs.isCleared(it.sentAt) }
+            }.shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
         private val partner =
             chat
                 .mapNotNull { it?.partnerId(me) }

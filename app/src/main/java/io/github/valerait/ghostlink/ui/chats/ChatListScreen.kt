@@ -1,7 +1,8 @@
 package io.github.valerait.ghostlink.ui.chats
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,8 +21,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -30,11 +38,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -62,6 +77,7 @@ fun ChatListScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val now by rememberNow()
+    var removing by rememberSaveable { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -105,84 +121,203 @@ fun ChatListScreen(
                         item { DemoModeBanner(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
                     }
                     items(state.items, key = { it.chat.id }) { item ->
-                        ChatRow(item, now, onClick = { onOpenChat(item.chat.id) })
+                        ChatRow(
+                            item = item,
+                            now = now,
+                            onClick = { onOpenChat(item.chat.id) },
+                            onPin = { viewModel.setPinned(item.chat.id, !item.pinned) },
+                            onMute = { viewModel.setMuted(item.chat.id, !item.muted) },
+                            onRemove = { removing = item.chat.id },
+                        )
                     }
                 }
         }
     }
+
+    removing?.let { chatId ->
+        val item = state.items.firstOrNull { it.chat.id == chatId }
+        if (item == null) {
+            removing = null
+        } else {
+            RemoveChatDialog(
+                name = item.partner?.name ?: "…",
+                onConfirm = {
+                    viewModel.remove(chatId)
+                    removing = null
+                },
+                onDismiss = { removing = null },
+            )
+        }
+    }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChatRow(
     item: ChatListItem,
     now: Long,
     onClick: () -> Unit,
+    onPin: () -> Unit,
+    onMute: () -> Unit,
+    onRemove: () -> Unit,
 ) {
     val name = item.partner?.name ?: "…"
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box {
-            Avatar(name = name, id = item.partnerId, size = 52.dp)
-            if (item.partner?.isOnline(now) == true) {
-                Box(
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(14.dp)
-                        .background(MaterialTheme.colorScheme.background, CircleShape)
-                        .padding(2.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape),
-                )
-            }
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                item.chat.lastMessage?.sentAt?.let {
-                    Text(
-                        text = formatChatListTime(it, now),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (item.unread) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+    val haptics = LocalHapticFeedback.current
+    var menu by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = onClick,
+                        onLongClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            menu = true
+                        },
+                    ).padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box {
+                Avatar(name = name, id = item.partnerId, size = 52.dp)
+                if (item.partner?.isOnline(now) == true) {
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(14.dp)
+                            .background(MaterialTheme.colorScheme.background, CircleShape)
+                            .padding(2.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape),
                     )
                 }
             }
-            Spacer(Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val last = item.chat.lastMessage
-                val preview =
-                    when {
-                        last == null -> stringResource(R.string.chats_no_messages)
-                        item.lastMessageIsMine -> stringResource(R.string.chats_you_prefix, last.text)
-                        else -> last.text
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (item.muted) {
+                            Spacer(Modifier.width(4.dp))
+                            Icon(
+                                Icons.Outlined.NotificationsOff,
+                                contentDescription = stringResource(R.string.chats_muted),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
                     }
-                Text(
-                    text = preview,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (item.unread) FontWeight.SemiBold else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (item.unread) {
-                    Spacer(Modifier.width(8.dp))
-                    Box(Modifier.size(10.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                    item.lastMessage?.sentAt?.let {
+                        Text(
+                            text = formatChatListTime(it, now),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (item.unread) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val last = item.lastMessage
+                    val preview =
+                        when {
+                            last == null -> stringResource(R.string.chats_no_messages)
+                            item.lastMessageIsMine -> stringResource(R.string.chats_you_prefix, last.text)
+                            else -> last.text
+                        }
+                    Text(
+                        text = preview,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (item.unread) FontWeight.SemiBold else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (item.unread) {
+                        Spacer(Modifier.width(8.dp))
+                        // У чата без звука непрочитанное — серым, как в Telegram.
+                        val dot = if (item.muted) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
+                        Box(Modifier.size(10.dp).background(dot, CircleShape))
+                    } else if (item.pinned) {
+                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            Icons.Outlined.PushPin,
+                            contentDescription = stringResource(R.string.chats_pinned),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
             }
         }
+        ChatMenu(menu, item, onDismiss = { menu = false }, onPin = onPin, onMute = onMute, onRemove = onRemove)
     }
+}
+
+/** Меню по долгому нажатию на чат, как в Telegram. */
+@Composable
+private fun ChatMenu(
+    expanded: Boolean,
+    item: ChatListItem,
+    onDismiss: () -> Unit,
+    onPin: () -> Unit,
+    onMute: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        DropdownMenuItem(
+            text = { Text(stringResource(if (item.pinned) R.string.chats_unpin else R.string.chats_pin)) },
+            leadingIcon = { Icon(Icons.Outlined.PushPin, contentDescription = null) },
+            onClick = {
+                onDismiss()
+                onPin()
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(if (item.muted) R.string.chats_unmute else R.string.chats_mute)) },
+            leadingIcon = {
+                Icon(if (item.muted) Icons.Outlined.Notifications else Icons.Outlined.NotificationsOff, contentDescription = null)
+            },
+            onClick = {
+                onDismiss()
+                onMute()
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.chats_remove), color = MaterialTheme.colorScheme.error) },
+            leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            onClick = {
+                onDismiss()
+                onRemove()
+            },
+        )
+    }
+}
+
+@Composable
+private fun RemoveChatDialog(
+    name: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.chats_remove_title)) },
+        text = { Text(stringResource(R.string.chats_remove_body, name)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.chats_remove), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }
 
 @Composable

@@ -3,6 +3,7 @@ package io.github.valerait.ghostlink.data.repository
 import io.github.valerait.ghostlink.data.model.Account
 import io.github.valerait.ghostlink.data.model.AccountKey
 import io.github.valerait.ghostlink.data.model.Chat
+import io.github.valerait.ghostlink.data.model.ChatPrefs
 import io.github.valerait.ghostlink.data.model.Device
 import io.github.valerait.ghostlink.data.model.LinkRequest
 import io.github.valerait.ghostlink.data.model.Message
@@ -64,7 +65,34 @@ interface UserRepository {
     )
 }
 
-interface ChatRepository {
+/** Личные настройки чатов: видны и меняются только у самого пользователя, собеседник о них не знает. */
+interface ChatPrefsRepository {
+    /** chatId -> [ChatPrefs]. */
+    fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>>
+
+    fun setPinned(
+        userId: String,
+        chatId: String,
+        pinned: Boolean,
+    )
+
+    fun setMuted(
+        userId: String,
+        chatId: String,
+        muted: Boolean,
+    )
+
+    /**
+     * Убирает чат из списка только у [userId]: переписка до этого момента у него больше не показывается,
+     * у собеседника ничего не меняется. Чат вернётся с новым сообщением или при повторном добавлении друга.
+     */
+    fun removeChat(
+        userId: String,
+        chatId: String,
+    )
+}
+
+interface ChatRepository : ChatPrefsRepository {
     fun observeChats(userId: String): Flow<List<Chat>>
 
     fun observeChat(chatId: String): Flow<Chat?>
@@ -107,7 +135,7 @@ interface ChatRepository {
         userId: String,
     )
 
-    /** Создаёт чат пары (если его ещё нет) и возвращает его id. */
+    /** Создаёт чат пары (если его ещё нет), возвращает его в список, если он был удалён, и возвращает его id. */
     suspend fun startChat(
         userId: String,
         friendId: String,

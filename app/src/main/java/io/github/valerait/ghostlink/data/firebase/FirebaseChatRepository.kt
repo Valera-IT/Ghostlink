@@ -8,8 +8,10 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import io.github.valerait.ghostlink.data.model.Chat
 import io.github.valerait.ghostlink.data.model.ChatIds
+import io.github.valerait.ghostlink.data.model.ChatPrefs
 import io.github.valerait.ghostlink.data.model.LastMessage
 import io.github.valerait.ghostlink.data.model.Message
 import io.github.valerait.ghostlink.data.model.ReplyTo
@@ -22,11 +24,25 @@ import java.util.Date
  * Схема:
  *  chats/{a_b}            members, lastMessage, updatedAt, lastRead.{uid}
  *  chats/{a_b}/messages   senderId, text, sentAt, replyTo?{id, senderId, preview}, editedAt?, deletedAt?
+ *  users/{uid}/chatPrefs/{a_b}  pinnedAt?, muted?, clearedAt?, hidden? — личные настройки, видны только владельцу
  */
 class FirebaseChatRepository(
     private val db: FirebaseFirestore,
 ) : ChatRepository {
     private val chats = db.collection("chats")
+
+    private fun prefs(userId: String) = db.collection("users").document(userId).collection("chatPrefs")
+
+    private fun updatePrefs(
+        userId: String,
+        chatId: String,
+        fields: Map<String, Any>,
+    ) {
+        prefs(userId)
+            .document(chatId)
+            .set(fields, SetOptions.merge())
+            .addOnFailureListener { Log.w(TAG, "Chat prefs update failed", it) }
+    }
 
     // Сортируем на клиенте, чтобы не требовать составной индекс members + updatedAt.
     override fun observeChats(userId: String): Flow<List<Chat>> =
@@ -127,6 +143,30 @@ class FirebaseChatRepository(
             .addOnFailureListener { Log.w(TAG, "markRead failed", it) }
     }
 
+    override fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>> =
+        prefs(userId).observe { qs -> qs.documents.associate { it.id to it.toChatPrefs() } }
+
+    override fun setPinned(
+        userId: String,
+        chatId: String,
+        pinned: Boolean,
+    ) = updatePrefs(userId, chatId, mapOf("pinnedAt" to if (pinned) FieldValue.serverTimestamp() else FieldValue.delete()))
+
+    override fun setMuted(
+        userId: String,
+        chatId: String,
+        muted: Boolean,
+    ) = updatePrefs(userId, chatId, mapOf("muted" to muted))
+
+    override fun removeChat(
+        userId: String,
+        chatId: String,
+    ) = updatePrefs(
+        userId,
+        chatId,
+        mapOf("hidden" to true, "clearedAt" to FieldValue.serverTimestamp(), "pinnedAt" to FieldValue.delete()),
+    )
+
     override suspend fun startChat(
         userId: String,
         friendId: String,
@@ -144,6 +184,8 @@ class FirebaseChatRepository(
                     ),
                 ).await()
         }
+        val prefsRef = prefs(userId).document(id)
+        if (prefsRef.get().await().getBoolean("hidden") == true) prefsRef.update("hidden", false).await()
         return id
     }
 
@@ -180,6 +222,14 @@ private fun DocumentSnapshot.toChat(): Chat? {
         lastRead = lastRead,
     )
 }
+
+private fun DocumentSnapshot.toChatPrefs() =
+    ChatPrefs(
+        pinnedAt = getTimestamp("pinnedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
+        muted = getBoolean("muted") == true,
+        clearedAt = getTimestamp("clearedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
+        hidden = getBoolean("hidden") == true,
+    )
 
 private fun DocumentSnapshot.toMessage() =
     Message(
