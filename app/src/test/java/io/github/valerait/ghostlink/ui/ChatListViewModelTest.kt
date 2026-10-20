@@ -3,6 +3,7 @@ package io.github.valerait.ghostlink.ui
 import androidx.lifecycle.SavedStateHandle
 import io.github.valerait.ghostlink.MainDispatcherRule
 import io.github.valerait.ghostlink.data.demo.InMemoryBackend
+import io.github.valerait.ghostlink.data.model.DisappearingTimer
 import io.github.valerait.ghostlink.di.AppConfig
 import io.github.valerait.ghostlink.ui.chat.ChatRow
 import io.github.valerait.ghostlink.ui.chat.ChatViewModel
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -42,7 +44,7 @@ class ChatListViewModelTest {
         now += 1_000
         val boris = backend.startChat(me, BORIS)
         backend.sendMessage(boris, BORIS, "привет от Бориса")
-        val vm = ChatListViewModel(backend, backend, backend, AppConfig(demoMode = false))
+        val vm = ChatListViewModel(backend, backend, backend, AppConfig(demoMode = false), { now })
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         return Setup(backend, me, anya, boris, vm)
     }
@@ -95,7 +97,7 @@ class ChatListViewModelTest {
             assertFalse("удаление снимает закрепление", anya.pinned)
             assertEquals("снова я", anya.lastMessage?.text)
 
-            val chat = ChatViewModel(SavedStateHandle(mapOf("chatId" to s.anya)), s.backend, s.backend, s.backend)
+            val chat = ChatViewModel(SavedStateHandle(mapOf("chatId" to s.anya)), s.backend, s.backend, s.backend, { now })
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { chat.state.collect {} }
             val texts =
                 chat.state.value.rows
@@ -136,6 +138,28 @@ class ChatListViewModelTest {
                     .observeMessages(s.anya)
                     .first()
                     .size,
+            )
+        }
+
+    @Test
+    fun `expired disappearing message leaves the preview`() =
+        runTest {
+            val s = setUp()
+            s.backend.sendMessage(s.anya, ANYA, "пуф", ttl = DisappearingTimer.HOUR.seconds)
+            assertEquals(
+                "пуф",
+                s.vm.state.value.items
+                    .first { it.chat.id == s.anya }
+                    .lastMessage
+                    ?.text,
+            )
+
+            now += DisappearingTimer.HOUR.seconds * 1_000
+            advanceTimeBy(DisappearingTimer.HOUR.seconds * 1_000 + 1)
+            assertNull(
+                s.vm.state.value.items
+                    .first { it.chat.id == s.anya }
+                    .lastMessage,
             )
         }
 

@@ -169,6 +169,7 @@ fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                actions = { DisappearingMenu(state.disappearing, viewModel::setDisappearing) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))

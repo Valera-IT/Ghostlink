@@ -5,14 +5,17 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.data.model.Chat
 import io.github.valerait.ghostlink.data.model.ChatPrefs
+import io.github.valerait.ghostlink.data.model.Clock
 import io.github.valerait.ghostlink.data.model.LastMessage
 import io.github.valerait.ghostlink.data.model.User
+import io.github.valerait.ghostlink.data.model.expiresAt
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
 import io.github.valerait.ghostlink.data.repository.UserRepository
 import io.github.valerait.ghostlink.data.repository.requireUserId
 import io.github.valerait.ghostlink.di.AppConfig
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -21,6 +24,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import javax.inject.Inject
 
 data class ChatListItem(
@@ -51,7 +55,8 @@ class ChatListViewModel
         auth: AuthRepository,
         users: UserRepository,
         private val chats: ChatRepository,
-        config: AppConfig,
+        private val config: AppConfig,
+        private val clock: Clock,
     ) : ViewModel() {
         private val me = auth.requireUserId()
 
@@ -69,33 +74,51 @@ class ChatListViewModel
 
         private val prefs = chats.observeChatPrefs(me)
 
+        // Превью исчезающего сообщения пропадает в его срок, даже если в базе ничего не поменялось.
         val state: StateFlow<ChatListState> =
-            combine(chatList, partners, prefs) { list, people, prefs ->
-                ChatListState(
-                    loading = false,
-                    items =
-                        list
-                            .mapNotNull { chat ->
-                                val chatPrefs = prefs[chat.id] ?: ChatPrefs()
-                                if (!chatPrefs.isVisible(chat)) return@mapNotNull null
-                                val last = chat.lastMessage?.takeUnless { chatPrefs.isCleared(it.sentAt) }
-                                ChatListItem(
-                                    chat = chat,
-                                    partnerId = chat.partnerId(me),
-                                    partner = people[chat.partnerId(me)],
-                                    unread = last != null && chat.isUnreadFor(me),
-                                    lastMessage = last,
-                                    lastMessageIsMine = last?.senderId == me,
-                                    pinned = chatPrefs.pinned,
-                                    muted = chatPrefs.muted,
-                                    typingUntil = chat.typingUntil(chat.partnerId(me)),
-                                )
-                            }
-                            // Закреплённые сверху (последний закреплённый первым), остальные — по свежести, как пришли.
-                            .sortedByDescending { prefs[it.chat.id]?.pinnedAt ?: Long.MIN_VALUE },
-                    demoMode = config.demoMode,
-                )
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatListState(demoMode = config.demoMode))
+            combine(chatList, partners, prefs, ::Triple)
+                .transformLatest { (list, people, prefs) ->
+                    while (true) {
+                        val now = clock.now()
+                        emit(buildState(list, people, prefs, now))
+                        val next =
+                            list
+                                .mapNotNull { chat -> chat.lastMessage?.let { expiresAt(it.sentAt, it.ttl) } }
+                                .filter { it > now }
+                                .minOrNull() ?: break
+                        delay(next - now)
+                    }
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatListState(demoMode = config.demoMode))
+
+        private fun buildState(
+            list: List<Chat>,
+            people: Map<String, User>,
+            prefs: Map<String, ChatPrefs>,
+            now: Long,
+        ) = ChatListState(
+            loading = false,
+            items =
+                list
+                    .mapNotNull { chat ->
+                        val chatPrefs = prefs[chat.id] ?: ChatPrefs()
+                        if (!chatPrefs.isVisible(chat)) return@mapNotNull null
+                        val last = chat.lastMessage?.takeUnless { chatPrefs.isCleared(it.sentAt) || it.isExpired(now) }
+                        ChatListItem(
+                            chat = chat,
+                            partnerId = chat.partnerId(me),
+                            partner = people[chat.partnerId(me)],
+                            unread = last != null && chat.isUnreadFor(me),
+                            lastMessage = last,
+                            lastMessageIsMine = last?.senderId == me,
+                            pinned = chatPrefs.pinned,
+                            muted = chatPrefs.muted,
+                            typingUntil = chat.typingUntil(chat.partnerId(me)),
+                        )
+                    }
+                    // Закреплённые сверху (последний закреплённый первым), остальные — по свежести, как пришли.
+                    .sortedByDescending { prefs[it.chat.id]?.pinnedAt ?: Long.MIN_VALUE },
+            demoMode = config.demoMode,
+        )
 
         fun setPinned(
             chatId: String,

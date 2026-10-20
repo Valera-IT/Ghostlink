@@ -6,6 +6,7 @@ import io.github.valerait.ghostlink.data.model.Chat
 import io.github.valerait.ghostlink.data.model.ChatIds
 import io.github.valerait.ghostlink.data.model.ChatPrefs
 import io.github.valerait.ghostlink.data.model.Device
+import io.github.valerait.ghostlink.data.model.DisappearingTimer
 import io.github.valerait.ghostlink.data.model.LINK_TTL_MS
 import io.github.valerait.ghostlink.data.model.LastMessage
 import io.github.valerait.ghostlink.data.model.LinkRequest
@@ -175,8 +176,9 @@ class InMemoryBackend(
         senderId: String,
         text: String,
         replyTo: ReplyTo?,
+        ttl: Long?,
     ) {
-        post(chatId, senderId, text, clock(), replyTo)
+        post(chatId, senderId, text, clock()) { it.copy(replyTo = replyTo, ttl = ttl) }
         val chat = chats.value[chatId] ?: return
         if (BOT_ID in chat.members && senderId != BOT_ID) replyAsBot(chatId)
     }
@@ -218,7 +220,7 @@ class InMemoryBackend(
         if (isLatest) {
             chats.update { all ->
                 val chat = all[chatId] ?: return@update all
-                all + (chatId to chat.copy(lastMessage = previous?.let { LastMessage(it.text, it.senderId, it.sentAt) }))
+                all + (chatId to chat.copy(lastMessage = previous?.let { LastMessage(it.text, it.senderId, it.sentAt, it.ttl) }))
             }
         }
     }
@@ -241,6 +243,27 @@ class InMemoryBackend(
         chats.update { all ->
             val chat = all[chatId] ?: return@update all
             all + (chatId to chat.copy(typing = if (typing) chat.typing + (userId to clock()) else chat.typing - userId))
+        }
+    }
+
+    override fun setDisappearing(
+        chatId: String,
+        timer: DisappearingTimer?,
+    ) {
+        chats.update { all ->
+            val chat = all[chatId] ?: return@update all
+            all + (chatId to chat.copy(disappearing = timer))
+        }
+    }
+
+    override fun deleteExpired(
+        chatId: String,
+        messageIds: List<String>,
+    ) {
+        val ids = messageIds.toSet()
+        messages.update { all ->
+            val list = all[chatId] ?: return@update all
+            all + (chatId to list.filterNot { it.id in ids })
         }
     }
 
@@ -354,13 +377,14 @@ class InMemoryBackend(
         senderId: String,
         text: String,
         at: Long,
-        replyTo: ReplyTo? = null,
+        extra: (Message) -> Message = { it },
     ) {
-        val message = Message("m${nextId.incrementAndGet()}", senderId, text, at, replyTo = replyTo)
+        val message = extra(Message("m${nextId.incrementAndGet()}", senderId, text, at))
+        val ttl = message.ttl
         messages.update { it + (chatId to it[chatId].orEmpty() + message) }
         chats.update { all ->
             val chat = all[chatId] ?: return@update all
-            all + (chatId to chat.copy(lastMessage = LastMessage(text, senderId, at), updatedAt = at, typing = chat.typing - senderId))
+            all + (chatId to chat.copy(lastMessage = LastMessage(text, senderId, at, ttl), updatedAt = at, typing = chat.typing - senderId))
         }
     }
 
@@ -370,7 +394,8 @@ class InMemoryBackend(
             markRead(chatId, BOT_ID)
             setTyping(chatId, BOT_ID, true)
             delay(1_200)
-            post(chatId, BOT_ID, BOT_REPLIES[botReplyIndex++ % BOT_REPLIES.size], clock())
+            val ttl = chats.value[chatId]?.disappearing?.seconds
+            post(chatId, BOT_ID, BOT_REPLIES[botReplyIndex++ % BOT_REPLIES.size], clock()) { it.copy(ttl = ttl) }
         }
     }
 
