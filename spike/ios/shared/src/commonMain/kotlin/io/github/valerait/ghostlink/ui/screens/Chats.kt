@@ -40,6 +40,9 @@ import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.GroupAdd
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Delete
@@ -110,6 +113,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.valerait.ghostlink.app.AppGraph
 import io.github.valerait.ghostlink.data.requireUserId
 import io.github.valerait.ghostlink.model.Chat
+import io.github.valerait.ghostlink.model.ChatPrefs
+import io.github.valerait.ghostlink.data.leaveGroup
 import io.github.valerait.ghostlink.model.DisappearingTimer
 import io.github.valerait.ghostlink.model.GroupInfo
 import io.github.valerait.ghostlink.model.LastMessage
@@ -165,6 +170,8 @@ data class ChatListItem(
     val typingName: String? = null,
     /** Автор последнего сообщения в группе, если это не я; в личном чате null. */
     val lastSenderName: String? = null,
+    val pinned: Boolean = false,
+    val muted: Boolean = false,
 ) {
     /** Имя собеседника или название группы. */
     val title: String? get() = chat.group?.name ?: partner?.name
@@ -184,19 +191,39 @@ class ChatListViewModel : ViewModel() {
         .flatMapLatest { AppGraph.users.observeUsers(it) }
 
     // Превью исчезающего сообщения пропадает в его срок, даже если в базе ничего не поменялось.
-    val state: StateFlow<ChatListState> = combine(chatList, people, ::Pair)
-        .transformLatest { (list, people) ->
+    private val prefs = AppGraph.chats.observeChatPrefs(me)
+
+    val state: StateFlow<ChatListState> = combine(chatList, people, prefs, ::Triple)
+        .transformLatest { (list, people, prefs) ->
             while (true) {
                 val now = nowMillis()
-                emit(ChatListState(loading = false, items = list.map { item(it, people, now) }))
+                val items = list
+                    .mapNotNull { chat ->
+                        val chatPrefs = prefs[chat.id] ?: ChatPrefs()
+                        if (chatPrefs.isVisible(chat)) item(chat, chatPrefs, people, now) else null
+                    }
+                    // Закреплённые сверху (последний закреплённый первым), остальные — по свежести, как пришли.
+                    .sortedByDescending { prefs[it.chat.id]?.pinnedAt ?: Long.MIN_VALUE }
+                emit(ChatListState(loading = false, items = items))
                 val next = list.mapNotNull { chat -> chat.lastMessage?.let { expiresAt(it.sentAt, it.ttl) } }.filter { it > now }.minOrNull() ?: break
                 delay(next - now)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatListState())
 
-    private fun item(chat: Chat, people: Map<String, User>, now: Long): ChatListItem {
-        val last = chat.lastMessage?.takeUnless { it.isExpired(now) }
+    fun setPinned(chatId: String, pinned: Boolean) = AppGraph.chats.setPinned(me, chatId, pinned)
+
+    fun setMuted(chatId: String, muted: Boolean) = AppGraph.chats.setMuted(me, chatId, muted)
+
+    /** Личный чат прячется только у меня; из группы я выхожу (админ передаёт права следующему участнику). */
+    fun remove(chatId: String) {
+        val chat = state.value.items.firstOrNull { it.chat.id == chatId }?.chat ?: return
+        if (chat.isGroup) AppGraph.chats.leaveGroup(chat, me)
+        AppGraph.chats.removeChat(me, chatId)
+    }
+
+    private fun item(chat: Chat, prefs: ChatPrefs, people: Map<String, User>, now: Long): ChatListItem {
+        val last = chat.lastMessage?.takeUnless { prefs.isCleared(it.sentAt) || it.isExpired(now) }
         val typing = chat.typingOther(me)
         return ChatListItem(
             chat = chat,
@@ -208,6 +235,8 @@ class ChatListViewModel : ViewModel() {
             typingUntil = typing?.second,
             typingName = if (chat.isGroup) typing?.let { people[it.first]?.name } else null,
             lastSenderName = last?.takeIf { chat.isGroup && it.senderId != me }?.let { people[it.senderId]?.name },
+            pinned = prefs.pinned,
+            muted = prefs.muted,
         )
     }
 }
@@ -239,6 +268,7 @@ fun ChatListScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val now by rememberNow()
+    var removingId by rememberSaveable { mutableStateOf<String?>(null) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -272,18 +302,67 @@ fun ChatListScreen(
             state.loading -> Unit
             state.items.isEmpty() -> EmptyChats(onMyCode, onScan, Modifier.padding(padding))
             else -> LazyColumn(contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = 96.dp), modifier = Modifier.fillMaxSize()) {
-                items(state.items, key = { it.chat.id }) { item -> ChatRowItem(item, now) { onOpenChat(item.chat.id) } }
+                items(state.items, key = { it.chat.id }) { item ->
+                    ChatRowItem(
+                        item,
+                        now,
+                        onClick = { onOpenChat(item.chat.id) },
+                        onPin = { viewModel.setPinned(item.chat.id, !item.pinned) },
+                        onMute = { viewModel.setMuted(item.chat.id, !item.muted) },
+                        onRemove = { removingId = item.chat.id },
+                    )
+                }
             }
         }
     }
+
+    removingId?.let { id ->
+        val item = state.items.firstOrNull { it.chat.id == id }
+        val isGroup = item?.chat?.isGroup == true
+        val name = item?.title.orEmpty()
+        val action = if (isGroup) "Выйти из группы" else "Удалить"
+        AlertDialog(
+            onDismissRequest = { removingId = null },
+            title = { Text(if (isGroup) "Выйти из группы?" else "Удалить контакт?") },
+            text = {
+                Text(
+                    if (isGroup) {
+                        "Вы перестанете получать сообщения «$name». Вернуть вас сможет только админ группы."
+                    } else {
+                        "«$name» и переписка исчезнут только у вас. Если собеседник напишет снова, чат появится с новыми сообщениями."
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    removingId = null
+                    viewModel.remove(id)
+                }) { Text(action, color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { removingId = null }) { Text("Отмена") } },
+        )
+    }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit) {
+private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit, onPin: () -> Unit, onMute: () -> Unit, onRemove: () -> Unit) {
     val name = item.title ?: "…"
     val typing = rememberIsTyping(item.typingUntil)
+    val haptics = LocalHapticFeedback.current
+    var menu by remember { mutableStateOf(false) }
+    Box {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClickLabel = "Действия с чатом",
+                onLongClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    menu = true
+                },
+            )
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box {
@@ -299,7 +378,12 @@ private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit) {
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                if (item.muted) {
+                    Spacer(Modifier.width(4.dp))
+                    Icon(Icons.Outlined.NotificationsOff, contentDescription = "Уведомления выключены", tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
+                }
+                Spacer(Modifier.weight(1f))
                 item.lastMessage?.sentAt?.let {
                     Text(
                         formatChatListTime(it, now),
@@ -330,10 +414,32 @@ private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit) {
                 )
                 if (item.unread) {
                     Spacer(Modifier.width(8.dp))
-                    Box(Modifier.size(10.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                    val dot = if (item.muted) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
+                    Box(Modifier.size(10.dp).background(dot, CircleShape))
+                } else if (item.pinned) {
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Outlined.PushPin, contentDescription = "Закреплён", tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                 }
             }
         }
+    }
+    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+        DropdownMenuItem(
+            text = { Text(if (item.pinned) "Открепить" else "Закрепить") },
+            leadingIcon = { Icon(Icons.Outlined.PushPin, contentDescription = null) },
+            onClick = { menu = false; onPin() },
+        )
+        DropdownMenuItem(
+            text = { Text(if (item.muted) "Включить уведомления" else "Выключить уведомления") },
+            leadingIcon = { Icon(if (item.muted) Icons.Outlined.Notifications else Icons.Outlined.NotificationsOff, contentDescription = null) },
+            onClick = { menu = false; onMute() },
+        )
+        DropdownMenuItem(
+            text = { Text(if (item.chat.isGroup) "Выйти из группы" else "Удалить", color = MaterialTheme.colorScheme.error) },
+            leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            onClick = { menu = false; onRemove() },
+        )
+    }
     }
 }
 
@@ -422,7 +528,10 @@ class ChatViewModel(private val chatId: String) : ViewModel() {
     private val expiredRequested = HashSet<String>()
 
     // Исчезающие пропадают ровно в свой срок, даже если из базы ничего нового не пришло.
-    private val messages = chats.observeMessages(chatId)
+    // Сообщения до удаления чата из списка (ChatPrefs.clearedAt) у этого пользователя больше не показываем.
+    private val messages = combine(chats.observeMessages(chatId), chats.observeChatPrefs(me).map { it[chatId] }.distinctUntilChanged()) { messages, prefs ->
+        if (prefs?.clearedAt == null) messages else messages.filterNot { prefs.isCleared(it.sentAt) }
+    }
         .transformLatest { list ->
             while (true) {
                 val now = nowMillis()

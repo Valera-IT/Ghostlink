@@ -3,6 +3,7 @@ package io.github.valerait.ghostlink.data
 import io.github.valerait.ghostlink.model.Account
 import io.github.valerait.ghostlink.model.AccountKey
 import io.github.valerait.ghostlink.model.Chat
+import io.github.valerait.ghostlink.model.ChatPrefs
 import io.github.valerait.ghostlink.model.Device
 import io.github.valerait.ghostlink.model.DisappearingTimer
 import io.github.valerait.ghostlink.model.LinkRequest
@@ -57,7 +58,15 @@ interface ChatRepository {
     fun setDisappearing(chatId: String, timer: DisappearingTimer?)
     /** Стирает из базы сообщения, срок которых вышел; это может сделать любой участник. */
     fun deleteExpired(chatId: String, messageIds: List<String>)
+    /** Создаёт чат пары, если его нет, и возвращает его в список, если пользователь его удалял. */
     suspend fun startChat(userId: String, friendId: String): String
+
+    /** chatId -> личные настройки чатов пользователя. */
+    fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>>
+    fun setPinned(userId: String, chatId: String, pinned: Boolean)
+    fun setMuted(userId: String, chatId: String, muted: Boolean)
+    /** Убирает чат из списка только у [userId] и скрывает его прежние сообщения. */
+    fun removeChat(userId: String, chatId: String)
 
     suspend fun createGroup(ownerId: String, name: String, memberIds: List<String>): String
     fun renameGroup(chatId: String, name: String)

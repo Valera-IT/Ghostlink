@@ -128,6 +128,24 @@ data class Chat(
     }
 }
 
+/** Личные настройки чата у одного пользователя: users/{uid}/chatPrefs/{chatId}. Собеседник их не видит. */
+data class ChatPrefs(
+    /** Когда чат закрепили; закреплённые идут первыми, последний закреплённый — выше. */
+    val pinnedAt: Long? = null,
+    val muted: Boolean = false,
+    /** Когда чат удалили из списка: сообщения до этого времени больше не показываем. */
+    val clearedAt: Long? = null,
+    /** Чат убран из списка и вернётся, когда придёт новое сообщение или друга добавят снова. */
+    val hidden: Boolean = false,
+) {
+    val pinned: Boolean get() = pinnedAt != null
+
+    /** Сообщение отправлено до удаления чата. Неподтверждённые (без времени) — всегда новые. */
+    fun isCleared(sentAt: Long?): Boolean = clearedAt != null && sentAt != null && sentAt <= clearedAt
+
+    fun isVisible(chat: Chat): Boolean = !hidden || chat.lastMessage?.let { !isCleared(it.sentAt) } == true
+}
+
 data class Message(
     val id: String,
     val senderId: String,
