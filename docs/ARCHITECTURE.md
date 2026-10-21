@@ -17,7 +17,8 @@
 
 ```
 build-logic/convention     convention-плагины Gradle: ghostlink.kmp.library, ghostlink.kmp.compose,
-                           ghostlink.feature, ghostlink.android.app, ghostlink.detekt
+                           ghostlink.feature, ghostlink.android.app, ghostlink.android.compose,
+                           ghostlink.detekt, ghostlink.spotless
 core/
   model                    доменные модели: чистый Kotlin, без зависимостей
   domain                   интерфейсы репозиториев + use case
