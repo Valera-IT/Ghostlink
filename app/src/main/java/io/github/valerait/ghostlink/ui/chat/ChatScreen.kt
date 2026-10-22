@@ -92,6 +92,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.model.Message
 import io.github.valerait.ghostlink.core.model.MessageId
 import io.github.valerait.ghostlink.core.model.MessageStatus
 import io.github.valerait.ghostlink.core.model.ReplyTo
@@ -510,7 +511,7 @@ private fun MessageInput(
                     value = text,
                     onValueChange = {
                         text =
-                            if (it.text.length > MAX_MESSAGE_LENGTH) it.copy(text = it.text.take(MAX_MESSAGE_LENGTH)) else it
+                            if (it.text.length > Message.TEXT_MAX_LENGTH) it.copy(text = it.text.take(Message.TEXT_MAX_LENGTH)) else it
                         onDraftChanged(text.text)
                     },
                     placeholder = { Text(stringResource(R.string.chat_input_hint)) },

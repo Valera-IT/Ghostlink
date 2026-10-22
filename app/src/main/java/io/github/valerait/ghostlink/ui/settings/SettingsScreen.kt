@@ -47,9 +47,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.BuildConfig
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.DemoModeBanner
-import io.github.valerait.ghostlink.ui.onboarding.MAX_NAME_LENGTH
 import io.github.valerait.ghostlink.ui.recovery.RecoveryCodeDialog
 import io.github.valerait.ghostlink.ui.theme.LocalThemeId
 
@@ -221,7 +221,7 @@ private fun RenameDialog(
         text = {
             OutlinedTextField(
                 value = value,
-                onValueChange = { value = it.take(MAX_NAME_LENGTH) },
+                onValueChange = { value = it.take(User.NAME_MAX_LENGTH) },
                 singleLine = true,
                 label = { Text(stringResource(R.string.onboarding_name_label)) },
             )

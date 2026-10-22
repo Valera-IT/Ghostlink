@@ -3,8 +3,8 @@ package io.github.valerait.ghostlink
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
-import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.UserRepository
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
+import io.github.valerait.ghostlink.core.domain.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

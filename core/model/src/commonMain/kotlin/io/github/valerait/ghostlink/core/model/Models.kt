@@ -52,6 +52,19 @@ data class User(
     val lastSeen: Instant? = null,
 ) {
     fun isOnline(now: Instant): Boolean = online && (lastSeen == null || now - lastSeen < ONLINE_TIMEOUT)
+
+    companion object {
+        /** Совпадает с ограничением в firestore.rules. */
+        const val NAME_MAX_LENGTH = 40
+
+        /** Имя профиля без пробелов по краям и не длиннее лимита; null — пустое. */
+        fun normalizeName(raw: String): String? =
+            raw
+                .trim()
+                .take(NAME_MAX_LENGTH)
+                .trimEnd()
+                .takeIf { it.isNotEmpty() }
+    }
 }
 
 data class LastMessage(
@@ -188,6 +201,11 @@ data class Message(
 
     fun isExpired(now: Instant): Boolean = expiresAt?.let { now >= it } == true
 
+    companion object {
+        /** Совпадает с ограничением в firestore.rules. */
+        const val TEXT_MAX_LENGTH = 4000
+    }
+
     /**
      * [readUpTo] — до какого момента прочитал хоть один получатель;
      * [allReadUpTo] — до какого прочитали все (только в группах, в личном чате null).
@@ -203,6 +221,9 @@ data class Message(
             else -> MessageStatus.SENT
         }
 }
+
+/** Текст сообщения без пробелов по краям и не длиннее лимита; null — отправлять нечего. */
+fun normalizeMessageText(raw: String): String? = raw.trim().take(Message.TEXT_MAX_LENGTH).takeIf { it.isNotEmpty() }
 
 /** READ — прочитал хоть один (две галочки), READ_ALL — в группе прочитали все (три галочки). */
 enum class MessageStatus { SENDING, SENT, READ, READ_ALL }

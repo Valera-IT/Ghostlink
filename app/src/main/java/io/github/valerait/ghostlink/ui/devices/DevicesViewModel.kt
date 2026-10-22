@@ -6,17 +6,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
+import io.github.valerait.ghostlink.core.domain.repository.DeviceRepository
+import io.github.valerait.ghostlink.core.domain.repository.requireUserId
+import io.github.valerait.ghostlink.core.domain.usecase.SignOutEverywhereUseCase
 import io.github.valerait.ghostlink.core.model.Device
 import io.github.valerait.ghostlink.core.model.DeviceId
 import io.github.valerait.ghostlink.data.device.ThisDevice
-import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.DeviceRepository
-import io.github.valerait.ghostlink.data.repository.requireUserId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,9 +34,10 @@ data class DevicesState(
 class DevicesViewModel
     @Inject
     constructor(
-        private val auth: AuthRepository,
+        auth: AuthRepository,
         private val devices: DeviceRepository,
         private val thisDevice: ThisDevice,
+        private val signOutEverywhere: SignOutEverywhereUseCase,
     ) : ViewModel() {
         private val me = auth.requireUserId()
         private val busy = MutableStateFlow(false)
@@ -63,19 +64,10 @@ class DevicesViewModel
                 message.value = R.string.devices_removed
             }
 
-        /**
-         * Жёсткая мера: новый секрет ключа. Firebase отзывает сессии остальных устройств,
-         * а удаление из реестра заставляет их выйти сразу, не дожидаясь истечения токена.
-         */
+        /** Жёсткая мера: новый секрет ключа (см. [SignOutEverywhereUseCase]). */
         fun signOutOthers() =
             launchBusy {
-                val key = auth.rotateKey()
-                newRecoveryCode.value = key.toRecoveryCode()
-                devices
-                    .observeDevices(me)
-                    .first()
-                    .filter { it.id != thisDevice.id }
-                    .forEach { runCatching { devices.removeDevice(me, it.id) } }
+                newRecoveryCode.value = signOutEverywhere(thisDevice.id)
             }
 
         fun onMessageShown() {

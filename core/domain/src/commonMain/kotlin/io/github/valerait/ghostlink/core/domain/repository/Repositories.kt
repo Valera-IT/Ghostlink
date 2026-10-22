@@ -1,6 +1,7 @@
-package io.github.valerait.ghostlink.data.repository
+package io.github.valerait.ghostlink.core.domain.repository
 
 import io.github.valerait.ghostlink.core.model.Account
+import io.github.valerait.ghostlink.core.model.AccountKey
 import io.github.valerait.ghostlink.core.model.Chat
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.ChatPrefs
@@ -16,7 +17,6 @@ import io.github.valerait.ghostlink.core.model.Platform
 import io.github.valerait.ghostlink.core.model.ReplyTo
 import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.data.model.AccountKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.time.Duration

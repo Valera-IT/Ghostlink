@@ -4,16 +4,16 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
+import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
+import io.github.valerait.ghostlink.core.domain.repository.UserRepository
+import io.github.valerait.ghostlink.core.domain.repository.requireUserId
+import io.github.valerait.ghostlink.core.domain.usecase.LeaveGroupUseCase
 import io.github.valerait.ghostlink.core.model.Chat
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.GroupInfo
 import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.ChatRepository
-import io.github.valerait.ghostlink.data.repository.GroupRepository
-import io.github.valerait.ghostlink.data.repository.UserRepository
-import io.github.valerait.ghostlink.data.repository.requireUserId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,20 +27,6 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-/**
- * Выход из группы. Админ передаёт права следующему участнику; последний участник просто прячет чат у себя.
- */
-fun leaveGroup(
-    groups: GroupRepository,
-    chat: Chat,
-    me: UserId,
-) {
-    val others = chat.members.filter { it != me }
-    if (others.isEmpty()) return
-    val newOwner = if (chat.group?.ownerId == me) others.first() else null
-    groups.removeMember(chat.id, me, newOwner)
-}
 
 data class PickMembersState(
     val loading: Boolean = true,
@@ -141,6 +127,7 @@ class GroupInfoViewModel
         auth: AuthRepository,
         users: UserRepository,
         private val chats: ChatRepository,
+        private val leaveGroup: LeaveGroupUseCase,
     ) : ViewModel() {
         private val chatId = ChatId(checkNotNull(savedStateHandle["chatId"]))
         private val me = auth.requireUserId()
@@ -183,8 +170,7 @@ class GroupInfoViewModel
 
         fun leave() {
             val chat = state.value.chat ?: return
-            leaveGroup(chats, chat, me)
-            chats.removeChat(me, chatId)
+            leaveGroup(chat, me)
             leftByMe.value = true
         }
     }

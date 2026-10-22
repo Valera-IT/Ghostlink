@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "Ghostlink"
 include(":app")
 include(":core:model")
+include(":core:domain")

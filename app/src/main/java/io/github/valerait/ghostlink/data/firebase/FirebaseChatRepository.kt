@@ -9,6 +9,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
 import io.github.valerait.ghostlink.core.model.Chat
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.ChatPrefs
@@ -19,7 +20,6 @@ import io.github.valerait.ghostlink.core.model.Message
 import io.github.valerait.ghostlink.core.model.MessageId
 import io.github.valerait.ghostlink.core.model.ReplyTo
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.data.repository.ChatRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 import kotlin.time.Duration

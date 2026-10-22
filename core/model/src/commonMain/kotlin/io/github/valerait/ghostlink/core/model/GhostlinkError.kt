@@ -18,6 +18,9 @@ sealed class GhostlinkError(
         cause: Throwable? = null,
     ) : GhostlinkError("Invalid account key", cause)
 
+    /** Ключ восстановления введён с ошибкой: не тот формат или длина. */
+    class MalformedRecoveryCode : GhostlinkError("Malformed recovery code")
+
     /** Заявка на вход истекла или удалена. */
     class LinkExpired : GhostlinkError("Link request expired")
 

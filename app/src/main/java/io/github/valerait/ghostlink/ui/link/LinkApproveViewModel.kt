@@ -5,17 +5,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.valerait.ghostlink.core.domain.usecase.ApproveDeviceLinkUseCase
 import io.github.valerait.ghostlink.core.model.LinkCode
 import io.github.valerait.ghostlink.core.model.Platform
-import io.github.valerait.ghostlink.data.link.LinkCrypto
-import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.LinkRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.time.Clock
 
 sealed interface LinkApproveState {
     data object Loading : LinkApproveState
@@ -39,8 +37,7 @@ class LinkApproveViewModel
     @Inject
     constructor(
         savedStateHandle: SavedStateHandle,
-        private val auth: AuthRepository,
-        private val links: LinkRepository,
+        private val approveLink: ApproveDeviceLinkUseCase,
     ) : ViewModel() {
         private val code: LinkCode? = LinkCode.parse(savedStateHandle.get<String>("code"))
 
@@ -49,18 +46,16 @@ class LinkApproveViewModel
 
         init {
             viewModelScope.launch {
-                val request =
-                    try {
-                        code?.let { links.getLinkRequest(it.requestId) }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to load link request", e)
-                        null
-                    }
                 _state.value =
-                    if (request == null || request.payload != null || request.isExpired(Clock.System.now())) {
-                        LinkApproveState.Invalid
-                    } else {
+                    try {
+                        val request = approveLink.load(checkNotNull(code) { "Not a link code" })
                         LinkApproveState.Confirm(request.deviceName, request.platform)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // Просроченная, уже подтверждённая или чужая заявка — для пользователя всё равно «код не подходит».
+                        Log.w(TAG, "Link request is not valid", e)
+                        LinkApproveState.Invalid
                     }
             }
         }
@@ -73,8 +68,7 @@ class LinkApproveViewModel
             viewModelScope.launch {
                 _state.value =
                     try {
-                        val key = auth.accountKey.value ?: auth.ensureAccountKey()
-                        links.approveLinkRequest(code.requestId, LinkCrypto.encrypt(code.publicKey, code.requestId.value, key.bytes))
+                        approveLink(code)
                         LinkApproveState.Done
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed to approve link request", e)

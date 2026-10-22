@@ -5,7 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import android.util.Log
-import io.github.valerait.ghostlink.data.model.AccountKey
+import io.github.valerait.ghostlink.core.model.AccountKey
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator

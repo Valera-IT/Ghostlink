@@ -3,9 +3,9 @@ package io.github.valerait.ghostlink.ui.navigation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
+import io.github.valerait.ghostlink.core.domain.repository.UserRepository
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.UserRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

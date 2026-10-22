@@ -46,7 +46,7 @@ class ChatViewModelTest {
         backend.saveProfile(me, "Я")
         backend.saveProfile(FRIEND, "Друг")
         val chatId = backend.startChat(me, FRIEND)
-        val vm = ChatViewModel(SavedStateHandle(mapOf("chatId" to chatId.value)), backend, backend, backend, clock)
+        val vm = backend.chatViewModel(chatId, clock)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         return Triple(backend, chatId, vm)
     }

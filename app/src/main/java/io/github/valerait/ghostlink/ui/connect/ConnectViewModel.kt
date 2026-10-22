@@ -7,13 +7,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
+import io.github.valerait.ghostlink.core.domain.repository.UserRepository
+import io.github.valerait.ghostlink.core.domain.repository.requireUserId
+import io.github.valerait.ghostlink.core.domain.usecase.AddFriendUseCase
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.ChatRepository
-import io.github.valerait.ghostlink.data.repository.UserRepository
-import io.github.valerait.ghostlink.data.repository.requireUserId
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,7 +45,7 @@ class ConnectViewModel
         savedStateHandle: SavedStateHandle,
         auth: AuthRepository,
         private val users: UserRepository,
-        private val chats: ChatRepository,
+        private val addFriend: AddFriendUseCase,
     ) : ViewModel() {
         private val friendId = UserId(checkNotNull(savedStateHandle["userId"]))
         private val me = auth.requireUserId()
@@ -82,7 +82,7 @@ class ConnectViewModel
             _state.value = found.copy(busy = true, error = null)
             viewModelScope.launch {
                 try {
-                    _chatReady.send(chats.startChat(me, friendId))
+                    _chatReady.send(addFriend(friendId))
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to start chat", e)
                     _state.update { (it as? ConnectState.Found)?.copy(busy = false, error = R.string.error_generic) ?: it }

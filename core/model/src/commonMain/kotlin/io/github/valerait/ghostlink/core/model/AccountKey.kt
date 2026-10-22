@@ -1,6 +1,4 @@
-package io.github.valerait.ghostlink.data.model
-
-import java.security.SecureRandom
+package io.github.valerait.ghostlink.core.model
 
 /**
  * Ключ аккаунта — скрытые логин и пароль Firebase Email/Password.
@@ -26,8 +24,7 @@ class AccountKey(
     val password: String get() = Base32.encode(data.copyOfRange(LOGIN_SIZE, SIZE))
 
     /** Тот же логин с новым секретом: так «выход на всех устройствах» меняет только пароль. */
-    fun rotated(random: SecureRandom = SecureRandom()): AccountKey =
-        AccountKey(data.copyOfRange(0, LOGIN_SIZE) + ByteArray(SIZE - LOGIN_SIZE).also(random::nextBytes))
+    fun rotated(): AccountKey = AccountKey(data.copyOfRange(0, LOGIN_SIZE) + secureRandomBytes(SIZE - LOGIN_SIZE))
 
     /** XXXXX-XXXXX-…: 8 групп по 5 символов base32. */
     fun toRecoveryCode(): String = Base32.encode(data).chunked(GROUP).joinToString("-")
@@ -44,16 +41,10 @@ class AccountKey(
         private const val GROUP = 5
         private const val DOMAIN = "@ghostlink.invalid"
 
-        fun generate(random: SecureRandom = SecureRandom()): AccountKey = AccountKey(ByteArray(SIZE).also(random::nextBytes))
+        fun generate(): AccountKey = AccountKey(secureRandomBytes(SIZE))
 
         /** Новый секрет для аккаунта, у которого уже есть служебная почта (ключ на устройстве потерян). */
-        fun forEmail(
-            email: String,
-            random: SecureRandom = SecureRandom(),
-        ): AccountKey? {
-            val login = emailToLogin(email) ?: return null
-            return AccountKey(login + ByteArray(SIZE - LOGIN_SIZE).also(random::nextBytes))
-        }
+        fun forEmail(email: String): AccountKey? = emailToLogin(email)?.let { AccountKey(it + secureRandomBytes(SIZE - LOGIN_SIZE)) }
 
         fun isServiceEmail(email: String?): Boolean = email != null && emailToLogin(email) != null
 
@@ -63,13 +54,13 @@ class AccountKey(
             return if (bytes.size == SIZE) AccountKey(bytes) else null
         }
 
-        private fun loginToEmail(login: ByteArray): String = login.joinToString("") { "%02x".format(it) } + DOMAIN
+        private fun loginToEmail(login: ByteArray): String = login.toHexString() + DOMAIN
 
         private fun emailToLogin(email: String): ByteArray? {
             if (!email.endsWith(DOMAIN)) return null
             val hex = email.removeSuffix(DOMAIN)
             if (hex.length != LOGIN_SIZE * 2 || !hex.all { it in '0'..'9' || it in 'a'..'f' }) return null
-            return ByteArray(LOGIN_SIZE) { hex.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
+            return hex.hexToByteArray()
         }
     }
 }
@@ -95,7 +86,7 @@ internal object Base32 {
     }
 
     fun decode(text: String): ByteArray? {
-        val out = java.io.ByteArrayOutputStream()
+        val out = ArrayList<Byte>(text.length * 5 / 8)
         var buffer = 0
         var bits = 0
         for (c in text) {
@@ -108,10 +99,13 @@ internal object Base32 {
             buffer = (buffer shl 5) or value
             bits += 5
             if (bits >= 8) {
-                out.write((buffer shr (bits - 8)) and 0xFF)
+                out += ((buffer shr (bits - 8)) and 0xFF).toByte()
                 bits -= 8
             }
         }
         return out.toByteArray()
     }
 }
+
+/** Криптостойкие случайные байты: ключ аккаунта — это пароль, обычный [kotlin.random.Random] не годится. */
+internal expect fun secureRandomBytes(size: Int): ByteArray

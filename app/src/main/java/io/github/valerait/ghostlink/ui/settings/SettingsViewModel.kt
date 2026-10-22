@@ -6,14 +6,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
+import io.github.valerait.ghostlink.core.domain.repository.UserRepository
+import io.github.valerait.ghostlink.core.domain.repository.requireUserId
+import io.github.valerait.ghostlink.core.domain.usecase.GetRecoveryCodeUseCase
+import io.github.valerait.ghostlink.core.domain.usecase.RenameProfileUseCase
+import io.github.valerait.ghostlink.core.domain.usecase.SignOutUseCase
 import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.device.ThisDevice
-import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.DeviceRepository
-import io.github.valerait.ghostlink.data.repository.UserRepository
-import io.github.valerait.ghostlink.data.repository.requireUserId
 import io.github.valerait.ghostlink.di.AppConfig
-import io.github.valerait.ghostlink.ui.onboarding.MAX_NAME_LENGTH
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,11 +37,13 @@ data class SettingsState(
 class SettingsViewModel
     @Inject
     constructor(
-        private val auth: AuthRepository,
-        private val users: UserRepository,
-        private val devices: DeviceRepository,
+        auth: AuthRepository,
+        users: UserRepository,
         private val thisDevice: ThisDevice,
         private val config: AppConfig,
+        private val renameProfile: RenameProfileUseCase,
+        private val getRecoveryCode: GetRecoveryCodeUseCase,
+        private val signOutHere: SignOutUseCase,
     ) : ViewModel() {
         private val me = auth.requireUserId()
         private val busy = MutableStateFlow(false)
@@ -64,29 +67,18 @@ class SettingsViewModel
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsState(userId = me, demoMode = config.demoMode))
 
-        fun rename(name: String) {
-            val trimmed = name.trim().take(MAX_NAME_LENGTH)
-            if (trimmed.isEmpty()) return
-            launchBusy { users.saveProfile(me, trimmed) }
-        }
+        fun rename(name: String) = launchBusy { renameProfile(name) }
 
         fun showRecoveryKey() =
             launchBusy {
-                val key = auth.accountKey.value ?: auth.ensureAccountKey()
-                recoveryCode.value = key.toRecoveryCode()
+                recoveryCode.value = getRecoveryCode()
             }
 
         fun onRecoveryKeyShown() {
             recoveryCode.value = null
         }
 
-        fun signOut() =
-            launchBusy {
-                users.setOnline(me, false)
-                // Без интернета запись устройства останется в списке — её можно удалить с другого устройства.
-                runCatching { devices.removeDevice(me, thisDevice.id) }
-                auth.signOut()
-            }
+        fun signOut() = launchBusy { signOutHere(thisDevice.id) }
 
         fun onMessageShown() {
             message.value = null

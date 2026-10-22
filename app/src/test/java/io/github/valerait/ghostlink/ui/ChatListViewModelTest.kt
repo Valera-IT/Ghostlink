@@ -55,7 +55,7 @@ class ChatListViewModelTest {
         now += 1.seconds
         val boris = backend.startChat(me, BORIS)
         backend.sendMessage(boris, BORIS, "привет от Бориса")
-        val vm = ChatListViewModel(backend, backend, backend, AppConfig(demoMode = false), clock)
+        val vm = backend.chatListViewModel(clock)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         return Setup(backend, me, anya, boris, vm)
     }
@@ -108,7 +108,7 @@ class ChatListViewModelTest {
             assertFalse("удаление снимает закрепление", anya.pinned)
             assertEquals("снова я", anya.lastMessage?.text)
 
-            val chat = ChatViewModel(SavedStateHandle(mapOf("chatId" to s.anya.value)), s.backend, s.backend, s.backend, clock)
+            val chat = s.backend.chatViewModel(s.anya, clock)
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { chat.state.collect {} }
             val texts =
                 chat.state.value.rows

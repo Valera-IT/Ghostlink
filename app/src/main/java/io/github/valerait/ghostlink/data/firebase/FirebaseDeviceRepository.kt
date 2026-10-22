@@ -5,10 +5,10 @@ import com.google.firebase.firestore.DocumentSnapshot.ServerTimestampBehavior
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import io.github.valerait.ghostlink.core.domain.repository.DeviceRepository
 import io.github.valerait.ghostlink.core.model.Device
 import io.github.valerait.ghostlink.core.model.DeviceId
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.data.repository.DeviceRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 
