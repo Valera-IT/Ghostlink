@@ -4,9 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.valerait.ghostlink.data.model.Chat
-import io.github.valerait.ghostlink.data.model.GroupInfo
-import io.github.valerait.ghostlink.data.model.User
+import io.github.valerait.ghostlink.core.model.Chat
+import io.github.valerait.ghostlink.core.model.ChatId
+import io.github.valerait.ghostlink.core.model.GroupInfo
+import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
 import io.github.valerait.ghostlink.data.repository.GroupRepository
@@ -32,7 +34,7 @@ import javax.inject.Inject
 fun leaveGroup(
     groups: GroupRepository,
     chat: Chat,
-    me: String,
+    me: UserId,
 ) {
     val others = chat.members.filter { it != me }
     if (others.isEmpty()) return
@@ -46,11 +48,11 @@ data class PickMembersState(
     val addingToGroup: Boolean = false,
     /** Друзья — те, с кем есть личный чат; уже состоящие в группе не показываются. */
     val friends: List<User> = emptyList(),
-    val selected: Set<String> = emptySet(),
+    val selected: Set<UserId> = emptySet(),
     /** Сколько ещё можно выбрать с учётом лимита группы. */
     val slotsLeft: Int = GroupInfo.MAX_MEMBERS - 1,
     /** Группа создана или участники добавлены: экран закрывается и открывает этот чат. */
-    val doneChatId: String? = null,
+    val doneChatId: ChatId? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -63,10 +65,10 @@ class PickMembersViewModel
         users: UserRepository,
         private val chats: ChatRepository,
     ) : ViewModel() {
-        private val groupId: String? = savedStateHandle["chatId"]
+        private val groupId = savedStateHandle.get<String>("chatId")?.let(::ChatId)
         private val me = auth.requireUserId()
-        private val selected = MutableStateFlow<Set<String>>(emptySet())
-        private val done = MutableStateFlow<String?>(null)
+        private val selected = MutableStateFlow<Set<UserId>>(emptySet())
+        private val done = MutableStateFlow<ChatId?>(null)
 
         private val allChats = chats.observeChats(me).shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
         private val existing = if (groupId == null) flowOf(listOf(me)) else chats.observeChat(groupId).map { it?.members.orEmpty() }
@@ -78,7 +80,7 @@ class PickMembersViewModel
                         .map { it.partnerId(me) }
                         .filter { it != me }
                         .distinct()
-                        .sorted()
+                        .sortedBy { it.value }
                 }.distinctUntilChanged()
                 .flatMapLatest { users.observeUsers(it) }
 
@@ -94,7 +96,7 @@ class PickMembersViewModel
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PickMembersState(addingToGroup = groupId != null))
 
-        fun toggle(userId: String) {
+        fun toggle(userId: UserId) {
             selected.value =
                 when {
                     userId in selected.value -> selected.value - userId
@@ -124,7 +126,7 @@ data class GroupInfoState(
     val chat: Chat? = null,
     /** Участники: админ первым, затем по имени. */
     val members: List<User> = emptyList(),
-    val me: String = "",
+    val me: UserId = UserId(""),
     val isOwner: Boolean = false,
     /** Я больше не в группе — экран закрывается. */
     val left: Boolean = false,
@@ -140,7 +142,7 @@ class GroupInfoViewModel
         users: UserRepository,
         private val chats: ChatRepository,
     ) : ViewModel() {
-        private val chatId: String = checkNotNull(savedStateHandle["chatId"])
+        private val chatId = ChatId(checkNotNull(savedStateHandle["chatId"]))
         private val me = auth.requireUserId()
 
         // После выхода сервер перестаёт отдавать чат, поэтому закрываемся по своему действию, не дожидаясь снимка.
@@ -148,7 +150,7 @@ class GroupInfoViewModel
         private val chat = chats.observeChat(chatId).shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
         private val people =
             chat
-                .map { it?.members.orEmpty().sorted() }
+                .map { it?.members.orEmpty().sortedBy { id -> id.value } }
                 .distinctUntilChanged()
                 .flatMapLatest { users.observeUsers(it) }
 
@@ -175,7 +177,7 @@ class GroupInfoViewModel
             if (title.isNotEmpty() && state.value.isOwner) chats.renameGroup(chatId, title)
         }
 
-        fun remove(userId: String) {
+        fun remove(userId: UserId) {
             if (state.value.isOwner && userId != me) chats.removeMember(chatId, userId)
         }
 

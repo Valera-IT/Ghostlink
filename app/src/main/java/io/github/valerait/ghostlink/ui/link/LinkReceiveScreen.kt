@@ -1,6 +1,5 @@
 package io.github.valerait.ghostlink.ui.link
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +33,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.ui.mycode.QrCard
 import kotlinx.coroutines.delay
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,13 +104,11 @@ fun LinkReceiveScreen(
     }
 }
 
-// Ложное срабатывание lint: value присваивается внутри лямбды (до обновления Compose на этапе 3.1).
-@SuppressLint("ProduceStateDoesNotAssignValue")
 @Composable
-private fun Countdown(expiresAt: Long) {
+private fun Countdown(expiresAt: Instant) {
     val secondsLeft by produceState(initialValue = secondsUntil(expiresAt), expiresAt) {
         while (value > 0) {
-            delay(1_000)
+            delay(1.seconds)
             value = secondsUntil(expiresAt)
         }
     }
@@ -119,7 +119,7 @@ private fun Countdown(expiresAt: Long) {
     )
 }
 
-private fun secondsUntil(at: Long): Int = ((at - System.currentTimeMillis()) / 1000).coerceAtLeast(0).toInt()
+private fun secondsUntil(at: Instant): Int = (at - Clock.System.now()).inWholeSeconds.coerceAtLeast(0).toInt()
 
 @Composable
 private fun Steps() {

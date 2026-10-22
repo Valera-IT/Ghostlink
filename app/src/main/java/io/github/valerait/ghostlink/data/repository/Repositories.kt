@@ -1,17 +1,25 @@
 package io.github.valerait.ghostlink.data.repository
 
-import io.github.valerait.ghostlink.data.model.Account
+import io.github.valerait.ghostlink.core.model.Account
+import io.github.valerait.ghostlink.core.model.Chat
+import io.github.valerait.ghostlink.core.model.ChatId
+import io.github.valerait.ghostlink.core.model.ChatPrefs
+import io.github.valerait.ghostlink.core.model.Device
+import io.github.valerait.ghostlink.core.model.DeviceId
+import io.github.valerait.ghostlink.core.model.DisappearingTimer
+import io.github.valerait.ghostlink.core.model.GhostlinkError
+import io.github.valerait.ghostlink.core.model.LinkRequest
+import io.github.valerait.ghostlink.core.model.LinkRequestId
+import io.github.valerait.ghostlink.core.model.Message
+import io.github.valerait.ghostlink.core.model.MessageId
+import io.github.valerait.ghostlink.core.model.Platform
+import io.github.valerait.ghostlink.core.model.ReplyTo
+import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.model.AccountKey
-import io.github.valerait.ghostlink.data.model.Chat
-import io.github.valerait.ghostlink.data.model.ChatPrefs
-import io.github.valerait.ghostlink.data.model.Device
-import io.github.valerait.ghostlink.data.model.DisappearingTimer
-import io.github.valerait.ghostlink.data.model.LinkRequest
-import io.github.valerait.ghostlink.data.model.Message
-import io.github.valerait.ghostlink.data.model.ReplyTo
-import io.github.valerait.ghostlink.data.model.User
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.time.Duration
 
 interface AuthRepository {
     val account: StateFlow<Account?>
@@ -22,7 +30,7 @@ interface AuthRepository {
     /** Новый аккаунт со свежим ключом. */
     suspend fun createAccount(): Account
 
-    /** Вход по ключу: с другого устройства через QR или по ключу восстановления. */
+    /** Вход по ключу: с другого устройства через QR или по ключу восстановления. Неверный ключ — [GhostlinkError.InvalidAccountKey]. */
     suspend fun signInWithKey(key: AccountKey): Account
 
     /** Временный аккаунт нового устройства: нужен только чтобы создать заявку на вход. */
@@ -41,45 +49,39 @@ interface AuthRepository {
     suspend fun signOut()
 }
 
-/** Ключ не подошёл: аккаунта нет или секрет уже сменили. */
-class InvalidAccountKeyException(
-    cause: Throwable? = null,
-) : Exception(cause)
-
-fun AuthRepository.requireUserId(): String = checkNotNull(account.value) { "Not signed in" }.id
+fun AuthRepository.requireUserId(): UserId = checkNotNull(account.value) { "Not signed in" }.id
 
 interface UserRepository {
-    fun observeUser(id: String): Flow<User?>
+    fun observeUser(id: UserId): Flow<User?>
 
-    fun observeUsers(ids: List<String>): Flow<Map<String, User>>
+    fun observeUsers(ids: List<UserId>): Flow<Map<UserId, User>>
 
-    suspend fun getUser(id: String): User?
+    suspend fun getUser(id: UserId): User?
 
     suspend fun saveProfile(
-        id: String,
+        id: UserId,
         name: String,
     )
 
     fun setOnline(
-        id: String,
+        id: UserId,
         online: Boolean,
     )
 }
 
 /** Личные настройки чатов: видны и меняются только у самого пользователя, собеседник о них не знает. */
 interface ChatPrefsRepository {
-    /** chatId -> [ChatPrefs]. */
-    fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>>
+    fun observeChatPrefs(userId: UserId): Flow<Map<ChatId, ChatPrefs>>
 
     fun setPinned(
-        userId: String,
-        chatId: String,
+        userId: UserId,
+        chatId: ChatId,
         pinned: Boolean,
     )
 
     fun setMuted(
-        userId: String,
-        chatId: String,
+        userId: UserId,
+        chatId: ChatId,
         muted: Boolean,
     )
 
@@ -88,8 +90,8 @@ interface ChatPrefsRepository {
      * у собеседника ничего не меняется. Чат вернётся с новым сообщением или при повторном добавлении друга.
      */
     fun removeChat(
-        userId: String,
-        chatId: String,
+        userId: UserId,
+        chatId: ChatId,
     )
 }
 
@@ -97,14 +99,14 @@ interface ChatPrefsRepository {
 interface DisappearingRepository {
     /** Включает или выключает исчезающие сообщения в чате — для обоих участников. */
     fun setDisappearing(
-        chatId: String,
+        chatId: ChatId,
         timer: DisappearingTimer?,
     )
 
     /** Стирает из базы исчезнувшие сообщения: на Spark нет TTL, поэтому за этим следят сами клиенты. */
     fun deleteExpired(
-        chatId: String,
-        messageIds: List<String>,
+        chatId: ChatId,
+        messageIds: List<MessageId>,
     )
 }
 
@@ -112,19 +114,19 @@ interface DisappearingRepository {
 interface GroupRepository {
     /** Создаёт группу с админом [ownerId] и возвращает её id. */
     suspend fun createGroup(
-        ownerId: String,
+        ownerId: UserId,
         name: String,
-        memberIds: List<String>,
-    ): String
+        memberIds: List<UserId>,
+    ): ChatId
 
     fun renameGroup(
-        chatId: String,
+        chatId: ChatId,
         name: String,
     )
 
     fun addMembers(
-        chatId: String,
-        userIds: List<String>,
+        chatId: ChatId,
+        userIds: List<UserId>,
     )
 
     /**
@@ -132,9 +134,9 @@ interface GroupRepository {
      * Если выходит админ, права переходят к [newOwnerId].
      */
     fun removeMember(
-        chatId: String,
-        userId: String,
-        newOwnerId: String? = null,
+        chatId: ChatId,
+        userId: UserId,
+        newOwnerId: UserId? = null,
     )
 }
 
@@ -142,22 +144,22 @@ interface ChatRepository :
     ChatPrefsRepository,
     DisappearingRepository,
     GroupRepository {
-    fun observeChats(userId: String): Flow<List<Chat>>
+    fun observeChats(userId: UserId): Flow<List<Chat>>
 
-    fun observeChat(chatId: String): Flow<Chat?>
+    fun observeChat(chatId: ChatId): Flow<Chat?>
 
-    fun observeMessages(chatId: String): Flow<List<Message>>
+    fun observeMessages(chatId: ChatId): Flow<List<Message>>
 
     /**
      * Не ждёт сервера: сообщение сразу появляется локально со статусом SENDING.
-     * [ttl] — срок жизни исчезающего сообщения в секундах (таймер чата в момент отправки).
+     * [ttl] — срок жизни исчезающего сообщения (таймер чата в момент отправки).
      */
     fun sendMessage(
-        chatId: String,
-        senderId: String,
+        chatId: ChatId,
+        senderId: UserId,
         text: String,
         replyTo: ReplyTo? = null,
-        ttl: Long? = null,
+        ttl: Duration? = null,
     )
 
     /**
@@ -165,8 +167,8 @@ interface ChatRepository :
      * тогда вместе с ним правится и превью в списке чатов.
      */
     fun editMessage(
-        chatId: String,
-        messageId: String,
+        chatId: ChatId,
+        messageId: MessageId,
         text: String,
         isLatest: Boolean,
     )
@@ -177,49 +179,49 @@ interface ChatRepository :
      * или пропадает, если сообщений не осталось.
      */
     fun deleteMessage(
-        chatId: String,
-        messageId: String,
+        chatId: ChatId,
+        messageId: MessageId,
         isLatest: Boolean,
         previous: Message?,
     )
 
     fun markRead(
-        chatId: String,
-        userId: String,
+        chatId: ChatId,
+        userId: UserId,
     )
 
     /** Отметка «печатает…» для собеседника; с [typing] = false снимается сразу, иначе гаснет сама. */
     fun setTyping(
-        chatId: String,
-        userId: String,
+        chatId: ChatId,
+        userId: UserId,
         typing: Boolean,
     )
 
     /** Создаёт чат пары (если его ещё нет), возвращает его в список, если он был удалён, и возвращает его id. */
     suspend fun startChat(
-        userId: String,
-        friendId: String,
-    ): String
+        userId: UserId,
+        friendId: UserId,
+    ): ChatId
 }
 
 interface DeviceRepository {
-    fun observeDevices(userId: String): Flow<List<Device>>
+    fun observeDevices(userId: UserId): Flow<List<Device>>
 
     /** Испускает null, когда устройство удалили из реестра. */
     fun observeDevice(
-        userId: String,
-        deviceId: String,
+        userId: UserId,
+        deviceId: DeviceId,
     ): Flow<Device?>
 
     /** Создаёт или обновляет запись и время последней активности. */
     suspend fun registerDevice(
-        userId: String,
+        userId: UserId,
         device: Device,
     )
 
     suspend fun removeDevice(
-        userId: String,
-        deviceId: String,
+        userId: UserId,
+        deviceId: DeviceId,
     )
 }
 
@@ -227,18 +229,18 @@ interface LinkRepository {
     /** Создаёт заявку от имени текущего (временного) аккаунта и возвращает её id. */
     suspend fun createLinkRequest(
         deviceName: String,
-        platform: String,
-    ): String
+        platform: Platform,
+    ): LinkRequestId
 
-    suspend fun getLinkRequest(id: String): LinkRequest?
+    suspend fun getLinkRequest(id: LinkRequestId): LinkRequest?
 
-    fun observeLinkRequest(id: String): Flow<LinkRequest?>
+    fun observeLinkRequest(id: LinkRequestId): Flow<LinkRequest?>
 
     /** Кладёт в заявку зашифрованный ключ аккаунта. */
     suspend fun approveLinkRequest(
-        id: String,
+        id: LinkRequestId,
         payload: ByteArray,
     )
 
-    suspend fun deleteLinkRequest(id: String)
+    suspend fun deleteLinkRequest(id: LinkRequestId)
 }

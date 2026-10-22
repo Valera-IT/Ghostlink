@@ -11,7 +11,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
-import io.github.valerait.ghostlink.data.model.InviteLink
+import io.github.valerait.ghostlink.core.model.InviteLink
 import io.github.valerait.ghostlink.data.settings.ThemePreferences
 import io.github.valerait.ghostlink.ui.navigation.GhostlinkRoot
 import io.github.valerait.ghostlink.ui.navigation.RootViewModel

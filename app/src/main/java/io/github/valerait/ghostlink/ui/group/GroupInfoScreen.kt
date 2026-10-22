@@ -45,8 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
-import io.github.valerait.ghostlink.data.model.GroupInfo
-import io.github.valerait.ghostlink.data.model.User
+import io.github.valerait.ghostlink.core.model.GroupInfo
+import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.ui.common.Avatar
 
 /** Карточка группы: участники, название; админ добавляет и удаляет участников, любой может выйти. */
@@ -84,7 +85,7 @@ fun GroupInfoScreen(
         LazyColumn(contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = 32.dp), modifier = Modifier.fillMaxSize()) {
             item {
                 Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Avatar(group.name, chat.id, size = 88.dp)
+                    Avatar(group.name, chat.id.value, size = 88.dp)
                     Spacer(Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(group.name, style = MaterialTheme.typography.headlineSmall)
@@ -103,12 +104,12 @@ fun GroupInfoScreen(
             if (state.isOwner && chat.members.size < GroupInfo.MAX_MEMBERS) {
                 item { ActionRow(Icons.Outlined.PersonAdd, stringResource(R.string.group_add_members), onClick = onAddMembers) }
             }
-            items(state.members, key = { it.id }) { member ->
+            items(state.members, key = { it.id.value }) { member ->
                 MemberRow(
                     member = member,
                     isMe = member.id == state.me,
                     isOwner = member.id == group.ownerId,
-                    onRemove = if (state.isOwner && member.id != state.me) ({ removingId = member.id }) else null,
+                    onRemove = if (state.isOwner && member.id != state.me) ({ removingId = member.id.value }) else null,
                 )
             }
             item {
@@ -129,7 +130,7 @@ fun GroupInfoScreen(
             renaming = false
         }, onDismiss = { renaming = false })
     }
-    removingId?.let { id ->
+    removingId?.let { UserId(it) }?.let { id ->
         val name =
             state.members
                 .firstOrNull { it.id == id }
@@ -170,7 +171,7 @@ private fun MemberRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Avatar(member.name, member.id, size = 44.dp)
+        Avatar(member.name, member.id.value, size = 44.dp)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(if (isMe) stringResource(R.string.group_you, member.name) else member.name, style = MaterialTheme.typography.titleMedium)

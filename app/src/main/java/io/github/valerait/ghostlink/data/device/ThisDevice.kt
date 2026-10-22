@@ -3,17 +3,17 @@ package io.github.valerait.ghostlink.data.device
 import android.content.Context
 import android.os.Build
 import android.provider.Settings
+import io.github.valerait.ghostlink.core.model.DeviceId
+import io.github.valerait.ghostlink.core.model.Platform
 import java.util.UUID
 
 /** Это устройство: постоянный id и название для списка «Устройства». */
 data class ThisDevice(
-    val id: String,
+    val id: DeviceId,
     val name: String,
-    val platform: String,
+    val platform: Platform,
 ) {
     companion object {
-        const val PLATFORM_ANDROID = "android"
-
         fun from(context: Context): ThisDevice {
             val prefs = context.getSharedPreferences("device", Context.MODE_PRIVATE)
             val id =
@@ -28,7 +28,7 @@ data class ThisDevice(
                 } else {
                     "${Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} ${Build.MODEL}"
                 }
-            return ThisDevice(id, userName?.takeIf { it.isNotBlank() } ?: model, PLATFORM_ANDROID)
+            return ThisDevice(DeviceId(id), userName?.takeIf { it.isNotBlank() } ?: model, Platform.Android)
         }
     }
 }

@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
-import io.github.valerait.ghostlink.data.model.Device
+import io.github.valerait.ghostlink.core.model.Device
 import io.github.valerait.ghostlink.ui.common.formatChatListTime
 import io.github.valerait.ghostlink.ui.common.rememberNow
 import io.github.valerait.ghostlink.ui.recovery.RecoveryCodeDialog

@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.DemoModeBanner
 import io.github.valerait.ghostlink.ui.common.GhostLogo
@@ -67,11 +68,12 @@ import io.github.valerait.ghostlink.ui.common.formatChatListTime
 import io.github.valerait.ghostlink.ui.common.rememberIsTyping
 import io.github.valerait.ghostlink.ui.common.rememberNow
 import io.github.valerait.ghostlink.ui.theme.LogoTextStyle
+import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
-    onOpenChat: (String) -> Unit,
+    onOpenChat: (ChatId) -> Unit,
     onMyCode: () -> Unit,
     onNewGroup: () -> Unit,
     onScan: () -> Unit,
@@ -132,14 +134,14 @@ fun ChatListScreen(
                     if (state.demoMode) {
                         item { DemoModeBanner(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
                     }
-                    items(state.items, key = { it.chat.id }) { item ->
+                    items(state.items, key = { it.chat.id.value }) { item ->
                         ChatRow(
                             item = item,
                             now = now,
                             onClick = { onOpenChat(item.chat.id) },
                             onPin = { viewModel.setPinned(item.chat.id, !item.pinned) },
                             onMute = { viewModel.setMuted(item.chat.id, !item.muted) },
-                            onRemove = { removing = item.chat.id },
+                            onRemove = { removing = item.chat.id.value },
                         )
                     }
                 }
@@ -147,7 +149,7 @@ fun ChatListScreen(
         }
     }
 
-    removing?.let { chatId ->
+    removing?.let { ChatId(it) }?.let { chatId ->
         val item = state.items.firstOrNull { it.chat.id == chatId }
         if (item == null) {
             removing = null
@@ -169,7 +171,7 @@ fun ChatListScreen(
 @Composable
 private fun ChatRow(
     item: ChatListItem,
-    now: Long,
+    now: Instant,
     onClick: () -> Unit,
     onPin: () -> Unit,
     onMute: () -> Unit,
@@ -193,7 +195,7 @@ private fun ChatRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box {
-                Avatar(name = name, id = item.partnerId, size = 52.dp)
+                Avatar(name = name, id = item.avatarId, size = 52.dp)
                 if (item.partner?.isOnline(now) == true) {
                     Box(
                         Modifier

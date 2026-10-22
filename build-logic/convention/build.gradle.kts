@@ -20,6 +20,8 @@ kotlin {
 // compileOnly: сами плагины кладёт на classpath корневой build.gradle.kts (`apply false`).
 dependencies {
     compileOnly(libs.android.gradlePlugin)
+    compileOnly(libs.kotlin.gradlePlugin)
+    compileOnly(libs.kover.gradlePlugin)
     compileOnly(libs.detekt.gradlePlugin)
     compileOnly(libs.spotless.gradlePlugin)
 }
@@ -33,6 +35,10 @@ gradlePlugin {
         register("androidCompose") {
             id = "ghostlink.android.compose"
             implementationClass = "AndroidComposeConventionPlugin"
+        }
+        register("kmpLibrary") {
+            id = "ghostlink.kmp.library"
+            implementationClass = "KmpLibraryConventionPlugin"
         }
         register("detekt") {
             id = "ghostlink.detekt"

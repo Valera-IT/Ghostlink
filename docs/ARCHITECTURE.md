@@ -67,7 +67,7 @@ core:model  → ничего
 
 ### Domain (`core:model`)
 
-Идентификаторы — `value class`, чтобы `UserId` нельзя было передать вместо `ChatId`. Время — `kotlinx.datetime.Instant` вместо `Long`.
+Идентификаторы — `value class`, чтобы `UserId` нельзя было передать вместо `ChatId`. Время — `kotlin.time.Instant`, интервалы — `kotlin.time.Duration` вместо `Long`.
 
 | Модель | Поля | Заметки |
 |---|---|---|
@@ -92,15 +92,17 @@ core:model  → ничего
 Ошибки, которые пользователь может исправить, описаны sealed-иерархией. Repository и use case возвращают их в `Result`-подобном типе или бросают, а ViewModel переводит в текст:
 
 ```kotlin
-sealed interface GhostlinkError {
-    data object Offline : GhostlinkError
-    data object InvalidAccountKey : GhostlinkError
-    data object LinkExpired : GhostlinkError
-    data object LinkAlreadyApproved : GhostlinkError
-    data object PermissionDenied : GhostlinkError
-    data class Unexpected(val cause: Throwable) : GhostlinkError
+sealed class GhostlinkError(message: String?, cause: Throwable?) : Exception(message, cause) {
+    class Offline(cause: Throwable?) : GhostlinkError(…)
+    class InvalidAccountKey(cause: Throwable?) : GhostlinkError(…)
+    class LinkExpired : GhostlinkError(…)
+    class LinkAlreadyApproved : GhostlinkError(…)
+    class PermissionDenied(cause: Throwable?) : GhostlinkError(…)
+    class Unexpected(cause: Throwable) : GhostlinkError(…)
 }
 ```
+
+Это исключения, а не `data object`: так их можно бросать из `suspend`-функций репозиториев и не терять исходную причину.
 
 Исключения Firebase переводит в `GhostlinkError` только `core:data`: выше этого слоя типов Firebase нет.
 
@@ -159,7 +161,7 @@ UI-модели (`ContactUi`, `MessageItem`, `ChatSummaryUi`) отличаютс
 | `AppLifecycle` — foreground для присутствия | `ProcessLifecycleOwner` | `UIApplication` notifications | фокус окна |
 | `QrScanner` | CameraX + ML Kit | AVFoundation | нет (только показ QR) |
 | `DeepLinks` | intent-filter | URL scheme | регистрация схемы в ОС |
-| `Clock` | `Clock.System` (в тестах фейк) | ← | ← |
+| `Clock` | `kotlin.time.Clock.System` (в тестах фейк) | ← | ← |
 
 ## Окружения и конфигурация
 

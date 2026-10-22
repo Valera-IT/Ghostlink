@@ -2,11 +2,13 @@ package io.github.valerait.ghostlink.ui
 
 import androidx.lifecycle.SavedStateHandle
 import io.github.valerait.ghostlink.MainDispatcherRule
+import io.github.valerait.ghostlink.core.model.ChatId
+import io.github.valerait.ghostlink.core.model.DisappearingTimer
+import io.github.valerait.ghostlink.core.model.MessageStatus
+import io.github.valerait.ghostlink.core.model.ReplyTo
+import io.github.valerait.ghostlink.core.model.TYPING_TIMEOUT
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.demo.InMemoryBackend
-import io.github.valerait.ghostlink.data.model.DisappearingTimer
-import io.github.valerait.ghostlink.data.model.MessageStatus
-import io.github.valerait.ghostlink.data.model.ReplyTo
-import io.github.valerait.ghostlink.data.model.TYPING_TIMEOUT_MS
 import io.github.valerait.ghostlink.ui.chat.ChatRow
 import io.github.valerait.ghostlink.ui.chat.ChatUiState
 import io.github.valerait.ghostlink.ui.chat.ChatViewModel
@@ -23,19 +25,28 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class ChatViewModelTest {
     @get:Rule val mainRule = MainDispatcherRule()
 
-    private var now = 1_000_000L
+    private var now = Instant.fromEpochMilliseconds(1_000_000)
+    private val clock =
+        object : Clock {
+            override fun now() = now
+        }
 
-    private suspend fun TestScope.setUp(): Triple<InMemoryBackend, String, ChatViewModel> {
-        val backend = InMemoryBackend(backgroundScope, clock = { now }, seedDemoData = false)
+    private suspend fun TestScope.setUp(): Triple<InMemoryBackend, ChatId, ChatViewModel> {
+        val backend = InMemoryBackend(backgroundScope, clock = clock, seedDemoData = false)
         val me = backend.createAccount().id
         backend.saveProfile(me, "Я")
         backend.saveProfile(FRIEND, "Друг")
         val chatId = backend.startChat(me, FRIEND)
-        val vm = ChatViewModel(SavedStateHandle(mapOf("chatId" to chatId)), backend, backend, backend, { now })
+        val vm = ChatViewModel(SavedStateHandle(mapOf("chatId" to chatId.value)), backend, backend, backend, clock)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         return Triple(backend, chatId, vm)
     }
@@ -56,7 +67,7 @@ class ChatViewModelTest {
             assertTrue(sent.mine)
             assertEquals(MessageStatus.SENT, sent.status)
 
-            now += 1_000
+            now += 1.seconds
             backend.markRead(chatId, FRIEND)
             assertEquals(
                 MessageStatus.READ,
@@ -153,7 +164,7 @@ class ChatViewModelTest {
                     ?.message
                     ?.id,
             )
-            now += 1_000
+            now += 1.seconds
             vm.send("  исправлено ")
 
             val edited =
@@ -339,7 +350,7 @@ class ChatViewModelTest {
             backend.sendMessage(chatId, FRIEND, "ты тут?")
             assertNull(backend.observeChat(chatId).first()!!.lastRead[me])
 
-            now += 1_000
+            now += 1.seconds
             vm.onVisibilityChanged(true)
             assertNotNull(backend.observeChat(chatId).first()!!.lastRead[me])
             assertEquals(false, backend.observeChat(chatId).first()!!.isUnreadFor(me))
@@ -362,7 +373,7 @@ class ChatViewModelTest {
         runTest {
             val (_, _, vm) = setUp()
             vm.send("вчера")
-            now += 24 * 60 * 60 * 1000L
+            now += 1.days
             vm.send("сегодня")
             assertEquals(
                 2,
@@ -400,7 +411,7 @@ class ChatViewModelTest {
             assertNull(vm.state.value.partnerTypingUntil)
 
             backend.setTyping(chatId, FRIEND, true)
-            assertEquals(now + TYPING_TIMEOUT_MS, vm.state.value.partnerTypingUntil)
+            assertEquals(now + TYPING_TIMEOUT, vm.state.value.partnerTypingUntil)
 
             backend.sendMessage(chatId, FRIEND, "готово")
             assertNull(vm.state.value.partnerTypingUntil)
@@ -421,8 +432,8 @@ class ChatViewModelTest {
                     .map { it.message.text },
             )
 
-            now += DisappearingTimer.HOUR.seconds * 1_000
-            advanceTimeBy(DisappearingTimer.HOUR.seconds * 1_000 + 1)
+            now += DisappearingTimer.HOUR.duration
+            advanceTimeBy(DisappearingTimer.HOUR.duration + 1.milliseconds)
             assertEquals(
                 listOf("навсегда"),
                 vm.state.value
@@ -443,6 +454,6 @@ class ChatViewModelTest {
         }
 
     private companion object {
-        const val FRIEND = "friend"
+        val FRIEND = UserId("friend")
     }
 }

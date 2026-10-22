@@ -69,7 +69,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import io.github.valerait.ghostlink.R
-import io.github.valerait.ghostlink.data.model.ScannedCode
+import io.github.valerait.ghostlink.core.model.ScannedCode
 import kotlinx.coroutines.delay
 import java.util.concurrent.Executors
 

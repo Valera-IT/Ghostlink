@@ -15,7 +15,7 @@ class DetektConventionPlugin : Plugin<Project> {
 
             extensions.configure<DetektExtension> {
                 source.setFrom(
-                    subprojects.flatMap { listOf(it.file("src/main/java"), it.file("src/test/java")) } +
+                    subprojects.map { it.file("src") } +
                         file("build-logic/convention/src/main/kotlin"),
                 )
                 config.setFrom("config/detekt/detekt.yml")

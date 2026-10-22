@@ -14,7 +14,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import io.github.valerait.ghostlink.data.model.ScannedCode
+import io.github.valerait.ghostlink.core.model.ScannedCode
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.ui.chat.ChatScreen
 import io.github.valerait.ghostlink.ui.chats.ChatListScreen
 import io.github.valerait.ghostlink.ui.connect.ConnectScreen
@@ -107,14 +108,14 @@ private fun OnboardingNavHost() {
 
 @Composable
 private fun MainNavHost(
-    pendingInvite: String?,
+    pendingInvite: UserId?,
     onInviteHandled: () -> Unit,
 ) {
     val nav = rememberNavController()
 
     LaunchedEffect(pendingInvite) {
         if (pendingInvite != null) {
-            nav.navigate(ConnectRoute(pendingInvite))
+            nav.navigate(ConnectRoute(pendingInvite.value))
             onInviteHandled()
         }
     }
@@ -122,7 +123,7 @@ private fun MainNavHost(
     NavHost(navController = nav, startDestination = ChatsRoute) {
         composable<ChatsRoute> {
             ChatListScreen(
-                onOpenChat = { nav.navigate(ChatRoute(it)) },
+                onOpenChat = { nav.navigate(ChatRoute(it.value)) },
                 onMyCode = { nav.navigate(MyCodeRoute) },
                 onNewGroup = { nav.navigate(PickMembersRoute()) },
                 onScan = { nav.navigate(ScanRoute) },
@@ -138,7 +139,7 @@ private fun MainNavHost(
             PickMembersScreen(
                 onBack = { nav.navigateUp() },
                 onDone = { chatId ->
-                    if (adding) nav.navigateUp() else nav.navigate(ChatRoute(chatId)) { popUpTo<ChatsRoute>() }
+                    if (adding) nav.navigateUp() else nav.navigate(ChatRoute(chatId.value)) { popUpTo<ChatsRoute>() }
                 },
             )
         }
@@ -159,7 +160,7 @@ private fun MainNavHost(
                 onScanned = { code ->
                     val route: Any =
                         when (code) {
-                            is ScannedCode.Invite -> ConnectRoute(code.userId)
+                            is ScannedCode.Invite -> ConnectRoute(code.userId.value)
                             is ScannedCode.Link -> LinkApproveRoute(code.code.toUri())
                         }
                     nav.navigate(route) { popUpTo<ScanRoute> { inclusive = true } }
@@ -170,7 +171,7 @@ private fun MainNavHost(
             ConnectScreen(
                 onBack = { nav.navigateUp() },
                 onChatReady = { chatId ->
-                    nav.navigate(ChatRoute(chatId)) { popUpTo<ChatsRoute>() }
+                    nav.navigate(ChatRoute(chatId.value)) { popUpTo<ChatsRoute>() }
                 },
             )
         }

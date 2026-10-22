@@ -18,7 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import io.github.valerait.ghostlink.R
-import io.github.valerait.ghostlink.data.model.DisappearingTimer
+import io.github.valerait.ghostlink.core.model.DisappearingTimer
 
 /** Кнопка таймера исчезающих сообщений в шапке чата; подсвечена, пока таймер включён. */
 @Composable

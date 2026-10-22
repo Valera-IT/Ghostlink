@@ -1,31 +1,30 @@
-package io.github.valerait.ghostlink.data
+package io.github.valerait.ghostlink.core.model
 
-import io.github.valerait.ghostlink.data.model.InviteLink
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class InviteLinkTest {
     @Test
-    fun `created link parses back to the same user id`() {
-        val id = "Xk3pQ9aZbT2uV7wY1cD4eF5gH6i2"
+    fun createdLinkParsesBackToTheSameUserId() {
+        val id = UserId("Xk3pQ9aZbT2uV7wY1cD4eF5gH6i2")
         assertEquals(id, InviteLink.parse(InviteLink.create(id)))
     }
 
     @Test
-    fun `tolerates surrounding whitespace and trailing slash`() {
-        assertEquals("abc", InviteLink.parse("  ghostlink://add/abc/ \n"))
+    fun toleratesSurroundingWhitespaceAndTrailingSlash() {
+        assertEquals(UserId("abc"), InviteLink.parse("  ghostlink://add/abc/ \n"))
     }
 
     @Test
-    fun `rejects foreign codes`() {
+    fun rejectsForeignCodes() {
         assertNull(InviteLink.parse("https://example.com/add/abc"))
         assertNull(InviteLink.parse("WIFI:S:home;T:WPA;P:secret;;"))
         assertNull(InviteLink.parse(null))
     }
 
     @Test
-    fun `rejects malformed ids`() {
+    fun rejectsMalformedIds() {
         assertNull(InviteLink.parse("ghostlink://add/"))
         assertNull(InviteLink.parse("ghostlink://add/../users"))
         assertNull(InviteLink.parse("ghostlink://add/a b"))

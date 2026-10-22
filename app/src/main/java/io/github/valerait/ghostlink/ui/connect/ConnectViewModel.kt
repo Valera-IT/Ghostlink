@@ -7,7 +7,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.R
-import io.github.valerait.ghostlink.data.model.User
+import io.github.valerait.ghostlink.core.model.ChatId
+import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
 import io.github.valerait.ghostlink.data.repository.UserRepository
@@ -45,14 +47,14 @@ class ConnectViewModel
         private val users: UserRepository,
         private val chats: ChatRepository,
     ) : ViewModel() {
-        private val friendId: String = checkNotNull(savedStateHandle["userId"])
+        private val friendId = UserId(checkNotNull(savedStateHandle["userId"]))
         private val me = auth.requireUserId()
 
         private val _state = MutableStateFlow<ConnectState>(ConnectState.Loading)
         val state: StateFlow<ConnectState> = _state.asStateFlow()
 
-        private val _chatReady = Channel<String>(Channel.BUFFERED)
-        val chatReady: Flow<String> = _chatReady.receiveAsFlow()
+        private val _chatReady = Channel<ChatId>(Channel.BUFFERED)
+        val chatReady: Flow<ChatId> = _chatReady.receiveAsFlow()
 
         init {
             viewModelScope.launch {

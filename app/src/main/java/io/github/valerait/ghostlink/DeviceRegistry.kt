@@ -4,8 +4,9 @@ import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import io.github.valerait.ghostlink.core.model.Device
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.device.ThisDevice
-import io.github.valerait.ghostlink.data.model.Device
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.DeviceRepository
 import io.github.valerait.ghostlink.data.repository.UserRepository
@@ -42,7 +43,7 @@ class DeviceRegistry
         private val thisDevice: ThisDevice,
     ) : DefaultLifecycleObserver {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        private var userId: String? = null
+        private var userId: UserId? = null
 
         fun start() {
             ProcessLifecycleOwner.get().lifecycle.addObserver(this)
@@ -65,7 +66,7 @@ class DeviceRegistry
             scope.launch { register(id) }
         }
 
-        private suspend fun maintain(id: String) {
+        private suspend fun maintain(id: UserId) {
             try {
                 auth.ensureAccountKey()
             } catch (e: Exception) {
@@ -78,7 +79,7 @@ class DeviceRegistry
             auth.signOut()
         }
 
-        private suspend fun register(id: String): Boolean =
+        private suspend fun register(id: UserId): Boolean =
             try {
                 devices.registerDevice(id, Device(thisDevice.id, thisDevice.name, thisDevice.platform))
                 true

@@ -27,7 +27,7 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       # Проверки идут на флейворе demo: ему не нужен ни Firebase, ни секреты.
-      - run: ./gradlew spotlessCheck detekt assembleDemoDebug testDemoDebugUnitTest lintDemoDebug :app:koverXmlReportCi --stacktrace
+      - run: ./gradlew spotlessCheck detekt assembleDemoDebug testDemoDebugUnitTest jvmTest lintDemoDebug :app:koverXmlReportCi --stacktrace
       - name: Покрытие в сводку
         run: |
           echo "### Покрытие (Kover, demoDebug)" >> "$GITHUB_STEP_SUMMARY"

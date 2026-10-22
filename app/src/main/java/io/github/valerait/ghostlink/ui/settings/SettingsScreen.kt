@@ -103,7 +103,7 @@ fun SettingsScreen(
                         .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Avatar(state.name, state.userId, size = 72.dp)
+                Avatar(state.name, state.userId.value, size = 72.dp)
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Text(state.name, style = MaterialTheme.typography.headlineSmall)
