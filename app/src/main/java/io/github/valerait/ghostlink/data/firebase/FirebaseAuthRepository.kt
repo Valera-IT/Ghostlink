@@ -5,11 +5,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
+import io.github.valerait.ghostlink.core.model.Account
+import io.github.valerait.ghostlink.core.model.GhostlinkError
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.device.AccountKeyStore
-import io.github.valerait.ghostlink.data.model.Account
 import io.github.valerait.ghostlink.data.model.AccountKey
 import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.InvalidAccountKeyException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,9 +55,9 @@ class FirebaseAuthRepository(
             try {
                 checkNotNull(auth.signInWithEmailAndPassword(key.email, key.password).await().user)
             } catch (e: FirebaseAuthInvalidCredentialsException) {
-                throw InvalidAccountKeyException(e)
+                throw GhostlinkError.InvalidAccountKey(e)
             } catch (e: FirebaseAuthInvalidUserException) {
-                throw InvalidAccountKeyException(e)
+                throw GhostlinkError.InvalidAccountKey(e)
             }
         keys.put(user.uid, key)
         return checkNotNull(refresh(user))
@@ -117,6 +118,6 @@ class FirebaseAuthRepository(
 
 private fun FirebaseUser.toAccount() =
     Account(
-        id = uid,
+        id = UserId(uid),
         isAnonymous = isAnonymous,
     )

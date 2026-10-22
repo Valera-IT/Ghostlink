@@ -6,8 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.model.Device
+import io.github.valerait.ghostlink.core.model.DeviceId
 import io.github.valerait.ghostlink.data.device.ThisDevice
-import io.github.valerait.ghostlink.data.model.Device
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.DeviceRepository
 import io.github.valerait.ghostlink.data.repository.requireUserId
@@ -56,7 +57,7 @@ class DevicesViewModel
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DevicesState())
 
         /** Мягкое удаление: устройство само выйдет, увидев, что его нет в реестре. */
-        fun remove(deviceId: String) =
+        fun remove(deviceId: DeviceId) =
             launchBusy {
                 devices.removeDevice(me, deviceId)
                 message.value = R.string.devices_removed

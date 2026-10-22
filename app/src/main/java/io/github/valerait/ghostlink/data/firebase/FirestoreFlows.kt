@@ -7,9 +7,11 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
+import io.github.valerait.ghostlink.core.model.Platform
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlin.time.Instant
 
 private const val TAG = "Firestore"
 
@@ -38,4 +40,11 @@ internal fun <T> Query.observe(
         awaitClose { registration.remove() }
     }
 
-internal val Timestamp.millis: Long get() = toDate().time
+internal val Timestamp.instant: Instant get() = Instant.fromEpochSeconds(seconds, nanoseconds)
+
+internal fun Instant.toTimestamp(): Timestamp = Timestamp(epochSeconds, nanosecondsOfSecond)
+
+// Платформа хранится строкой в нижнем регистре: так её пишут и читают все клиенты.
+internal val Platform.wireName: String get() = name.lowercase()
+
+internal fun platformOf(wireName: String?): Platform = Platform.entries.firstOrNull { it.wireName == wireName } ?: Platform.Unknown

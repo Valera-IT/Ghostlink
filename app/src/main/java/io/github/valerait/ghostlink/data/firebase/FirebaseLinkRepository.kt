@@ -1,17 +1,19 @@
 package io.github.valerait.ghostlink.data.firebase
 
-import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import io.github.valerait.ghostlink.data.model.LINK_TTL_MS
-import io.github.valerait.ghostlink.data.model.LinkRequest
+import io.github.valerait.ghostlink.core.model.LINK_TTL
+import io.github.valerait.ghostlink.core.model.LinkRequest
+import io.github.valerait.ghostlink.core.model.LinkRequestId
+import io.github.valerait.ghostlink.core.model.Platform
 import io.github.valerait.ghostlink.data.repository.LinkRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
-import java.util.Date
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class FirebaseLinkRepository(
     db: FirebaseFirestore,
@@ -21,8 +23,8 @@ class FirebaseLinkRepository(
 
     override suspend fun createLinkRequest(
         deviceName: String,
-        platform: String,
-    ): String {
+        platform: Platform,
+    ): LinkRequestId {
         val owner = checkNotNull(auth.currentUser) { "Not signed in" }.uid
         val doc = requests.document()
         // expiresAt считает клиент, но правила проверяют его по серверному времени.
@@ -32,43 +34,43 @@ class FirebaseLinkRepository(
                 mapOf(
                     "owner" to owner,
                     "deviceName" to deviceName.take(60),
-                    "platform" to platform,
+                    "platform" to platform.wireName,
                     "createdAt" to FieldValue.serverTimestamp(),
-                    "expiresAt" to Timestamp(Date(System.currentTimeMillis() + LINK_TTL_MS)),
+                    "expiresAt" to (Clock.System.now() + LINK_TTL).toTimestamp(),
                 ),
             ).await()
-        return doc.id
+        return LinkRequestId(doc.id)
     }
 
-    override suspend fun getLinkRequest(id: String): LinkRequest? =
+    override suspend fun getLinkRequest(id: LinkRequestId): LinkRequest? =
         requests
-            .document(id)
+            .document(id.value)
             .get()
             .await()
             .toLinkRequest()
 
-    override fun observeLinkRequest(id: String): Flow<LinkRequest?> = requests.document(id).observe { it.toLinkRequest() }
+    override fun observeLinkRequest(id: LinkRequestId): Flow<LinkRequest?> = requests.document(id.value).observe { it.toLinkRequest() }
 
     override suspend fun approveLinkRequest(
-        id: String,
+        id: LinkRequestId,
         payload: ByteArray,
     ) {
         val approver = checkNotNull(auth.currentUser) { "Not signed in" }.uid
-        requests.document(id).update(mapOf("payload" to Blob.fromBytes(payload), "approvedBy" to approver)).await()
+        requests.document(id.value).update(mapOf("payload" to Blob.fromBytes(payload), "approvedBy" to approver)).await()
     }
 
-    override suspend fun deleteLinkRequest(id: String) {
-        requests.document(id).delete().await()
+    override suspend fun deleteLinkRequest(id: LinkRequestId) {
+        requests.document(id.value).delete().await()
     }
 }
 
 private fun DocumentSnapshot.toLinkRequest(): LinkRequest? {
     if (!exists()) return null
     return LinkRequest(
-        id = id,
+        id = LinkRequestId(id),
         deviceName = getString("deviceName").orEmpty(),
-        platform = getString("platform").orEmpty(),
-        expiresAt = getTimestamp("expiresAt")?.millis ?: 0L,
+        platform = platformOf(getString("platform")),
+        expiresAt = getTimestamp("expiresAt")?.instant ?: Instant.DISTANT_PAST,
         payload = getBlob("payload")?.toBytes(),
     )
 }

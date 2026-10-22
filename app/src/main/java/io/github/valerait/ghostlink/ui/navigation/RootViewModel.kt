@@ -3,6 +3,7 @@ package io.github.valerait.ghostlink.ui.navigation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.UserRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,7 +25,7 @@ sealed interface RootState {
     data object Onboarding : RootState
 
     data class Ready(
-        val userId: String,
+        val userId: UserId,
     ) : RootState
 }
 
@@ -50,10 +51,10 @@ class RootViewModel
                 .stateIn(viewModelScope, SharingStarted.Eagerly, RootState.Loading)
 
         // Приглашение может прийти до онбординга — тогда откроем его сразу после.
-        private val _pendingInvite = MutableStateFlow<String?>(null)
-        val pendingInvite: StateFlow<String?> = _pendingInvite.asStateFlow()
+        private val _pendingInvite = MutableStateFlow<UserId?>(null)
+        val pendingInvite: StateFlow<UserId?> = _pendingInvite.asStateFlow()
 
-        fun onInvite(userId: String) {
+        fun onInvite(userId: UserId) {
             _pendingInvite.value = userId
         }
 

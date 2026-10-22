@@ -3,12 +3,13 @@ package io.github.valerait.ghostlink.ui.chats
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.valerait.ghostlink.data.model.Chat
-import io.github.valerait.ghostlink.data.model.ChatPrefs
-import io.github.valerait.ghostlink.data.model.Clock
-import io.github.valerait.ghostlink.data.model.LastMessage
-import io.github.valerait.ghostlink.data.model.User
-import io.github.valerait.ghostlink.data.model.expiresAt
+import io.github.valerait.ghostlink.core.model.Chat
+import io.github.valerait.ghostlink.core.model.ChatId
+import io.github.valerait.ghostlink.core.model.ChatPrefs
+import io.github.valerait.ghostlink.core.model.LastMessage
+import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.core.model.UserId
+import io.github.valerait.ghostlink.core.model.expiresAt
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
 import io.github.valerait.ghostlink.data.repository.UserRepository
@@ -27,11 +28,13 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import javax.inject.Inject
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 data class ChatListItem(
     val chat: Chat,
     /** Собеседник в личном чате; в группе — id чата (для цвета аватара). */
-    val partnerId: String,
+    val avatarId: String,
     /** Собеседник в личном чате; в группе null. */
     val partner: User?,
     val unread: Boolean,
@@ -41,7 +44,7 @@ data class ChatListItem(
     val pinned: Boolean = false,
     val muted: Boolean = false,
     /** До какого момента кто-то из собеседников «печатает…»; null — никто. */
-    val typingUntil: Long? = null,
+    val typingUntil: Instant? = null,
     /** Кто печатает в группе; в личном чате null. */
     val typingName: String? = null,
     /** Автор последнего сообщения в группе, если это не я; в личном чате null. */
@@ -83,7 +86,7 @@ class ChatListViewModel
                         .flatMap { it.members }
                         .filter { it != me }
                         .distinct()
-                        .sorted()
+                        .sortedBy { it.value }
                 }.distinctUntilChanged()
                 .flatMapLatest { users.observeUsers(it) }
 
@@ -107,9 +110,9 @@ class ChatListViewModel
 
         private fun buildState(
             list: List<Chat>,
-            people: Map<String, User>,
-            prefs: Map<String, ChatPrefs>,
-            now: Long,
+            people: Map<UserId, User>,
+            prefs: Map<ChatId, ChatPrefs>,
+            now: Instant,
         ) = ChatListState(
             loading = false,
             items =
@@ -121,7 +124,7 @@ class ChatListViewModel
                         val typing = chat.typingOther(me)
                         ChatListItem(
                             chat = chat,
-                            partnerId = if (chat.isGroup) chat.id else chat.partnerId(me),
+                            avatarId = if (chat.isGroup) chat.id.value else chat.partnerId(me).value,
                             partner = if (chat.isGroup) null else people[chat.partnerId(me)],
                             unread = last != null && chat.isUnreadFor(me),
                             lastMessage = last,
@@ -134,22 +137,22 @@ class ChatListViewModel
                         )
                     }
                     // Закреплённые сверху (последний закреплённый первым), остальные — по свежести, как пришли.
-                    .sortedByDescending { prefs[it.chat.id]?.pinnedAt ?: Long.MIN_VALUE },
+                    .sortedByDescending { prefs[it.chat.id]?.pinnedAt ?: Instant.DISTANT_PAST },
             demoMode = config.demoMode,
         )
 
         fun setPinned(
-            chatId: String,
+            chatId: ChatId,
             pinned: Boolean,
         ) = chats.setPinned(me, chatId, pinned)
 
         fun setMuted(
-            chatId: String,
+            chatId: ChatId,
             muted: Boolean,
         ) = chats.setMuted(me, chatId, muted)
 
         /** Личный чат прячется только у меня; из группы я выхожу (админ передаёт права следующему участнику). */
-        fun remove(chatId: String) {
+        fun remove(chatId: ChatId) {
             val chat =
                 state.value.items
                     .firstOrNull { it.chat.id == chatId }

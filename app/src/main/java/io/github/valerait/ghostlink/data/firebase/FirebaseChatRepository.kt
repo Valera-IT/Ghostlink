@@ -9,18 +9,22 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
-import io.github.valerait.ghostlink.data.model.Chat
-import io.github.valerait.ghostlink.data.model.ChatIds
-import io.github.valerait.ghostlink.data.model.ChatPrefs
-import io.github.valerait.ghostlink.data.model.DisappearingTimer
-import io.github.valerait.ghostlink.data.model.GroupInfo
-import io.github.valerait.ghostlink.data.model.LastMessage
-import io.github.valerait.ghostlink.data.model.Message
-import io.github.valerait.ghostlink.data.model.ReplyTo
+import io.github.valerait.ghostlink.core.model.Chat
+import io.github.valerait.ghostlink.core.model.ChatId
+import io.github.valerait.ghostlink.core.model.ChatPrefs
+import io.github.valerait.ghostlink.core.model.DisappearingTimer
+import io.github.valerait.ghostlink.core.model.GroupInfo
+import io.github.valerait.ghostlink.core.model.LastMessage
+import io.github.valerait.ghostlink.core.model.Message
+import io.github.valerait.ghostlink.core.model.MessageId
+import io.github.valerait.ghostlink.core.model.ReplyTo
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.repository.ChatRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
-import java.util.Date
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 /**
  * Схема:
@@ -34,54 +38,54 @@ class FirebaseChatRepository(
 ) : ChatRepository {
     private val chats = db.collection("chats")
 
-    private fun prefs(userId: String) = db.collection("users").document(userId).collection("chatPrefs")
+    private fun prefs(userId: UserId) = db.collection("users").document(userId.value).collection("chatPrefs")
 
     private fun updatePrefs(
-        userId: String,
-        chatId: String,
+        userId: UserId,
+        chatId: ChatId,
         fields: Map<String, Any>,
     ) {
         prefs(userId)
-            .document(chatId)
+            .document(chatId.value)
             .set(fields, SetOptions.merge())
             .addOnFailureListener { Log.w(TAG, "Chat prefs update failed", it) }
     }
 
     // Сортируем на клиенте, чтобы не требовать составной индекс members + updatedAt.
-    override fun observeChats(userId: String): Flow<List<Chat>> =
-        chats.whereArrayContains("members", userId).observe { qs ->
-            qs.documents.mapNotNull { it.toChat() }.sortedByDescending { it.updatedAt ?: Long.MAX_VALUE }
+    override fun observeChats(userId: UserId): Flow<List<Chat>> =
+        chats.whereArrayContains("members", userId.value).observe { qs ->
+            qs.documents.mapNotNull { it.toChat() }.sortedByDescending { it.updatedAt ?: Instant.DISTANT_FUTURE }
         }
 
-    override fun observeChat(chatId: String): Flow<Chat?> = chats.document(chatId).observe { it.toChat() }
+    override fun observeChat(chatId: ChatId): Flow<Chat?> = chats.document(chatId.value).observe { it.toChat() }
 
     // MetadataChanges.INCLUDE — чтобы увидеть, как pending-сообщение подтвердилось сервером.
-    override fun observeMessages(chatId: String): Flow<List<Message>> =
+    override fun observeMessages(chatId: ChatId): Flow<List<Message>> =
         chats
-            .document(chatId)
+            .document(chatId.value)
             .collection("messages")
             .orderBy("sentAt", Query.Direction.ASCENDING)
             .limitToLast(MESSAGES_LIMIT)
             .observe(MetadataChanges.INCLUDE) { qs -> qs.documents.map { it.toMessage() } }
 
     override fun sendMessage(
-        chatId: String,
-        senderId: String,
+        chatId: ChatId,
+        senderId: UserId,
         text: String,
         replyTo: ReplyTo?,
-        ttl: Long?,
+        ttl: Duration?,
     ) {
-        val chatRef = chats.document(chatId)
+        val chatRef = chats.document(chatId.value)
         val messageRef = chatRef.collection("messages").document()
         val now = FieldValue.serverTimestamp()
-        val message = mutableMapOf<String, Any>("senderId" to senderId, "text" to text, "sentAt" to now)
+        val message = mutableMapOf<String, Any>("senderId" to senderId.value, "text" to text, "sentAt" to now)
         if (replyTo != null) {
-            message["replyTo"] = mapOf("id" to replyTo.id, "senderId" to replyTo.senderId, "preview" to replyTo.preview)
+            message["replyTo"] = mapOf("id" to replyTo.id.value, "senderId" to replyTo.senderId.value, "preview" to replyTo.preview)
         }
-        val last = mutableMapOf<String, Any>("text" to text, "senderId" to senderId, "sentAt" to now)
+        val last = mutableMapOf<String, Any>("text" to text, "senderId" to senderId.value, "sentAt" to now)
         if (ttl != null) {
-            message["ttl"] = ttl
-            last["ttl"] = ttl
+            message["ttl"] = ttl.inWholeSeconds
+            last["ttl"] = ttl.inWholeSeconds
         }
         db
             .batch()
@@ -99,30 +103,30 @@ class FirebaseChatRepository(
     }
 
     override fun editMessage(
-        chatId: String,
-        messageId: String,
+        chatId: ChatId,
+        messageId: MessageId,
         text: String,
         isLatest: Boolean,
     ) {
-        val chatRef = chats.document(chatId)
+        val chatRef = chats.document(chatId.value)
         val batch =
             db
                 .batch()
-                .update(chatRef.collection("messages").document(messageId), "text", text, "editedAt", FieldValue.serverTimestamp())
+                .update(chatRef.collection("messages").document(messageId.value), "text", text, "editedAt", FieldValue.serverTimestamp())
         if (isLatest) batch.update(chatRef, "lastMessage.text", text)
         batch.commit().addOnFailureListener { Log.w(TAG, "Edit failed", it) }
     }
 
     override fun deleteMessage(
-        chatId: String,
-        messageId: String,
+        chatId: ChatId,
+        messageId: MessageId,
         isLatest: Boolean,
         previous: Message?,
     ) {
-        val chatRef = chats.document(chatId)
+        val chatRef = chats.document(chatId.value)
         val batch =
             db.batch().update(
-                chatRef.collection("messages").document(messageId),
+                chatRef.collection("messages").document(messageId.value),
                 mapOf(
                     "text" to FieldValue.delete(),
                     "replyTo" to FieldValue.delete(),
@@ -135,9 +139,9 @@ class FirebaseChatRepository(
                 previous?.let {
                     buildMap {
                         put("text", it.text)
-                        put("senderId", it.senderId)
-                        put("sentAt", it.sentAt?.let { ms -> Timestamp(Date(ms)) } ?: FieldValue.serverTimestamp())
-                        it.ttl?.let { ttl -> put("ttl", ttl) }
+                        put("senderId", it.senderId.value)
+                        put("sentAt", it.sentAt?.toTimestamp() ?: FieldValue.serverTimestamp())
+                        it.ttl?.let { ttl -> put("ttl", ttl.inWholeSeconds) }
                     }
                 } ?: FieldValue.delete()
             batch.update(chatRef, "lastMessage", last)
@@ -146,124 +150,124 @@ class FirebaseChatRepository(
     }
 
     override fun markRead(
-        chatId: String,
-        userId: String,
+        chatId: ChatId,
+        userId: UserId,
     ) {
         chats
-            .document(chatId)
+            .document(chatId.value)
             .update("lastRead.$userId", FieldValue.serverTimestamp())
             .addOnFailureListener { Log.w(TAG, "markRead failed", it) }
     }
 
     override fun setTyping(
-        chatId: String,
-        userId: String,
+        chatId: ChatId,
+        userId: UserId,
         typing: Boolean,
     ) {
         chats
-            .document(chatId)
+            .document(chatId.value)
             .update("typing.$userId", if (typing) FieldValue.serverTimestamp() else FieldValue.delete())
             .addOnFailureListener { Log.w(TAG, "setTyping failed", it) }
     }
 
     override fun setDisappearing(
-        chatId: String,
+        chatId: ChatId,
         timer: DisappearingTimer?,
     ) {
         chats
-            .document(chatId)
-            .update("ttl", timer?.seconds ?: FieldValue.delete())
+            .document(chatId.value)
+            .update("ttl", timer?.duration?.inWholeSeconds ?: FieldValue.delete())
             .addOnFailureListener { Log.w(TAG, "setDisappearing failed", it) }
     }
 
     override fun deleteExpired(
-        chatId: String,
-        messageIds: List<String>,
+        chatId: ChatId,
+        messageIds: List<MessageId>,
     ) {
         if (messageIds.isEmpty()) return
-        val messages = chats.document(chatId).collection("messages")
+        val messages = chats.document(chatId.value).collection("messages")
         // Оба участника могут стирать одно и то же одновременно — повторное удаление безвредно.
         messageIds.chunked(BATCH_LIMIT).forEach { ids ->
             db
                 .batch()
-                .apply { ids.forEach { delete(messages.document(it)) } }
+                .apply { ids.forEach { delete(messages.document(it.value)) } }
                 .commit()
                 .addOnFailureListener { Log.w(TAG, "deleteExpired failed", it) }
         }
     }
 
     override suspend fun createGroup(
-        ownerId: String,
+        ownerId: UserId,
         name: String,
-        memberIds: List<String>,
-    ): String {
+        memberIds: List<UserId>,
+    ): ChatId {
         val ref = chats.document()
         ref
             .set(
                 mapOf(
                     "type" to GROUP_TYPE,
                     "name" to name,
-                    "owner" to ownerId,
-                    "members" to (memberIds + ownerId).distinct().sorted(),
+                    "owner" to ownerId.value,
+                    "members" to (memberIds + ownerId).map { it.value }.distinct().sorted(),
                     "updatedAt" to FieldValue.serverTimestamp(),
                     "lastRead" to emptyMap<String, Any>(),
                 ),
             ).await()
-        return ref.id
+        return ChatId(ref.id)
     }
 
     override fun renameGroup(
-        chatId: String,
+        chatId: ChatId,
         name: String,
     ) {
         chats
-            .document(chatId)
+            .document(chatId.value)
             .update("name", name)
             .addOnFailureListener { Log.w(TAG, "renameGroup failed", it) }
     }
 
     @Suppress("SpreadOperator") // arrayUnion принимает только vararg; участников не больше 20.
     override fun addMembers(
-        chatId: String,
-        userIds: List<String>,
+        chatId: ChatId,
+        userIds: List<UserId>,
     ) {
         chats
-            .document(chatId)
-            .update("members", FieldValue.arrayUnion(*userIds.toTypedArray()))
+            .document(chatId.value)
+            .update("members", FieldValue.arrayUnion(*userIds.map { it.value }.toTypedArray()))
             .addOnFailureListener { Log.w(TAG, "addMembers failed", it) }
     }
 
     override fun removeMember(
-        chatId: String,
-        userId: String,
-        newOwnerId: String?,
+        chatId: ChatId,
+        userId: UserId,
+        newOwnerId: UserId?,
     ) {
-        val fields = mutableMapOf<String, Any>("members" to FieldValue.arrayRemove(userId))
-        if (newOwnerId != null) fields["owner"] = newOwnerId
+        val fields = mutableMapOf<String, Any>("members" to FieldValue.arrayRemove(userId.value))
+        if (newOwnerId != null) fields["owner"] = newOwnerId.value
         chats
-            .document(chatId)
+            .document(chatId.value)
             .update(fields)
             .addOnFailureListener { Log.w(TAG, "removeMember failed", it) }
     }
 
-    override fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>> =
-        prefs(userId).observe { qs -> qs.documents.associate { it.id to it.toChatPrefs() } }
+    override fun observeChatPrefs(userId: UserId): Flow<Map<ChatId, ChatPrefs>> =
+        prefs(userId).observe { qs -> qs.documents.associate { ChatId(it.id) to it.toChatPrefs() } }
 
     override fun setPinned(
-        userId: String,
-        chatId: String,
+        userId: UserId,
+        chatId: ChatId,
         pinned: Boolean,
     ) = updatePrefs(userId, chatId, mapOf("pinnedAt" to if (pinned) FieldValue.serverTimestamp() else FieldValue.delete()))
 
     override fun setMuted(
-        userId: String,
-        chatId: String,
+        userId: UserId,
+        chatId: ChatId,
         muted: Boolean,
     ) = updatePrefs(userId, chatId, mapOf("muted" to muted))
 
     override fun removeChat(
-        userId: String,
-        chatId: String,
+        userId: UserId,
+        chatId: ChatId,
     ) = updatePrefs(
         userId,
         chatId,
@@ -271,23 +275,23 @@ class FirebaseChatRepository(
     )
 
     override suspend fun startChat(
-        userId: String,
-        friendId: String,
-    ): String {
+        userId: UserId,
+        friendId: UserId,
+    ): ChatId {
         require(userId != friendId) { "Cannot start a chat with yourself" }
-        val id = ChatIds.of(userId, friendId)
-        val ref = chats.document(id)
+        val id = ChatId.of(userId, friendId)
+        val ref = chats.document(id.value)
         if (!ref.get().await().exists()) {
             ref
                 .set(
                     mapOf(
-                        "members" to listOf(userId, friendId).sorted(),
+                        "members" to listOf(userId.value, friendId.value).sorted(),
                         "updatedAt" to FieldValue.serverTimestamp(),
                         "lastRead" to emptyMap<String, Any>(),
                     ),
                 ).await()
         }
-        val prefsRef = prefs(userId).document(id)
+        val prefsRef = prefs(userId).document(id.value)
         if (prefsRef.get().await().getBoolean("hidden") == true) prefsRef.update("hidden", false).await()
         return id
     }
@@ -302,66 +306,66 @@ class FirebaseChatRepository(
 
 private fun DocumentSnapshot.toChat(): Chat? {
     if (!exists()) return null
-    val members = (get("members") as? List<*>)?.filterIsInstance<String>() ?: return null
+    val members = (get("members") as? List<*>)?.filterIsInstance<String>()?.map(::UserId) ?: return null
     val last =
         (get("lastMessage", ServerTimestampBehavior.ESTIMATE) as? Map<*, *>)?.let {
             LastMessage(
                 text = it["text"] as? String ?: "",
-                senderId = it["senderId"] as? String ?: "",
-                sentAt = (it["sentAt"] as? Timestamp)?.millis,
-                ttl = (it["ttl"] as? Number)?.toLong(),
+                senderId = UserId(it["senderId"] as? String ?: ""),
+                sentAt = (it["sentAt"] as? Timestamp)?.instant,
+                ttl = (it["ttl"] as? Number)?.toLong()?.seconds,
             )
         }
-    val lastRead = get("lastRead", ServerTimestampBehavior.ESTIMATE).toMillisMap()
+    val lastRead = get("lastRead", ServerTimestampBehavior.ESTIMATE).toInstantMap()
     return Chat(
-        id = id,
+        id = ChatId(id),
         members = members,
         lastMessage = last,
-        updatedAt = getTimestamp("updatedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
+        updatedAt = getTimestamp("updatedAt", ServerTimestampBehavior.ESTIMATE)?.instant,
         lastRead = lastRead,
-        typing = get("typing", ServerTimestampBehavior.ESTIMATE).toMillisMap(),
-        disappearing = DisappearingTimer.of(getLong("ttl")),
+        typing = get("typing", ServerTimestampBehavior.ESTIMATE).toInstantMap(),
+        disappearing = DisappearingTimer.of(getLong("ttl")?.seconds),
         group =
             if (getString("type") == "group") {
-                GroupInfo(name = getString("name").orEmpty(), ownerId = getString("owner").orEmpty())
+                GroupInfo(name = getString("name").orEmpty(), ownerId = UserId(getString("owner").orEmpty()))
             } else {
                 null
             },
     )
 }
 
-private fun Any?.toMillisMap(): Map<String, Long> =
+private fun Any?.toInstantMap(): Map<UserId, Instant> =
     (this as? Map<*, *>)
         ?.mapNotNull { (key, value) ->
             val uid = key as? String ?: return@mapNotNull null
             val ts = value as? Timestamp ?: return@mapNotNull null
-            uid to ts.millis
+            UserId(uid) to ts.instant
         }?.toMap()
         .orEmpty()
 
 private fun DocumentSnapshot.toChatPrefs() =
     ChatPrefs(
-        pinnedAt = getTimestamp("pinnedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
+        pinnedAt = getTimestamp("pinnedAt", ServerTimestampBehavior.ESTIMATE)?.instant,
         muted = getBoolean("muted") == true,
-        clearedAt = getTimestamp("clearedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
+        clearedAt = getTimestamp("clearedAt", ServerTimestampBehavior.ESTIMATE)?.instant,
         hidden = getBoolean("hidden") == true,
     )
 
 private fun DocumentSnapshot.toMessage() =
     Message(
-        id = id,
-        senderId = getString("senderId").orEmpty(),
+        id = MessageId(id),
+        senderId = UserId(getString("senderId").orEmpty()),
         text = getString("text").orEmpty(),
-        sentAt = getTimestamp("sentAt", ServerTimestampBehavior.ESTIMATE)?.millis,
+        sentAt = getTimestamp("sentAt", ServerTimestampBehavior.ESTIMATE)?.instant,
         pending = metadata.hasPendingWrites(),
-        editedAt = getTimestamp("editedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
-        deletedAt = getTimestamp("deletedAt", ServerTimestampBehavior.ESTIMATE)?.millis,
-        ttl = getLong("ttl"),
+        editedAt = getTimestamp("editedAt", ServerTimestampBehavior.ESTIMATE)?.instant,
+        deletedAt = getTimestamp("deletedAt", ServerTimestampBehavior.ESTIMATE)?.instant,
+        ttl = getLong("ttl")?.seconds,
         replyTo =
             (get("replyTo") as? Map<*, *>)?.let {
                 ReplyTo(
-                    id = it["id"] as? String ?: return@let null,
-                    senderId = it["senderId"] as? String ?: "",
+                    id = MessageId(it["id"] as? String ?: return@let null),
+                    senderId = UserId(it["senderId"] as? String ?: ""),
                     preview = it["preview"] as? String ?: "",
                 )
             },

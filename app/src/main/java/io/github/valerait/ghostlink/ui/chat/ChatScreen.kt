@@ -92,8 +92,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
-import io.github.valerait.ghostlink.data.model.MessageStatus
-import io.github.valerait.ghostlink.data.model.ReplyTo
+import io.github.valerait.ghostlink.core.model.MessageId
+import io.github.valerait.ghostlink.core.model.MessageStatus
+import io.github.valerait.ghostlink.core.model.ReplyTo
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.ui.common.dayLabel
 import io.github.valerait.ghostlink.ui.common.formatTime
 import io.github.valerait.ghostlink.ui.common.rememberNow
@@ -113,16 +115,16 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
-    var highlightedId by remember { mutableStateOf<String?>(null) }
+    var highlightedId by remember { mutableStateOf<MessageId?>(null) }
     var confirmDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
 
-    val nameOf: (String) -> String = { state.names[it].orEmpty() }
+    val nameOf: (UserId?) -> String = { state.names[it].orEmpty() }
     val you = stringResource(R.string.chat_reply_you)
     val originalUnavailable = stringResource(R.string.chat_reply_original_unavailable)
 
     // Нажатие на цитату — прокрутка к исходному сообщению и короткая подсветка.
-    val showOriginal: (String) -> Unit = { id ->
-        val index = state.rows.indexOfFirst { it.key == id }
+    val showOriginal: (MessageId) -> Unit = { id ->
+        val index = state.rows.indexOfFirst { it.key == id.value }
         scope.launch {
             if (index < 0) {
                 snackbar.showSnackbar(originalUnavailable)
@@ -208,7 +210,7 @@ fun ChatScreen(
             items(state.rows, key = { it.key }) { row ->
                 when (row) {
                     is ChatRow.Day -> {
-                        DayHeader(dayLabel(row.millis, now))
+                        DayHeader(dayLabel(row.time, now))
                     }
 
                     is ChatRow.Msg -> {
@@ -216,13 +218,13 @@ fun ChatScreen(
                         MessageBubble(
                             item = row.item,
                             highlighted = message.id == highlightedId,
-                            quoteAuthor = if (row.item.replyToMine) you else nameOf(message.replyTo?.senderId.orEmpty()),
+                            quoteAuthor = if (row.item.replyToMine) you else nameOf(message.replyTo?.senderId),
                             onQuoteClick = showOriginal,
                             actions =
                                 MessageActions(
                                     onReply = { viewModel.startReply(message.id) },
                                     onEdit = { viewModel.startEdit(message.id) },
-                                    onDelete = { confirmDeleteId = message.id },
+                                    onDelete = { confirmDeleteId = message.id.value },
                                 ),
                         )
                     }
@@ -235,7 +237,7 @@ fun ChatScreen(
         DeleteMessageDialog(
             onConfirm = {
                 confirmDeleteId = null
-                viewModel.delete(id)
+                viewModel.delete(MessageId(id))
             },
             onDismiss = { confirmDeleteId = null },
         )
@@ -263,7 +265,7 @@ private fun MessageBubble(
     item: MessageItem,
     highlighted: Boolean,
     quoteAuthor: String,
-    onQuoteClick: (String) -> Unit,
+    onQuoteClick: (MessageId) -> Unit,
     actions: MessageActions,
 ) {
     val mine = item.mine

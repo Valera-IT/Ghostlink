@@ -1,8 +1,10 @@
 package io.github.valerait.ghostlink.data
 
+import io.github.valerait.ghostlink.core.model.LinkCode
+import io.github.valerait.ghostlink.core.model.LinkRequestId
+import io.github.valerait.ghostlink.core.model.ScannedCode
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.link.LinkCrypto
-import io.github.valerait.ghostlink.data.model.LinkCode
-import io.github.valerait.ghostlink.data.model.ScannedCode
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -67,7 +69,7 @@ class LinkCryptoTest {
 
     @Test
     fun `link code round-trips through the uri`() {
-        val code = LinkCode("AbCdEf0123456789XyZw", LinkCrypto.encodePublicKey(LinkCrypto.generateKeyPair().public))
+        val code = LinkCode(LinkRequestId("AbCdEf0123456789XyZw"), LinkCrypto.encodePublicKey(LinkCrypto.generateKeyPair().public))
 
         assertEquals(code, LinkCode.parse(code.toUri()))
         assertEquals(ScannedCode.Link(code), ScannedCode.parse(code.toUri()))
@@ -76,7 +78,7 @@ class LinkCryptoTest {
     @Test
     fun `malformed link codes are ignored`() {
         val key =
-            LinkCode("AbCdEf0123456789XyZw", LinkCrypto.encodePublicKey(LinkCrypto.generateKeyPair().public))
+            LinkCode(LinkRequestId("AbCdEf0123456789XyZw"), LinkCrypto.encodePublicKey(LinkCrypto.generateKeyPair().public))
                 .toUri()
                 .substringAfter('.')
 
@@ -84,7 +86,7 @@ class LinkCryptoTest {
         assertNull(LinkCode.parse("ghostlink://link/short.$key"))
         assertNull(LinkCode.parse("ghostlink://link/AbCdEf0123456789XyZw.AAAA"))
         assertNull(LinkCode.parse("https://example.com/AbCdEf0123456789XyZw.$key"))
-        assertEquals(ScannedCode.Invite("abc"), ScannedCode.parse("ghostlink://add/abc"))
+        assertEquals(ScannedCode.Invite(UserId("abc")), ScannedCode.parse("ghostlink://add/abc"))
     }
 
     private fun assertFails(block: () -> Unit) {

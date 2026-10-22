@@ -45,14 +45,12 @@
     <ID>ReturnCount:AccountKeyStore.kt$AndroidAccountKeyStore$override fun get(userId: String): AccountKey?</ID>
     <ID>ReturnCount:BackendModule.kt$BackendModule$@SuppressLint("DiscouragedApi") // ресурс генерирует google-services, и его может не быть @Provides @Singleton fun provideAppConfig( @ApplicationContext context: Context, ): AppConfig</ID>
     <ID>ReturnCount:FirebaseChatRepository.kt$private fun DocumentSnapshot.toChat(): Chat?</ID>
-    <ID>ReturnCount:InMemoryBackend.kt$InMemoryBackend$override suspend fun getUser(id: String): User?</ID>
-    <ID>ReturnCount:InviteLink.kt$InviteLink$fun parse(raw: String?): String?</ID>
+    <ID>ReturnCount:InMemoryBackend.kt$InMemoryBackend$override suspend fun getUser(id: UserId): User?</ID>
     <ID>ReturnCount:LinkApproveViewModel.kt$LinkApproveViewModel$fun approve()</ID>
     <ID>ReturnCount:LinkCode.kt$LinkCode.Companion$fun parse(raw: String?): LinkCode?</ID>
-    <ID>ReturnCount:Models.kt$Chat$fun isUnreadFor(me: String): Boolean</ID>
     <ID>SwallowedException:FirebaseAuthRepository.kt$FirebaseAuthRepository$e: FirebaseAuthUserCollisionException</ID>
     <ID>SwallowedException:GoogleSignIn.kt$e: GetCredentialCancellationException</ID>
-    <ID>SwallowedException:RecoveryViewModel.kt$RecoveryViewModel$e: InvalidAccountKeyException</ID>
+    <ID>SwallowedException:RecoveryViewModel.kt$RecoveryViewModel$e: GhostlinkError.InvalidAccountKey</ID>
     <ID>SwallowedException:SettingsViewModel.kt$SettingsViewModel$e: AccountAlreadyLinkedException</ID>
     <ID>TooGenericExceptionCaught:AccountKeyStore.kt$AndroidAccountKeyStore$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ConnectViewModel.kt$ConnectViewModel$e: Exception</ID>

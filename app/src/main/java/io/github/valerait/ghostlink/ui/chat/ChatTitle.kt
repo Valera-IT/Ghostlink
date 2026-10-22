@@ -18,12 +18,13 @@ import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.presenceText
 import io.github.valerait.ghostlink.ui.common.rememberIsTyping
+import kotlin.time.Instant
 
 /** Шапка чата: собеседник и его статус, или группа и число участников. Нажатие на группу открывает её карточку. */
 @Composable
 fun ChatTitle(
     state: ChatUiState,
-    now: Long,
+    now: Instant,
     onGroupInfo: () -> Unit,
 ) {
     val group = state.group
@@ -31,8 +32,8 @@ fun ChatTitle(
     val typing = rememberIsTyping(state.partnerTypingUntil)
     val (title, avatarId) =
         when {
-            group != null -> group.name to state.chatId
-            partner != null -> partner.name to partner.id
+            group != null -> group.name to state.chatId.value
+            partner != null -> partner.name to partner.id.value
             else -> return
         }
     val subtitle =

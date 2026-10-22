@@ -5,8 +5,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.valerait.ghostlink.core.model.LinkCode
+import io.github.valerait.ghostlink.core.model.Platform
 import io.github.valerait.ghostlink.data.link.LinkCrypto
-import io.github.valerait.ghostlink.data.model.LinkCode
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.LinkRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,13 +15,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Clock
 
 sealed interface LinkApproveState {
     data object Loading : LinkApproveState
 
     data class Confirm(
         val deviceName: String,
-        val platform: String,
+        val platform: Platform,
         val busy: Boolean = false,
         val failed: Boolean = false,
     ) : LinkApproveState
@@ -55,7 +57,7 @@ class LinkApproveViewModel
                         null
                     }
                 _state.value =
-                    if (request == null || request.payload != null || request.isExpired(System.currentTimeMillis())) {
+                    if (request == null || request.payload != null || request.isExpired(Clock.System.now())) {
                         LinkApproveState.Invalid
                     } else {
                         LinkApproveState.Confirm(request.deviceName, request.platform)
@@ -72,7 +74,7 @@ class LinkApproveViewModel
                 _state.value =
                     try {
                         val key = auth.accountKey.value ?: auth.ensureAccountKey()
-                        links.approveLinkRequest(code.requestId, LinkCrypto.encrypt(code.publicKey, code.requestId, key.bytes))
+                        links.approveLinkRequest(code.requestId, LinkCrypto.encrypt(code.publicKey, code.requestId.value, key.bytes))
                         LinkApproveState.Done
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed to approve link request", e)

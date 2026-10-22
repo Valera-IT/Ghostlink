@@ -2,8 +2,10 @@ package io.github.valerait.ghostlink.ui
 
 import androidx.lifecycle.SavedStateHandle
 import io.github.valerait.ghostlink.MainDispatcherRule
+import io.github.valerait.ghostlink.core.model.ChatId
+import io.github.valerait.ghostlink.core.model.MessageStatus
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.demo.InMemoryBackend
-import io.github.valerait.ghostlink.data.model.MessageStatus
 import io.github.valerait.ghostlink.di.AppConfig
 import io.github.valerait.ghostlink.ui.chat.ChatRow
 import io.github.valerait.ghostlink.ui.chat.ChatViewModel
@@ -21,21 +23,30 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class GroupChatTest {
     @get:Rule val mainRule = MainDispatcherRule()
 
-    private var now = 1_000_000L
+    private var now = Instant.fromEpochMilliseconds(1_000_000)
+    private val clock =
+        object : Clock {
+            override fun now() = now
+        }
 
     private class Setup(
         val backend: InMemoryBackend,
-        val me: String,
-        val groupId: String,
+        val me: UserId,
+        val groupId: ChatId,
     )
 
     /** Я, Аня и Борис — друзья; группу создаю я через экран выбора участников. */
     private suspend fun TestScope.setUp(): Setup {
-        val backend = InMemoryBackend(backgroundScope, clock = { now }, seedDemoData = false)
+        val backend = InMemoryBackend(backgroundScope, clock = clock, seedDemoData = false)
         val me = backend.createAccount().id
         backend.saveProfile(me, "Я")
         backend.saveProfile(ANYA, "Аня")
@@ -57,7 +68,7 @@ class GroupChatTest {
     }
 
     private fun TestScope.chatVm(s: Setup) =
-        ChatViewModel(SavedStateHandle(mapOf("chatId" to s.groupId)), s.backend, s.backend, s.backend, { now }).also { vm ->
+        ChatViewModel(SavedStateHandle(mapOf("chatId" to s.groupId.value)), s.backend, s.backend, s.backend, clock).also { vm ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         }
 
@@ -85,7 +96,7 @@ class GroupChatTest {
                     .item.status
             assertEquals(MessageStatus.SENT, status())
 
-            now += 1_000
+            now += 1.seconds
             s.backend.markRead(s.groupId, ANYA)
             assertEquals(MessageStatus.READ, status())
 
@@ -111,7 +122,7 @@ class GroupChatTest {
             s.backend.setTyping(s.groupId, BORIS, true)
             assertEquals("Борис", vm.state.value.typingName)
 
-            val list = ChatListViewModel(s.backend, s.backend, s.backend, AppConfig(demoMode = false), { now })
+            val list = ChatListViewModel(s.backend, s.backend, s.backend, AppConfig(demoMode = false), clock)
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { list.state.collect {} }
             val row =
                 list.state.value.items
@@ -125,7 +136,7 @@ class GroupChatTest {
     fun `admin removes a member and leaving passes admin rights on`() =
         runTest {
             val s = setUp()
-            val info = GroupInfoViewModel(SavedStateHandle(mapOf("chatId" to s.groupId)), s.backend, s.backend, s.backend)
+            val info = GroupInfoViewModel(SavedStateHandle(mapOf("chatId" to s.groupId.value)), s.backend, s.backend, s.backend)
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { info.state.collect {} }
             assertTrue(info.state.value.isOwner)
             assertEquals(
@@ -159,7 +170,7 @@ class GroupChatTest {
             val s = setUp()
             s.backend.saveProfile(VERA, "Вера")
             s.backend.startChat(s.me, VERA)
-            val pick = PickMembersViewModel(SavedStateHandle(mapOf("chatId" to s.groupId)), s.backend, s.backend, s.backend)
+            val pick = PickMembersViewModel(SavedStateHandle(mapOf("chatId" to s.groupId.value)), s.backend, s.backend, s.backend)
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { pick.state.collect {} }
             assertEquals(
                 listOf("Вера"),
@@ -178,8 +189,8 @@ class GroupChatTest {
         }
 
     private companion object {
-        const val ANYA = "anya"
-        const val BORIS = "boris"
-        const val VERA = "vera"
+        val ANYA = UserId("anya")
+        val BORIS = UserId("boris")
+        val VERA = UserId("vera")
     }
 }

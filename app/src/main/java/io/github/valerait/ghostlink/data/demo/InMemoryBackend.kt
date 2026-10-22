@@ -1,23 +1,28 @@
 package io.github.valerait.ghostlink.data.demo
 
-import io.github.valerait.ghostlink.data.model.Account
+import io.github.valerait.ghostlink.core.model.Account
+import io.github.valerait.ghostlink.core.model.Chat
+import io.github.valerait.ghostlink.core.model.ChatId
+import io.github.valerait.ghostlink.core.model.ChatPrefs
+import io.github.valerait.ghostlink.core.model.Device
+import io.github.valerait.ghostlink.core.model.DeviceId
+import io.github.valerait.ghostlink.core.model.DisappearingTimer
+import io.github.valerait.ghostlink.core.model.GhostlinkError
+import io.github.valerait.ghostlink.core.model.GroupInfo
+import io.github.valerait.ghostlink.core.model.LINK_TTL
+import io.github.valerait.ghostlink.core.model.LastMessage
+import io.github.valerait.ghostlink.core.model.LinkRequest
+import io.github.valerait.ghostlink.core.model.LinkRequestId
+import io.github.valerait.ghostlink.core.model.Message
+import io.github.valerait.ghostlink.core.model.MessageId
+import io.github.valerait.ghostlink.core.model.Platform
+import io.github.valerait.ghostlink.core.model.ReplyTo
+import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.model.AccountKey
-import io.github.valerait.ghostlink.data.model.Chat
-import io.github.valerait.ghostlink.data.model.ChatIds
-import io.github.valerait.ghostlink.data.model.ChatPrefs
-import io.github.valerait.ghostlink.data.model.Device
-import io.github.valerait.ghostlink.data.model.DisappearingTimer
-import io.github.valerait.ghostlink.data.model.GroupInfo
-import io.github.valerait.ghostlink.data.model.LINK_TTL_MS
-import io.github.valerait.ghostlink.data.model.LastMessage
-import io.github.valerait.ghostlink.data.model.LinkRequest
-import io.github.valerait.ghostlink.data.model.Message
-import io.github.valerait.ghostlink.data.model.ReplyTo
-import io.github.valerait.ghostlink.data.model.User
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
 import io.github.valerait.ghostlink.data.repository.DeviceRepository
-import io.github.valerait.ghostlink.data.repository.InvalidAccountKeyException
 import io.github.valerait.ghostlink.data.repository.LinkRepository
 import io.github.valerait.ghostlink.data.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +36,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 /**
  * Бэкенд в памяти: на нём приложение работает без Firebase (демо-режим),
@@ -38,7 +49,7 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class InMemoryBackend(
     private val scope: CoroutineScope,
-    private val clock: () -> Long = System::currentTimeMillis,
+    private val clock: Clock = Clock.System,
     private val seedDemoData: Boolean = true,
 ) : AuthRepository,
     UserRepository,
@@ -49,13 +60,13 @@ class InMemoryBackend(
     private val _accountKey = MutableStateFlow<AccountKey?>(null)
 
     /** «Сервер» аккаунтов: служебная почта -> (пароль, uid). Переживает выход, как настоящий Firebase. */
-    private val accounts = mutableMapOf<String, Pair<String, String>>()
-    private val devices = MutableStateFlow<Map<String, Map<String, Device>>>(emptyMap())
-    private val linkRequests = MutableStateFlow<Map<String, LinkRequest>>(emptyMap())
-    private val users = MutableStateFlow<Map<String, User>>(emptyMap())
-    private val chats = MutableStateFlow<Map<String, Chat>>(emptyMap())
-    private val messages = MutableStateFlow<Map<String, List<Message>>>(emptyMap())
-    private val chatPrefs = MutableStateFlow<Map<String, Map<String, ChatPrefs>>>(emptyMap())
+    private val accounts = mutableMapOf<String, Pair<String, UserId>>()
+    private val devices = MutableStateFlow<Map<UserId, Map<DeviceId, Device>>>(emptyMap())
+    private val linkRequests = MutableStateFlow<Map<LinkRequestId, LinkRequest>>(emptyMap())
+    private val users = MutableStateFlow<Map<UserId, User>>(emptyMap())
+    private val chats = MutableStateFlow<Map<ChatId, Chat>>(emptyMap())
+    private val messages = MutableStateFlow<Map<ChatId, List<Message>>>(emptyMap())
+    private val chatPrefs = MutableStateFlow<Map<UserId, Map<ChatId, ChatPrefs>>>(emptyMap())
     private val nextId = AtomicInteger()
     private var botReplyIndex = 0
 
@@ -67,7 +78,7 @@ class InMemoryBackend(
 
     override suspend fun createAccount(): Account {
         // В демо пользователь один, в тестах можно завести несколько.
-        val id = if (accounts.isEmpty()) ME else "user-${nextId.incrementAndGet()}"
+        val id = if (accounts.isEmpty()) ME else UserId("user-${nextId.incrementAndGet()}")
         val key = AccountKey.generate()
         accounts[key.email] = key.password to id
         val account = Account(id = id, isAnonymous = false)
@@ -78,8 +89,8 @@ class InMemoryBackend(
     }
 
     override suspend fun signInWithKey(key: AccountKey): Account {
-        val (password, id) = accounts[key.email] ?: throw InvalidAccountKeyException()
-        if (password != key.password) throw InvalidAccountKeyException()
+        val (password, id) = accounts[key.email] ?: throw GhostlinkError.InvalidAccountKey()
+        if (password != key.password) throw GhostlinkError.InvalidAccountKey()
         val account = Account(id = id, isAnonymous = false)
         _accountKey.value = key
         _account.value = account
@@ -87,7 +98,7 @@ class InMemoryBackend(
     }
 
     override suspend fun signInAnonymously(): Account {
-        val account = Account(id = "temp-${nextId.incrementAndGet()}", isAnonymous = true)
+        val account = Account(id = UserId("temp-${nextId.incrementAndGet()}"), isAnonymous = true)
         _account.value = account
         return account
     }
@@ -124,37 +135,37 @@ class InMemoryBackend(
 
     // region UserRepository
 
-    override fun observeUser(id: String): Flow<User?> = users.map { it[id] }.distinctUntilChanged()
+    override fun observeUser(id: UserId): Flow<User?> = users.map { it[id] }.distinctUntilChanged()
 
-    override fun observeUsers(ids: List<String>): Flow<Map<String, User>> =
+    override fun observeUsers(ids: List<UserId>): Flow<Map<UserId, User>> =
         users.map { all -> ids.mapNotNull { all[it] }.associateBy { it.id } }.distinctUntilChanged()
 
-    override suspend fun getUser(id: String): User? {
+    override suspend fun getUser(id: UserId): User? {
         users.value[id]?.let { return it }
         if (!seedDemoData) return null
         // В демо любой отсканированный код «существует»: заводим для него собеседника.
-        val stranger = User(id, "Призрак #${id.take(4)}", online = false, lastSeen = clock() - HOUR)
+        val stranger = User(id, "Призрак #${id.value.take(4)}", online = false, lastSeen = clock.now() - 1.hours)
         users.update { it + (id to stranger) }
         return stranger
     }
 
     override suspend fun saveProfile(
-        id: String,
+        id: UserId,
         name: String,
     ) {
         users.update {
-            val user = it[id]?.copy(name = name) ?: User(id, name, online = true, lastSeen = clock())
+            val user = it[id]?.copy(name = name) ?: User(id, name, online = true, lastSeen = clock.now())
             it + (id to user)
         }
     }
 
     override fun setOnline(
-        id: String,
+        id: UserId,
         online: Boolean,
     ) {
         users.update { all ->
             val user = all[id] ?: return@update all
-            all + (id to user.copy(online = online, lastSeen = clock()))
+            all + (id to user.copy(online = online, lastSeen = clock.now()))
         }
     }
 
@@ -162,37 +173,37 @@ class InMemoryBackend(
 
     // region ChatRepository
 
-    override fun observeChats(userId: String): Flow<List<Chat>> =
+    override fun observeChats(userId: UserId): Flow<List<Chat>> =
         chats
             .map { all ->
-                all.values.filter { userId in it.members }.sortedByDescending { it.updatedAt ?: Long.MAX_VALUE }
+                all.values.filter { userId in it.members }.sortedByDescending { it.updatedAt ?: Instant.DISTANT_FUTURE }
             }.distinctUntilChanged()
 
-    override fun observeChat(chatId: String): Flow<Chat?> = chats.map { it[chatId] }.distinctUntilChanged()
+    override fun observeChat(chatId: ChatId): Flow<Chat?> = chats.map { it[chatId] }.distinctUntilChanged()
 
-    override fun observeMessages(chatId: String): Flow<List<Message>> = messages.map { it[chatId].orEmpty() }.distinctUntilChanged()
+    override fun observeMessages(chatId: ChatId): Flow<List<Message>> = messages.map { it[chatId].orEmpty() }.distinctUntilChanged()
 
     override fun sendMessage(
-        chatId: String,
-        senderId: String,
+        chatId: ChatId,
+        senderId: UserId,
         text: String,
         replyTo: ReplyTo?,
-        ttl: Long?,
+        ttl: Duration?,
     ) {
-        post(chatId, senderId, text, clock()) { it.copy(replyTo = replyTo, ttl = ttl) }
+        post(chatId, senderId, text, clock.now()) { it.copy(replyTo = replyTo, ttl = ttl) }
         val chat = chats.value[chatId] ?: return
         if (BOT_ID in chat.members && senderId != BOT_ID) replyAsBot(chatId)
     }
 
     override fun editMessage(
-        chatId: String,
-        messageId: String,
+        chatId: ChatId,
+        messageId: MessageId,
         text: String,
         isLatest: Boolean,
     ) {
         messages.update { all ->
             val list = all[chatId] ?: return@update all
-            all + (chatId to list.map { if (it.id == messageId) it.copy(text = text, editedAt = clock()) else it })
+            all + (chatId to list.map { if (it.id == messageId) it.copy(text = text, editedAt = clock.now()) else it })
         }
         if (isLatest) {
             chats.update { all ->
@@ -203,8 +214,8 @@ class InMemoryBackend(
     }
 
     override fun deleteMessage(
-        chatId: String,
-        messageId: String,
+        chatId: ChatId,
+        messageId: MessageId,
         isLatest: Boolean,
         previous: Message?,
     ) {
@@ -214,7 +225,7 @@ class InMemoryBackend(
                 (
                     chatId to
                         list.map {
-                            if (it.id == messageId) it.copy(text = "", replyTo = null, editedAt = null, deletedAt = clock()) else it
+                            if (it.id == messageId) it.copy(text = "", replyTo = null, editedAt = null, deletedAt = clock.now()) else it
                         }
                 )
         }
@@ -227,28 +238,28 @@ class InMemoryBackend(
     }
 
     override fun markRead(
-        chatId: String,
-        userId: String,
+        chatId: ChatId,
+        userId: UserId,
     ) {
         chats.update { all ->
             val chat = all[chatId] ?: return@update all
-            all + (chatId to chat.copy(lastRead = chat.lastRead + (userId to clock())))
+            all + (chatId to chat.copy(lastRead = chat.lastRead + (userId to clock.now())))
         }
     }
 
     override fun setTyping(
-        chatId: String,
-        userId: String,
+        chatId: ChatId,
+        userId: UserId,
         typing: Boolean,
     ) {
         chats.update { all ->
             val chat = all[chatId] ?: return@update all
-            all + (chatId to chat.copy(typing = if (typing) chat.typing + (userId to clock()) else chat.typing - userId))
+            all + (chatId to chat.copy(typing = if (typing) chat.typing + (userId to clock.now()) else chat.typing - userId))
         }
     }
 
     override fun setDisappearing(
-        chatId: String,
+        chatId: ChatId,
         timer: DisappearingTimer?,
     ) {
         chats.update { all ->
@@ -258,8 +269,8 @@ class InMemoryBackend(
     }
 
     override fun deleteExpired(
-        chatId: String,
-        messageIds: List<String>,
+        chatId: ChatId,
+        messageIds: List<MessageId>,
     ) {
         val ids = messageIds.toSet()
         messages.update { all ->
@@ -269,16 +280,16 @@ class InMemoryBackend(
     }
 
     override suspend fun createGroup(
-        ownerId: String,
+        ownerId: UserId,
         name: String,
-        memberIds: List<String>,
-    ): String {
-        val id = "g${nextId.incrementAndGet()}"
+        memberIds: List<UserId>,
+    ): ChatId {
+        val id = ChatId("g${nextId.incrementAndGet()}")
         val chat =
             Chat(
                 id = id,
-                members = (memberIds + ownerId).distinct().sorted(),
-                updatedAt = clock(),
+                members = (memberIds + ownerId).distinct().sortedBy { it.value },
+                updatedAt = clock.now(),
                 group = GroupInfo(name, ownerId),
             )
         chats.update { it + (id to chat) }
@@ -286,19 +297,19 @@ class InMemoryBackend(
     }
 
     override fun renameGroup(
-        chatId: String,
+        chatId: ChatId,
         name: String,
     ) = updateGroup(chatId) { it.copy(group = it.group?.copy(name = name)) }
 
     override fun addMembers(
-        chatId: String,
-        userIds: List<String>,
+        chatId: ChatId,
+        userIds: List<UserId>,
     ) = updateGroup(chatId) { it.copy(members = (it.members + userIds).distinct()) }
 
     override fun removeMember(
-        chatId: String,
-        userId: String,
-        newOwnerId: String?,
+        chatId: ChatId,
+        userId: UserId,
+        newOwnerId: UserId?,
     ) = updateGroup(chatId) { chat ->
         chat.copy(
             members = chat.members - userId,
@@ -307,7 +318,7 @@ class InMemoryBackend(
     }
 
     private fun updateGroup(
-        chatId: String,
+        chatId: ChatId,
         change: (Chat) -> Chat,
     ) {
         chats.update { all ->
@@ -316,42 +327,42 @@ class InMemoryBackend(
         }
     }
 
-    override fun observeChatPrefs(userId: String): Flow<Map<String, ChatPrefs>> =
+    override fun observeChatPrefs(userId: UserId): Flow<Map<ChatId, ChatPrefs>> =
         chatPrefs.map { it[userId].orEmpty() }.distinctUntilChanged()
 
     override fun setPinned(
-        userId: String,
-        chatId: String,
+        userId: UserId,
+        chatId: ChatId,
         pinned: Boolean,
-    ) = updatePrefs(userId, chatId) { it.copy(pinnedAt = if (pinned) clock() else null) }
+    ) = updatePrefs(userId, chatId) { it.copy(pinnedAt = if (pinned) clock.now() else null) }
 
     override fun setMuted(
-        userId: String,
-        chatId: String,
+        userId: UserId,
+        chatId: ChatId,
         muted: Boolean,
     ) = updatePrefs(userId, chatId) { it.copy(muted = muted) }
 
     override fun removeChat(
-        userId: String,
-        chatId: String,
-    ) = updatePrefs(userId, chatId) { it.copy(hidden = true, clearedAt = clock(), pinnedAt = null) }
+        userId: UserId,
+        chatId: ChatId,
+    ) = updatePrefs(userId, chatId) { it.copy(hidden = true, clearedAt = clock.now(), pinnedAt = null) }
 
     override suspend fun startChat(
-        userId: String,
-        friendId: String,
-    ): String {
+        userId: UserId,
+        friendId: UserId,
+    ): ChatId {
         require(userId != friendId) { "Cannot start a chat with yourself" }
-        val id = ChatIds.of(userId, friendId)
+        val id = ChatId.of(userId, friendId)
         chats.update { all ->
-            if (id in all) all else all + (id to Chat(id, listOf(userId, friendId).sorted(), updatedAt = clock()))
+            if (id in all) all else all + (id to Chat(id, listOf(userId, friendId).sortedBy { it.value }, updatedAt = clock.now()))
         }
         if (chatPrefs.value[userId]?.get(id)?.hidden == true) updatePrefs(userId, id) { it.copy(hidden = false) }
         return id
     }
 
     private fun updatePrefs(
-        userId: String,
-        chatId: String,
+        userId: UserId,
+        chatId: ChatId,
         change: (ChatPrefs) -> ChatPrefs,
     ) {
         chatPrefs.update { all ->
@@ -364,24 +375,24 @@ class InMemoryBackend(
 
     // region DeviceRepository
 
-    override fun observeDevices(userId: String): Flow<List<Device>> =
+    override fun observeDevices(userId: UserId): Flow<List<Device>> =
         devices.map { it[userId].orEmpty().values.sortedByDescending { d -> d.lastActiveAt } }.distinctUntilChanged()
 
     override fun observeDevice(
-        userId: String,
-        deviceId: String,
+        userId: UserId,
+        deviceId: DeviceId,
     ): Flow<Device?> = devices.map { it[userId]?.get(deviceId) }.distinctUntilChanged()
 
     override suspend fun registerDevice(
-        userId: String,
+        userId: UserId,
         device: Device,
     ) {
-        devices.update { all -> all + (userId to all[userId].orEmpty() + (device.id to device.copy(lastActiveAt = clock()))) }
+        devices.update { all -> all + (userId to all[userId].orEmpty() + (device.id to device.copy(lastActiveAt = clock.now()))) }
     }
 
     override suspend fun removeDevice(
-        userId: String,
-        deviceId: String,
+        userId: UserId,
+        deviceId: DeviceId,
     ) {
         devices.update { all -> all + (userId to all[userId].orEmpty() - deviceId) }
     }
@@ -392,43 +403,43 @@ class InMemoryBackend(
 
     override suspend fun createLinkRequest(
         deviceName: String,
-        platform: String,
-    ): String {
+        platform: Platform,
+    ): LinkRequestId {
         checkNotNull(_account.value) { "Not signed in" }
-        val id = "link${nextId.incrementAndGet()}".padEnd(20, '0')
-        linkRequests.update { it + (id to LinkRequest(id, deviceName, platform, expiresAt = clock() + LINK_TTL_MS)) }
+        val id = LinkRequestId("link${nextId.incrementAndGet()}".padEnd(20, '0'))
+        linkRequests.update { it + (id to LinkRequest(id, deviceName, platform, expiresAt = clock.now() + LINK_TTL)) }
         return id
     }
 
-    override suspend fun getLinkRequest(id: String): LinkRequest? = linkRequests.value[id]
+    override suspend fun getLinkRequest(id: LinkRequestId): LinkRequest? = linkRequests.value[id]
 
-    override fun observeLinkRequest(id: String): Flow<LinkRequest?> = linkRequests.map { it[id] }.distinctUntilChanged()
+    override fun observeLinkRequest(id: LinkRequestId): Flow<LinkRequest?> = linkRequests.map { it[id] }.distinctUntilChanged()
 
     override suspend fun approveLinkRequest(
-        id: String,
+        id: LinkRequestId,
         payload: ByteArray,
     ) {
         linkRequests.update { all ->
             val request = checkNotNull(all[id]) { "No such link request" }
-            check(request.payload == null && !request.isExpired(clock())) { "Link request is no longer valid" }
+            check(request.payload == null && !request.isExpired(clock.now())) { "Link request is no longer valid" }
             all + (id to request.copy(payload = payload))
         }
     }
 
-    override suspend fun deleteLinkRequest(id: String) {
+    override suspend fun deleteLinkRequest(id: LinkRequestId) {
         linkRequests.update { it - id }
     }
 
     // endregion
 
     private fun post(
-        chatId: String,
-        senderId: String,
+        chatId: ChatId,
+        senderId: UserId,
         text: String,
-        at: Long,
+        at: Instant,
         extra: (Message) -> Message = { it },
     ) {
-        val message = extra(Message("m${nextId.incrementAndGet()}", senderId, text, at))
+        val message = extra(Message(MessageId("m${nextId.incrementAndGet()}"), senderId, text, at))
         val ttl = message.ttl
         messages.update { it + (chatId to it[chatId].orEmpty() + message) }
         chats.update { all ->
@@ -437,55 +448,51 @@ class InMemoryBackend(
         }
     }
 
-    private fun replyAsBot(chatId: String) {
+    private fun replyAsBot(chatId: ChatId) {
         scope.launch {
             delay(700)
             markRead(chatId, BOT_ID)
             setTyping(chatId, BOT_ID, true)
             delay(1_200)
-            val ttl = chats.value[chatId]?.disappearing?.seconds
-            post(chatId, BOT_ID, BOT_REPLIES[botReplyIndex++ % BOT_REPLIES.size], clock()) { it.copy(ttl = ttl) }
+            val ttl = chats.value[chatId]?.disappearing?.duration
+            post(chatId, BOT_ID, BOT_REPLIES[botReplyIndex++ % BOT_REPLIES.size], clock.now()) { it.copy(ttl = ttl) }
         }
     }
 
-    private fun seed(me: String) {
-        val now = clock()
+    private fun seed(me: UserId) {
+        val now = clock.now()
         users.value =
             mapOf(
                 BOT_ID to User(BOT_ID, "Призрак", online = true),
-                ANYA_ID to User(ANYA_ID, "Аня", online = false, lastSeen = now - 2 * HOUR),
+                ANYA_ID to User(ANYA_ID, "Аня", online = false, lastSeen = now - 2.hours),
             )
-        val botChat = ChatIds.of(me, BOT_ID)
-        val anyaChat = ChatIds.of(me, ANYA_ID)
+        val botChat = ChatId.of(me, BOT_ID)
+        val anyaChat = ChatId.of(me, ANYA_ID)
         chats.value =
             mapOf(
-                botChat to Chat(botChat, listOf(me, BOT_ID).sorted(), updatedAt = now),
-                anyaChat to Chat(anyaChat, listOf(me, ANYA_ID).sorted(), updatedAt = now),
+                botChat to Chat(botChat, listOf(me, BOT_ID).sortedBy { it.value }, updatedAt = now),
+                anyaChat to Chat(anyaChat, listOf(me, ANYA_ID).sortedBy { it.value }, updatedAt = now),
             )
-        post(anyaChat, ANYA_ID, "Привет! Спасибо, что отсканировал(а) мой код на встрече 🙂", now - DAY - 3 * HOUR)
-        post(anyaChat, me, "Привет! Рад(а) знакомству", now - DAY - 2 * HOUR)
-        post(anyaChat, ANYA_ID, "Скинешь фотки с митапа?", now - DAY - HOUR)
-        post(anyaChat, me, "Конечно, вечером пришлю", now - 3 * HOUR)
+        post(anyaChat, ANYA_ID, "Привет! Спасибо, что отсканировал(а) мой код на встрече 🙂", now - 1.days - 3.hours)
+        post(anyaChat, me, "Привет! Рад(а) знакомству", now - 1.days - 2.hours)
+        post(anyaChat, ANYA_ID, "Скинешь фотки с митапа?", now - 1.days - 1.hours)
+        post(anyaChat, me, "Конечно, вечером пришлю", now - 3.hours)
         markRead(anyaChat, ANYA_ID)
-        post(anyaChat, ANYA_ID, "Жду 👀", now - 2 * HOUR)
-        devices.value = mapOf(me to mapOf(DEMO_LAPTOP to Device(DEMO_LAPTOP, "MacBook Air", "macos", now - 3 * HOUR)))
-        post(botChat, BOT_ID, "Бу! Я Призрак — собеседник для демо-режима. Напиши мне что-нибудь 👻", now - 10 * MINUTE)
-        val group = "g-demo"
-        chats.update {
-            it + (group to Chat(group, listOf(me, ANYA_ID, BOT_ID).sorted(), updatedAt = now, group = GroupInfo("Митап 👻", ANYA_ID)))
-        }
-        post(group, ANYA_ID, "Собрала всех с митапа в одну группу", now - HOUR)
-        post(group, BOT_ID, "Бу! Я тоже тут", now - HOUR / 2)
+        post(anyaChat, ANYA_ID, "Жду 👀", now - 2.hours)
+        devices.value = mapOf(me to mapOf(DEMO_LAPTOP to Device(DEMO_LAPTOP, "MacBook Air", Platform.MacOs, now - 3.hours)))
+        post(botChat, BOT_ID, "Бу! Я Призрак — собеседник для демо-режима. Напиши мне что-нибудь 👻", now - 10.minutes)
+        val group = ChatId("g-demo")
+        val members = listOf(me, ANYA_ID, BOT_ID).sortedBy { it.value }
+        chats.update { it + (group to Chat(group, members, updatedAt = now, group = GroupInfo("Митап 👻", ANYA_ID))) }
+        post(group, ANYA_ID, "Собрала всех с митапа в одну группу", now - 1.hours)
+        post(group, BOT_ID, "Бу! Я тоже тут", now - 30.minutes)
     }
 
     companion object {
-        const val ME = "demo-me"
-        const val BOT_ID = "ghost-bot"
-        const val ANYA_ID = "demo-anya"
-        private const val DEMO_LAPTOP = "demo-laptop"
-        private const val MINUTE = 60_000L
-        private const val HOUR = 60 * MINUTE
-        private const val DAY = 24 * HOUR
+        val ME = UserId("demo-me")
+        val BOT_ID = UserId("ghost-bot")
+        val ANYA_ID = UserId("demo-anya")
+        private val DEMO_LAPTOP = DeviceId("demo-laptop")
 
         private val BOT_REPLIES =
             listOf(

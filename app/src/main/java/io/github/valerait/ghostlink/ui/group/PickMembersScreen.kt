@@ -40,7 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
-import io.github.valerait.ghostlink.data.model.GroupInfo
+import io.github.valerait.ghostlink.core.model.ChatId
+import io.github.valerait.ghostlink.core.model.GroupInfo
 import io.github.valerait.ghostlink.ui.common.Avatar
 
 /** Создание группы (название + друзья) или добавление друзей в существующую группу. */
@@ -48,7 +49,7 @@ import io.github.valerait.ghostlink.ui.common.Avatar
 @Composable
 fun PickMembersScreen(
     onBack: () -> Unit,
-    onDone: (chatId: String) -> Unit,
+    onDone: (chatId: ChatId) -> Unit,
     viewModel: PickMembersViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -114,7 +115,7 @@ fun PickMembersScreen(
                     }
                 }
             }
-            items(state.friends, key = { it.id }) { friend ->
+            items(state.friends, key = { it.id.value }) { friend ->
                 val checked = friend.id in state.selected
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -125,7 +126,7 @@ fun PickMembersScreen(
                             .clickable(enabled = checked || state.slotsLeft > 0) { viewModel.toggle(friend.id) }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    Avatar(friend.name, friend.id, size = 44.dp)
+                    Avatar(friend.name, friend.id.value, size = 44.dp)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(friend.name, style = MaterialTheme.typography.titleMedium)

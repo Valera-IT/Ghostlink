@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.device.ThisDevice
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.DeviceRepository
@@ -22,7 +23,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class SettingsState(
-    val userId: String = "",
+    val userId: UserId = UserId(""),
     val name: String = "",
     val demoMode: Boolean = false,
     val busy: Boolean = false,

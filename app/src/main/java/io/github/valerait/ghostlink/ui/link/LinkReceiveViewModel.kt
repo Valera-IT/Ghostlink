@@ -4,11 +4,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.valerait.ghostlink.core.model.LINK_TTL
+import io.github.valerait.ghostlink.core.model.LinkCode
+import io.github.valerait.ghostlink.core.model.LinkRequestId
 import io.github.valerait.ghostlink.data.device.ThisDevice
 import io.github.valerait.ghostlink.data.link.LinkCrypto
 import io.github.valerait.ghostlink.data.model.AccountKey
-import io.github.valerait.ghostlink.data.model.LINK_TTL_MS
-import io.github.valerait.ghostlink.data.model.LinkCode
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.LinkRepository
 import kotlinx.coroutines.CancellationException
@@ -23,6 +24,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 sealed interface LinkReceiveState {
     data object Preparing : LinkReceiveState
@@ -30,7 +33,7 @@ sealed interface LinkReceiveState {
     /** QR с кодом входа; [expiresAt] — для обратного отсчёта. */
     data class ShowCode(
         val link: String,
-        val expiresAt: Long,
+        val expiresAt: Instant,
     ) : LinkReceiveState
 
     data object SigningIn : LinkReceiveState
@@ -56,7 +59,7 @@ class LinkReceiveViewModel
         val state: StateFlow<LinkReceiveState> = _state.asStateFlow()
 
         private var job: Job? = null
-        private var requestId: String? = null
+        private var requestId: LinkRequestId? = null
 
         init {
             restart()
@@ -76,10 +79,10 @@ class LinkReceiveViewModel
                 val keyPair = LinkCrypto.generateKeyPair()
                 val id = links.createLinkRequest(device.name, device.platform).also { requestId = it }
                 val code = LinkCode(id, LinkCrypto.encodePublicKey(keyPair.public))
-                _state.value = LinkReceiveState.ShowCode(code.toUri(), System.currentTimeMillis() + LINK_TTL_MS)
+                _state.value = LinkReceiveState.ShowCode(code.toUri(), Clock.System.now() + LINK_TTL)
 
                 val payload =
-                    withTimeoutOrNull(LINK_TTL_MS) {
+                    withTimeoutOrNull(LINK_TTL) {
                         links.observeLinkRequest(id).first { it?.payload != null }?.payload
                     }
                 if (payload == null) {
@@ -88,7 +91,7 @@ class LinkReceiveViewModel
                     return
                 }
                 _state.value = LinkReceiveState.SigningIn
-                val key = AccountKey(LinkCrypto.decrypt(keyPair.private, id, payload))
+                val key = AccountKey(LinkCrypto.decrypt(keyPair.private, id.value, payload))
                 dropRequest()
                 auth.signInWithKey(key)
             } catch (e: Exception) {

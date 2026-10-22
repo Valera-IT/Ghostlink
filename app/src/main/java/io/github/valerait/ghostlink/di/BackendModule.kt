@@ -19,7 +19,6 @@ import io.github.valerait.ghostlink.data.firebase.FirebaseChatRepository
 import io.github.valerait.ghostlink.data.firebase.FirebaseDeviceRepository
 import io.github.valerait.ghostlink.data.firebase.FirebaseLinkRepository
 import io.github.valerait.ghostlink.data.firebase.FirebaseUserRepository
-import io.github.valerait.ghostlink.data.model.Clock
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
 import io.github.valerait.ghostlink.data.repository.DeviceRepository
@@ -29,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
+import kotlin.time.Clock
 
 data class AppConfig(
     /** Нет google-services.json — работаем на InMemoryBackend. */

@@ -6,9 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.model.GhostlinkError
 import io.github.valerait.ghostlink.data.model.AccountKey
 import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.InvalidAccountKeyException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,7 +51,7 @@ class RecoveryViewModel
                 try {
                     auth.signInWithKey(key)
                     // Дальше корень сам переключится на чаты.
-                } catch (e: InvalidAccountKeyException) {
+                } catch (e: GhostlinkError.InvalidAccountKey) {
                     _state.update { it.copy(busy = false, error = R.string.recovery_error_wrong) }
                 } catch (e: Exception) {
                     Log.w("Recovery", "Sign in failed", e)

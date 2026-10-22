@@ -4,13 +4,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.valerait.ghostlink.data.model.Clock
-import io.github.valerait.ghostlink.data.model.DisappearingTimer
-import io.github.valerait.ghostlink.data.model.GroupInfo
-import io.github.valerait.ghostlink.data.model.Message
-import io.github.valerait.ghostlink.data.model.MessageStatus
-import io.github.valerait.ghostlink.data.model.ReplyTo
-import io.github.valerait.ghostlink.data.model.User
+import io.github.valerait.ghostlink.core.model.ChatId
+import io.github.valerait.ghostlink.core.model.DisappearingTimer
+import io.github.valerait.ghostlink.core.model.GroupInfo
+import io.github.valerait.ghostlink.core.model.Message
+import io.github.valerait.ghostlink.core.model.MessageId
+import io.github.valerait.ghostlink.core.model.MessageStatus
+import io.github.valerait.ghostlink.core.model.ReplyTo
+import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.repository.AuthRepository
 import io.github.valerait.ghostlink.data.repository.ChatRepository
 import io.github.valerait.ghostlink.data.repository.UserRepository
@@ -31,9 +33,12 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
-import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
+import kotlin.time.Clock
+import kotlin.time.Instant
+import kotlin.time.toJavaInstant
 
 const val MAX_MESSAGE_LENGTH = 4000
 
@@ -54,28 +59,28 @@ sealed interface ChatRow {
     val key: String
 
     data class Day(
-        val millis: Long,
+        val time: Instant,
     ) : ChatRow {
-        override val key = "day-$millis"
+        override val key = "day-${time.toEpochMilliseconds()}"
     }
 
     data class Msg(
         val item: MessageItem,
     ) : ChatRow {
-        override val key = item.message.id
+        override val key = item.message.id.value
     }
 }
 
 data class ChatUiState(
     val loading: Boolean = true,
-    val chatId: String = "",
+    val chatId: ChatId = ChatId(""),
     /** Собеседник в личном чате; в группе null. */
     val partner: User? = null,
     /** Группа: название и админ; в личном чате null. */
     val group: GroupInfo? = null,
     val memberCount: Int = 0,
     /** userId -> имя для всех, кого видно в чате, кроме меня. */
-    val names: Map<String, String> = emptyMap(),
+    val names: Map<UserId, String> = emptyMap(),
     /** Кто печатает в группе (имя); в личном чате null — там достаточно [partnerTypingUntil]. */
     val typingName: String? = null,
     /** Новые сообщения в начале списка — под LazyColumn(reverseLayout = true). */
@@ -85,7 +90,7 @@ data class ChatUiState(
     /** Своё сообщение, которое пользователь сейчас исправляет; взаимоисключается с [replyingTo]. */
     val editing: MessageItem? = null,
     /** До какого момента кто-то из собеседников «печатает…»; null — никто. */
-    val partnerTypingUntil: Long? = null,
+    val partnerTypingUntil: Instant? = null,
     /** Таймер исчезающих сообщений чата; null — выключен. */
     val disappearing: DisappearingTimer? = null,
 )
@@ -102,12 +107,12 @@ class ChatViewModel
         private val clock: Clock,
     ) : ViewModel() {
         // Аргумент типобезопасного маршрута ChatRoute(chatId) лежит в SavedStateHandle под именем поля.
-        private val chatId: String = checkNotNull(savedStateHandle["chatId"])
+        private val chatId = ChatId(checkNotNull(savedStateHandle["chatId"]))
         private val me = auth.requireUserId()
         private val zone = ZoneId.systemDefault()
         private val visible = MutableStateFlow(false)
-        private val replyingToId = MutableStateFlow<String?>(null)
-        private val editingId = MutableStateFlow<String?>(null)
+        private val replyingToId = MutableStateFlow<MessageId?>(null)
+        private val editingId = MutableStateFlow<MessageId?>(null)
         private val typing = TypingNotifier(viewModelScope) { chats.setTyping(chatId, me, it) }
 
         private val chat =
@@ -116,7 +121,7 @@ class ChatViewModel
                 .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
         // Исчезнувшие сообщения, которые этот клиент уже попросил стереть из базы.
-        private val expiredRequested = HashSet<String>()
+        private val expiredRequested = HashSet<MessageId>()
 
         // Сообщения до удаления чата из списка (ChatPrefs.clearedAt) у этого пользователя больше не показываем.
         // Исчезающие пропадают ровно в свой срок, даже если из базы ничего нового не пришло.
@@ -142,7 +147,7 @@ class ChatViewModel
         // Собеседник в личном чате или все участники группы (и бывшие — их имена нужны у старых сообщений).
         private val people =
             combine(chat.mapNotNull { it?.members }, messages) { members, messages ->
-                (members + messages.map { it.senderId }).filter { it != me }.distinct().sorted()
+                (members + messages.map { it.senderId }).filter { it != me }.distinct().sortedBy { it.value }
             }.distinctUntilChanged()
                 .flatMapLatest { users.observeUsers(it) }
                 .onStart { emit(emptyMap()) }
@@ -190,7 +195,7 @@ class ChatViewModel
                     val lastIncoming =
                         messages.lastOrNull { it.senderId != me && !it.pending }?.sentAt
                             ?: return@combine null
-                    lastIncoming.takeIf { it > (chat.lastRead[me] ?: 0L) }
+                    lastIncoming.takeIf { it > (chat.lastRead[me] ?: Instant.DISTANT_PAST) }
                 }.filterNotNull()
                     .distinctUntilChanged()
                     .collect { chats.markRead(chatId, me) }
@@ -208,7 +213,7 @@ class ChatViewModel
         /** Таймер общий для чата: собеседник увидит его и его сообщения тоже начнут исчезать. */
         fun setDisappearing(timer: DisappearingTimer?) = chats.setDisappearing(chatId, timer)
 
-        fun startReply(messageId: String) {
+        fun startReply(messageId: MessageId) {
             editingId.value = null
             replyingToId.value = messageId
         }
@@ -217,7 +222,7 @@ class ChatViewModel
             replyingToId.value = null
         }
 
-        fun startEdit(messageId: String) {
+        fun startEdit(messageId: MessageId) {
             replyingToId.value = null
             editingId.value = messageId
         }
@@ -226,7 +231,7 @@ class ChatViewModel
             editingId.value = null
         }
 
-        fun delete(messageId: String) {
+        fun delete(messageId: MessageId) {
             val list = messages.replayCache.firstOrNull() ?: return
             val index = list.indexOfFirst { it.id == messageId }
             if (index < 0 || list[index].senderId != me || list[index].deleted) return
@@ -260,7 +265,7 @@ class ChatViewModel
                     chat.replayCache
                         .firstOrNull()
                         ?.disappearing
-                        ?.seconds
+                        ?.duration
                 chats.sendMessage(chatId, me, trimmed, replyTo, ttl)
                 replyingToId.value = null
             }
@@ -285,16 +290,11 @@ private fun buildRows(
     zone: ZoneId,
 ): List<ChatRow> {
     val rows = ArrayList<ChatRow>(items.size)
-    var lastDay: Long? = null
+    var lastDay: LocalDate? = null
     for (item in items) {
         val sentAt = item.message.sentAt
         if (sentAt != null) {
-            val day =
-                Instant
-                    .ofEpochMilli(sentAt)
-                    .atZone(zone)
-                    .toLocalDate()
-                    .toEpochDay()
+            val day = sentAt.toJavaInstant().atZone(zone).toLocalDate()
             if (day != lastDay) {
                 rows += ChatRow.Day(sentAt)
                 lastDay = day

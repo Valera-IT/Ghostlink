@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.GhostLogo
 
@@ -37,7 +38,7 @@ import io.github.valerait.ghostlink.ui.common.GhostLogo
 @Composable
 fun ConnectScreen(
     onBack: () -> Unit,
-    onChatReady: (String) -> Unit,
+    onChatReady: (ChatId) -> Unit,
     viewModel: ConnectViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -80,7 +81,7 @@ fun ConnectScreen(
                 }
 
                 is ConnectState.Found -> {
-                    Avatar(s.user.name, s.user.id, size = 112.dp)
+                    Avatar(s.user.name, s.user.id.value, size = 112.dp)
                     Spacer(Modifier.height(20.dp))
                     Text(s.user.name, style = MaterialTheme.typography.headlineMedium)
                     Spacer(Modifier.height(8.dp))
