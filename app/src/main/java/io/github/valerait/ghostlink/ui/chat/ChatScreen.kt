@@ -1,5 +1,6 @@
 package io.github.valerait.ghostlink.ui.chat
 
+import android.content.ClipData
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -73,12 +74,12 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -87,7 +88,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
@@ -206,7 +207,10 @@ fun ChatScreen(
         ) {
             items(state.rows, key = { it.key }) { row ->
                 when (row) {
-                    is ChatRow.Day -> DayHeader(dayLabel(row.millis, now))
+                    is ChatRow.Day -> {
+                        DayHeader(dayLabel(row.millis, now))
+                    }
+
                     is ChatRow.Msg -> {
                         val message = row.item.message
                         MessageBubble(
@@ -263,7 +267,8 @@ private fun MessageBubble(
     actions: MessageActions,
 ) {
     val mine = item.mine
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val chatStyle = LocalChatStyle.current
     val haptics = LocalHapticFeedback.current
     var menuOpen by remember { mutableStateOf(false) }
@@ -347,7 +352,12 @@ private fun MessageBubble(
                 mine = mine,
                 sent = !item.message.pending,
                 onDismiss = { menuOpen = false },
-                actions = actions.copy(onCopy = { clipboard.setText(AnnotatedString(item.message.text)) }),
+                actions =
+                    actions.copy(
+                        onCopy = {
+                            scope.launch { clipboard.setClipEntry(ClipData.newPlainText(null, item.message.text).toClipEntry()) }
+                        },
+                    ),
             )
         }
     }
@@ -467,7 +477,7 @@ private fun MessageInput(
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding()) {
             when {
-                editing != null ->
+                editing != null -> {
                     InputContextBar(
                         icon = Icons.Outlined.Edit,
                         title = stringResource(R.string.chat_editing),
@@ -475,7 +485,9 @@ private fun MessageInput(
                         cancelLabel = stringResource(R.string.chat_edit_cancel),
                         onCancel = onCancelEdit,
                     )
-                replyingTo != null ->
+                }
+
+                replyingTo != null -> {
                     InputContextBar(
                         icon = Icons.AutoMirrored.Filled.Reply,
                         title = replyAuthor(replyingTo),
@@ -483,6 +495,7 @@ private fun MessageInput(
                         cancelLabel = stringResource(R.string.chat_reply_cancel),
                         onCancel = onCancelReply,
                     )
+                }
             }
             Row(
                 modifier =

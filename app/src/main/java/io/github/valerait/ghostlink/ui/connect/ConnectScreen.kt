@@ -27,7 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.ui.common.Avatar
@@ -64,13 +64,21 @@ fun ConnectScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             when (val s = state) {
-                ConnectState.Loading -> CircularProgressIndicator()
-                ConnectState.Self -> Message(stringResource(R.string.connect_self_title), stringResource(R.string.connect_self_body))
-                ConnectState.NotFound ->
+                ConnectState.Loading -> {
+                    CircularProgressIndicator()
+                }
+
+                ConnectState.Self -> {
+                    Message(stringResource(R.string.connect_self_title), stringResource(R.string.connect_self_body))
+                }
+
+                ConnectState.NotFound -> {
                     Message(
                         stringResource(R.string.connect_not_found_title),
                         stringResource(R.string.connect_not_found_body),
                     )
+                }
+
                 is ConnectState.Found -> {
                     Avatar(s.user.name, s.user.id, size = 112.dp)
                     Spacer(Modifier.height(20.dp))

@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.data.model.User
@@ -49,14 +50,21 @@ fun dayLabel(
     now: Long,
     zone: ZoneId = ZoneId.systemDefault(),
 ): String {
+    val locale = LocalLocale.current.platformLocale
     val date = millis.toLocalDate(zone)
     val today = now.toLocalDate(zone)
     return when (date) {
-        today -> stringResource(R.string.day_today)
-        today.minusDays(1) -> stringResource(R.string.day_yesterday)
+        today -> {
+            stringResource(R.string.day_today)
+        }
+
+        today.minusDays(1) -> {
+            stringResource(R.string.day_yesterday)
+        }
+
         else -> {
             val pattern = if (date.year == today.year) "d MMMM" else "d MMMM yyyy"
-            date.format(DateTimeFormatter.ofPattern(pattern, Locale.getDefault()))
+            date.format(DateTimeFormatter.ofPattern(pattern, locale))
         }
     }
 }
@@ -67,12 +75,25 @@ fun presenceText(
     now: Long,
 ): String =
     when {
-        user == null -> ""
-        user.isOnline(now) -> stringResource(R.string.presence_online)
-        user.lastSeen == null -> stringResource(R.string.presence_long_ago)
-        user.lastSeen.toLocalDate(ZoneId.systemDefault()) == now.toLocalDate(ZoneId.systemDefault()) ->
+        user == null -> {
+            ""
+        }
+
+        user.isOnline(now) -> {
+            stringResource(R.string.presence_online)
+        }
+
+        user.lastSeen == null -> {
+            stringResource(R.string.presence_long_ago)
+        }
+
+        user.lastSeen.toLocalDate(ZoneId.systemDefault()) == now.toLocalDate(ZoneId.systemDefault()) -> {
             stringResource(R.string.presence_last_seen_today, formatTime(user.lastSeen))
-        else -> stringResource(R.string.presence_last_seen_date, formatChatListTime(user.lastSeen, now))
+        }
+
+        else -> {
+            stringResource(R.string.presence_last_seen_date, formatChatListTime(user.lastSeen, now))
+        }
     }
 
 /** Текущее время, которое раз в 30 секунд обновляется — для «в сети» и меток времени. */

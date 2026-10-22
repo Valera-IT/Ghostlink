@@ -36,7 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.ui.devices.platformIcon
@@ -76,21 +76,28 @@ fun LinkApproveScreen(
                     Spacer(Modifier.height(96.dp))
                     CircularProgressIndicator()
                 }
-                is LinkApproveState.Confirm -> Confirm(current, onApprove = viewModel::approve, onCancel = onClose)
-                LinkApproveState.Done ->
+
+                is LinkApproveState.Confirm -> {
+                    Confirm(current, onApprove = viewModel::approve, onCancel = onClose)
+                }
+
+                LinkApproveState.Done -> {
                     Outcome(
                         icon = Icons.Outlined.CheckCircle,
                         title = stringResource(R.string.link_approve_done_title),
                         body = stringResource(R.string.link_approve_done_body),
                         onClose = onClose,
                     )
-                LinkApproveState.Invalid ->
+                }
+
+                LinkApproveState.Invalid -> {
                     Outcome(
                         icon = Icons.Outlined.ErrorOutline,
                         title = stringResource(R.string.link_approve_invalid_title),
                         body = stringResource(R.string.link_approve_invalid_body),
                         onClose = onClose,
                     )
+                }
             }
         }
     }

@@ -37,37 +37,47 @@ data class NeonPalette(
 val ThemeId.palette: NeonPalette
     get() =
         when (this) {
-            ThemeId.TOXIC_YELLOW ->
+            ThemeId.TOXIC_YELLOW -> {
                 NeonPalette(
                     accent = Color(0xFFFFE600),
                     secondary = Color(0xFFFF2E4C),
                     background = Color(0xFF0E0C12),
                 )
-            ThemeId.NEON_SUNSET ->
+            }
+
+            ThemeId.NEON_SUNSET -> {
                 NeonPalette(
                     accent = Color(0xFFFF5CA8),
                     secondary = Color(0xFFFFB45E),
                     background = Color(0xFF120911),
                 )
-            ThemeId.ICEWIRE ->
+            }
+
+            ThemeId.ICEWIRE -> {
                 NeonPalette(
                     accent = Color(0xFF8ED8F8),
                     secondary = Color(0xFFC690FF),
                     background = Color(0xFF080C14),
                 )
-            ThemeId.ACID_CIRCUIT ->
+            }
+
+            ThemeId.ACID_CIRCUIT -> {
                 NeonPalette(
                     accent = Color(0xFFB8FF3C),
                     secondary = Color(0xFFFF5CD6),
                     background = Color(0xFF0A0E09),
                 )
-            ThemeId.AMBER_ALERT ->
+            }
+
+            ThemeId.AMBER_ALERT -> {
                 NeonPalette(
                     accent = Color(0xFFFFB443),
                     secondary = Color(0xFFFF5A3C),
                     background = Color(0xFF110C07),
                 )
-            ThemeId.CUSTOM_SPECTRUM ->
+            }
+
+            ThemeId.CUSTOM_SPECTRUM -> {
                 NeonPalette(
                     accent = Color(0xFF3DFF86),
                     secondary = Color(0xFFE245FF),
@@ -75,6 +85,7 @@ val ThemeId.palette: NeonPalette
                     outgoing = Color(0xFF4B2290),
                     onOutgoing = Color(0xFFF4EEFF),
                 )
+            }
         }
 
 /** Как выглядят сообщения в чате. Отдельно от ColorScheme: у плашек свои цвета и формы. */

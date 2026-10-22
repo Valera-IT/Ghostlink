@@ -1,29 +1,32 @@
 [versions]
-agp = "8.7.3"
-kotlin = "2.0.21"
-ksp = "2.0.21-1.0.28"
-hilt = "2.54"
-googleServices = "4.4.2"
-coreKtx = "1.15.0"
-lifecycle = "2.8.7"
-activityCompose = "1.9.3"
-composeBom = "2024.12.01"
-navigation = "2.8.5"
-hiltNavigationCompose = "1.2.0"
-serialization = "1.7.3"
-coroutines = "1.9.0"
-firebaseBom = "33.7.0"
-camerax = "1.4.1"
-concurrentFutures = "1.2.0"
+compileSdk = "37"
+minSdk = "26"
+targetSdk = "35"
+agp = "9.4.1"
+kotlin = "2.4.21"
+ksp = "2.3.12"
+hilt = "2.60.1"
+googleServices = "4.5.0"
+coreKtx = "1.19.1"
+lifecycle = "2.11.0"
+activityCompose = "1.13.0"
+composeBom = "2026.09.00"
+navigation = "2.10.2"
+hiltLifecycleViewModelCompose = "1.4.0"
+serialization = "1.12.0"
+coroutines = "1.11.0"
+firebaseBom = "35.1.0"
+camerax = "1.6.2"
+concurrentFutures = "1.3.0"
 # Уже приходит транзитивно (Firebase/CameraX); нужна в compile classpath ради ListenableFuture
-guava = "32.1.3-android"
+guava = "33.7.2-android"
 mlkitBarcode = "17.3.0"
-zxing = "3.5.3"
+zxing = "3.5.4"
 junit = "4.13.2"
-spotless = "7.0.4"
-ktlint = "1.5.0"
+spotless = "8.10.4"
+ktlint = "1.8.0"
 detekt = "1.23.8"
-kover = "0.9.1"
+kover = "0.9.11"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -42,7 +45,7 @@ compose-material-icons-extended = { module = "androidx.compose.material:material
 
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+hilt-lifecycle-viewmodel-compose = { module = "androidx.hilt:hilt-lifecycle-viewmodel-compose", version.ref = "hiltLifecycleViewModelCompose" }
 
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "coroutines" }
@@ -60,12 +63,15 @@ guava = { module = "com.google.guava:guava", version.ref = "guava" }
 mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkitBarcode" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
-
 junit = { module = "junit:junit", version.ref = "junit" }
+
+# Плагины Gradle как библиотеки — для build-logic
+android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
+detekt-gradlePlugin = { module = "io.gitlab.arturbosch.detekt:detekt-gradle-plugin", version.ref = "detekt" }
+spotless-gradlePlugin = { module = "com.diffplug.spotless:spotless-plugin-gradle", version.ref = "spotless" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
@@ -74,3 +80,9 @@ google-services = { id = "com.google.gms.google-services", version.ref = "google
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+
+# Convention-плагины из build-logic
+ghostlink-android-app = { id = "ghostlink.android.app" }
+ghostlink-android-compose = { id = "ghostlink.android.compose" }
+ghostlink-detekt = { id = "ghostlink.detekt" }
+ghostlink-spotless = { id = "ghostlink.spotless" }

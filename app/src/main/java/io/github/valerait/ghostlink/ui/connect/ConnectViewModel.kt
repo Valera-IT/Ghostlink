@@ -58,14 +58,18 @@ class ConnectViewModel
             viewModelScope.launch {
                 _state.value =
                     when {
-                        friendId == me -> ConnectState.Self
-                        else ->
+                        friendId == me -> {
+                            ConnectState.Self
+                        }
+
+                        else -> {
                             try {
                                 users.getUser(friendId)?.let { ConnectState.Found(it) } ?: ConnectState.NotFound
                             } catch (e: Exception) {
                                 Log.w(TAG, "Failed to load user", e)
                                 ConnectState.NotFound
                             }
+                        }
                     }
             }
         }
