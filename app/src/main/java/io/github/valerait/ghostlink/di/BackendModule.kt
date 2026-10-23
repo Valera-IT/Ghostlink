@@ -11,12 +11,12 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.valerait.ghostlink.BuildConfig
+import io.github.valerait.ghostlink.core.demo.DemoBackend
 import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
 import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
 import io.github.valerait.ghostlink.core.domain.repository.DeviceRepository
 import io.github.valerait.ghostlink.core.domain.repository.LinkRepository
 import io.github.valerait.ghostlink.core.domain.repository.UserRepository
-import io.github.valerait.ghostlink.data.demo.InMemoryBackend
 import io.github.valerait.ghostlink.data.device.AndroidAccountKeyStore
 import io.github.valerait.ghostlink.data.device.ThisDevice
 import io.github.valerait.ghostlink.data.firebase.FirebaseAuthRepository
@@ -31,7 +31,7 @@ import javax.inject.Singleton
 import kotlin.time.Clock
 
 data class AppConfig(
-    /** Нет google-services.json — работаем на InMemoryBackend. */
+    /** Нет google-services.json — работаем на DemoBackend. */
     val demoMode: Boolean,
 )
 
@@ -85,7 +85,7 @@ object BackendModule {
         config: AppConfig,
     ): Backend =
         if (config.demoMode) {
-            val demo = InMemoryBackend(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+            val demo = DemoBackend(CoroutineScope(SupervisorJob() + Dispatchers.Default))
             Backend(demo, demo, demo, demo, demo)
         } else {
             val db = FirebaseFirestore.getInstance()

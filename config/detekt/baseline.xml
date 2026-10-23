@@ -16,12 +16,6 @@
     <ID>MagicNumber:FirebaseLinkRepository.kt$FirebaseLinkRepository$60</ID>
     <ID>MagicNumber:FirebaseUserRepository.kt$FirebaseUserRepository$30</ID>
     <ID>MagicNumber:Formatting.kt$6</ID>
-    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$10</ID>
-    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$1_200</ID>
-    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$20</ID>
-    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$3</ID>
-    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$4</ID>
-    <ID>MagicNumber:InMemoryBackend.kt$InMemoryBackend$700</ID>
     <ID>MagicNumber:LinkCode.kt$LinkCode.Companion$65</ID>
     <ID>MagicNumber:LinkCrypto.kt$LinkCrypto$0x04</ID>
     <ID>MagicNumber:LinkCrypto.kt$LinkCrypto$3</ID>
@@ -44,7 +38,6 @@
     <ID>ReturnCount:AccountKeyStore.kt$AndroidAccountKeyStore$override fun get(userId: String): AccountKey?</ID>
     <ID>ReturnCount:BackendModule.kt$BackendModule$@SuppressLint("DiscouragedApi") // ресурс генерирует google-services, и его может не быть @Provides @Singleton fun provideAppConfig( @ApplicationContext context: Context, ): AppConfig</ID>
     <ID>ReturnCount:FirebaseChatRepository.kt$private fun DocumentSnapshot.toChat(): Chat?</ID>
-    <ID>ReturnCount:InMemoryBackend.kt$InMemoryBackend$override suspend fun getUser(id: UserId): User?</ID>
     <ID>ReturnCount:LinkApproveViewModel.kt$LinkApproveViewModel$fun approve()</ID>
     <ID>ReturnCount:LinkCode.kt$LinkCode.Companion$fun parse(raw: String?): LinkCode?</ID>
     <ID>SwallowedException:FirebaseAuthRepository.kt$FirebaseAuthRepository$e: FirebaseAuthUserCollisionException</ID>

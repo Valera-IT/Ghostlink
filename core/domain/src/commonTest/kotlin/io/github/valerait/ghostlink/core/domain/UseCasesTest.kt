@@ -1,4 +1,4 @@
-package io.github.valerait.ghostlink.domain
+package io.github.valerait.ghostlink.core.domain
 
 import io.github.valerait.ghostlink.core.domain.repository.DeviceRepository
 import io.github.valerait.ghostlink.core.domain.usecase.AddFriendUseCase
@@ -22,29 +22,26 @@ import io.github.valerait.ghostlink.core.model.Message
 import io.github.valerait.ghostlink.core.model.MessageId
 import io.github.valerait.ghostlink.core.model.Platform
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.data.demo.InMemoryBackend
-import io.github.valerait.ghostlink.data.link.JvmLinkCipher
+import io.github.valerait.ghostlink.core.testing.FakeBackend
+import io.github.valerait.ghostlink.core.testing.FakeLinkCipher
+import io.github.valerait.ghostlink.core.testing.TestClock
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
-import kotlin.time.Clock
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Instant
 
-// Use case на InMemoryBackend. На этапе 3.4 переедут в commonTest core:domain вместе с фейками из core:testing.
 class UseCasesTest {
-    private fun TestScope.backend() = InMemoryBackend(backgroundScope, seedDemoData = false)
+    private fun backend() = FakeBackend()
 
-    private suspend fun InMemoryBackend.messages(chatId: ChatId): List<Message> = observeMessages(chatId).first()
+    private suspend fun FakeBackend.messages(chatId: ChatId): List<Message> = observeMessages(chatId).first()
 
     @Test
-    fun `account gets a trimmed profile name and a blank name is rejected`() =
+    fun accountGetsATrimmedProfileNameAndABlankNameIsRejected() =
         runTest {
             val backend = backend()
             val create = CreateAccountUseCase(backend, backend)
@@ -57,7 +54,7 @@ class UseCasesTest {
         }
 
     @Test
-    fun `temporary account left from an abandoned link becomes the real one`() =
+    fun temporaryAccountLeftFromAnAbandonedLinkBecomesTheRealOne() =
         runTest {
             val backend = backend()
             val temp = backend.signInAnonymously()
@@ -66,7 +63,7 @@ class UseCasesTest {
         }
 
     @Test
-    fun `recovery code tells a typo from a wrong key`() =
+    fun recoveryCodeTellsATypoFromAWrongKey() =
         runTest {
             val backend = backend()
             val account = backend.createAccount()
@@ -82,7 +79,7 @@ class UseCasesTest {
         }
 
     @Test
-    fun `sign out everywhere keeps only this device and invalidates the old recovery code`() =
+    fun signOutEverywhereKeepsOnlyThisDeviceAndInvalidatesTheOldRecoveryCode() =
         runTest {
             val backend = backend()
             val me = backend.createAccount().id
@@ -99,12 +96,12 @@ class UseCasesTest {
         }
 
     @Test
-    fun `sign out removes this device from the registry`() =
+    fun signOutRemovesThisDeviceFromTheRegistry() =
         runTest {
             val backend = backend()
             val me = backend.createAccount().id
             backend.registerDevice(me, Device(PHONE, "Pixel", Platform.Android))
-            // Демо-бэкенд забывает реестр при выходе, поэтому удаление запоминаем сами.
+            // Фейк забывает реестр при выходе, поэтому удаление запоминаем сами.
             val removed = mutableListOf<DeviceId>()
             val devices =
                 object : DeviceRepository by backend {
@@ -124,19 +121,15 @@ class UseCasesTest {
         }
 
     @Test
-    fun `link request can be approved only once and only before it expires`() =
+    fun linkRequestCanBeApprovedOnlyOnceAndOnlyBeforeItExpires() =
         runTest {
-            var now = Instant.fromEpochMilliseconds(1_000_000)
-            val clock =
-                object : Clock {
-                    override fun now() = now
-                }
-            val backend = InMemoryBackend(backgroundScope, clock = clock, seedDemoData = false)
+            val clock = TestClock()
+            val backend = FakeBackend(clock)
             backend.signInAnonymously()
             val requestId = backend.createLinkRequest("Pixel 9", Platform.Android)
-            val code = LinkCode(requestId, JvmLinkCipher.newKeyPair().publicKey)
+            val code = LinkCode(requestId, FakeLinkCipher.newKeyPair().publicKey)
             backend.createAccount()
-            val approve = ApproveDeviceLinkUseCase(backend, backend, JvmLinkCipher, clock)
+            val approve = ApproveDeviceLinkUseCase(backend, backend, FakeLinkCipher, clock)
 
             assertEquals("Pixel 9", approve.load(code).deviceName)
             approve(code)
@@ -145,14 +138,14 @@ class UseCasesTest {
             backend.signOut()
             backend.signInAnonymously()
             val late = LinkCode(backend.createLinkRequest("iPhone", Platform.Ios), code.publicKey)
-            now += 3.minutes
+            clock.advanceBy(3.minutes)
             assertTrue(runCatching { approve.load(late) }.exceptionOrNull() is GhostlinkError.LinkExpired)
             backend.deleteLinkRequest(late.requestId)
             assertTrue(runCatching { approve.load(late) }.exceptionOrNull() is GhostlinkError.LinkExpired)
         }
 
     @Test
-    fun `adding yourself is refused, adding a friend opens the pair chat`() =
+    fun addingYourselfIsRefusedAddingAFriendOpensThePairChat() =
         runTest {
             val backend = backend()
             val me = backend.createAccount().id
@@ -163,7 +156,7 @@ class UseCasesTest {
         }
 
     @Test
-    fun `message text is trimmed, blank is not sent and the chat timer becomes its ttl`() =
+    fun messageTextIsTrimmedBlankIsNotSentAndTheChatTimerBecomesItsTtl() =
         runTest {
             val backend = backend()
             val me = backend.createAccount().id
@@ -181,7 +174,7 @@ class UseCasesTest {
         }
 
     @Test
-    fun `reply to an unconfirmed message is sent as a plain message`() =
+    fun replyToAnUnconfirmedMessageIsSentAsAPlainMessage() =
         runTest {
             val backend = backend()
             val me = backend.createAccount().id
@@ -194,7 +187,7 @@ class UseCasesTest {
         }
 
     @Test
-    fun `editing and deleting the latest message updates the chat preview`() =
+    fun editingAndDeletingTheLatestMessageUpdatesTheChatPreview() =
         runTest {
             val backend = backend()
             val me = backend.createAccount().id
@@ -225,7 +218,7 @@ class UseCasesTest {
         }
 
     @Test
-    fun `only own and not yet deleted messages can be deleted`() =
+    fun onlyOwnAndNotYetDeletedMessagesCanBeDeleted() =
         runTest {
             val backend = backend()
             val me = backend.createAccount().id
@@ -239,7 +232,7 @@ class UseCasesTest {
         }
 
     @Test
-    fun `admin leaving the group hands it over to the next member`() =
+    fun adminLeavingTheGroupHandsItOverToTheNextMember() =
         runTest {
             val backend = backend()
             val me = backend.createAccount().id

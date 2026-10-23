@@ -5,7 +5,8 @@ import io.github.valerait.ghostlink.MainDispatcherRule
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.MessageStatus
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.data.demo.InMemoryBackend
+import io.github.valerait.ghostlink.core.testing.FakeBackend
+import io.github.valerait.ghostlink.core.testing.TestClock
 import io.github.valerait.ghostlink.di.AppConfig
 import io.github.valerait.ghostlink.ui.chat.ChatRow
 import io.github.valerait.ghostlink.ui.chat.ChatViewModel
@@ -23,30 +24,24 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 
 class GroupChatTest {
     @get:Rule val mainRule = MainDispatcherRule()
 
-    private var now = Instant.fromEpochMilliseconds(1_000_000)
-    private val clock =
-        object : Clock {
-            override fun now() = now
-        }
+    private val clock = TestClock()
 
     private class Setup(
-        val backend: InMemoryBackend,
+        val backend: FakeBackend,
         val me: UserId,
         val groupId: ChatId,
     )
 
     /** Я, Аня и Борис — друзья; группу создаю я через экран выбора участников. */
     private suspend fun TestScope.setUp(): Setup {
-        val backend = InMemoryBackend(backgroundScope, clock = clock, seedDemoData = false)
+        val backend = FakeBackend(clock)
         val me = backend.createAccount().id
         backend.saveProfile(me, "Я")
         backend.saveProfile(ANYA, "Аня")
@@ -96,7 +91,7 @@ class GroupChatTest {
                     .item.status
             assertEquals(MessageStatus.SENT, status())
 
-            now += 1.seconds
+            clock.advanceBy(1.seconds)
             s.backend.markRead(s.groupId, ANYA)
             assertEquals(MessageStatus.READ, status())
 

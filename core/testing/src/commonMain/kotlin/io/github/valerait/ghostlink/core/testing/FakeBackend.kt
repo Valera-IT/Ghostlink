@@ -1,4 +1,4 @@
-package io.github.valerait.ghostlink.data.demo
+package io.github.valerait.ghostlink.core.testing
 
 import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
 import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
@@ -25,8 +25,6 @@ import io.github.valerait.ghostlink.core.model.Platform
 import io.github.valerait.ghostlink.core.model.ReplyTo
 import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.core.model.UserId
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,23 +32,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.time.Clock
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
 /**
- * Бэкенд в памяти: на нём приложение работает без Firebase (демо-режим),
- * и он же служит фейком в unit-тестах.
+ * Все репозитории в памяти: фейк для тестов ViewModel и use case. Ведёт себя как сервер —
+ * аккаунты переживают выход, а заявки на привязку истекают по [clock].
+ * Демо-бэкенд (`core:demo`) наследует его и добавляет стартовые данные и бота.
  */
-class InMemoryBackend(
-    private val scope: CoroutineScope,
-    private val clock: Clock = Clock.System,
-    private val seedDemoData: Boolean = true,
+@OptIn(ExperimentalAtomicApi::class)
+open class FakeBackend(
+    protected val clock: Clock = Clock.System,
 ) : AuthRepository,
     UserRepository,
     ChatRepository,
@@ -67,8 +63,7 @@ class InMemoryBackend(
     private val chats = MutableStateFlow<Map<ChatId, Chat>>(emptyMap())
     private val messages = MutableStateFlow<Map<ChatId, List<Message>>>(emptyMap())
     private val chatPrefs = MutableStateFlow<Map<UserId, Map<ChatId, ChatPrefs>>>(emptyMap())
-    private val nextId = AtomicInteger()
-    private var botReplyIndex = 0
+    private val idCounter = AtomicInt(0)
 
     // region AuthRepository
 
@@ -77,12 +72,11 @@ class InMemoryBackend(
     override val accountKey: StateFlow<AccountKey?> = _accountKey.asStateFlow()
 
     override suspend fun createAccount(): Account {
-        // В демо пользователь один, в тестах можно завести несколько.
-        val id = if (accounts.isEmpty()) ME else UserId("user-${nextId.incrementAndGet()}")
+        val id = UserId(nextId("user-"))
         val key = AccountKey.generate()
         accounts[key.email] = key.password to id
         val account = Account(id = id, isAnonymous = false)
-        if (seedDemoData) seed(account.id)
+        onAccountCreated(id)
         _accountKey.value = key
         _account.value = account
         return account
@@ -98,7 +92,7 @@ class InMemoryBackend(
     }
 
     override suspend fun signInAnonymously(): Account {
-        val account = Account(id = UserId("temp-${nextId.incrementAndGet()}"), isAnonymous = true)
+        val account = Account(id = UserId(nextId("temp-")), isAnonymous = true)
         _account.value = account
         return account
     }
@@ -140,14 +134,7 @@ class InMemoryBackend(
     override fun observeUsers(ids: List<UserId>): Flow<Map<UserId, User>> =
         users.map { all -> ids.mapNotNull { all[it] }.associateBy { it.id } }.distinctUntilChanged()
 
-    override suspend fun getUser(id: UserId): User? {
-        users.value[id]?.let { return it }
-        if (!seedDemoData) return null
-        // В демо любой отсканированный код «существует»: заводим для него собеседника.
-        val stranger = User(id, "Призрак #${id.value.take(4)}", online = false, lastSeen = clock.now() - 1.hours)
-        users.update { it + (id to stranger) }
-        return stranger
-    }
+    override suspend fun getUser(id: UserId): User? = users.value[id]
 
     override suspend fun saveProfile(
         id: UserId,
@@ -191,8 +178,6 @@ class InMemoryBackend(
         ttl: Duration?,
     ) {
         post(chatId, senderId, text, clock.now()) { it.copy(replyTo = replyTo, ttl = ttl) }
-        val chat = chats.value[chatId] ?: return
-        if (BOT_ID in chat.members && senderId != BOT_ID) replyAsBot(chatId)
     }
 
     override fun editMessage(
@@ -284,7 +269,7 @@ class InMemoryBackend(
         name: String,
         memberIds: List<UserId>,
     ): ChatId {
-        val id = ChatId("g${nextId.incrementAndGet()}")
+        val id = ChatId(nextId("g"))
         val chat =
             Chat(
                 id = id,
@@ -406,7 +391,7 @@ class InMemoryBackend(
         platform: Platform,
     ): LinkRequestId {
         checkNotNull(_account.value) { "Not signed in" }
-        val id = LinkRequestId("link${nextId.incrementAndGet()}".padEnd(20, '0'))
+        val id = LinkRequestId(nextId("link").padEnd(LINK_REQUEST_ID_LENGTH, '0'))
         linkRequests.update { it + (id to LinkRequest(id, deviceName, platform, expiresAt = clock.now() + LINK_TTL)) }
         return id
     }
@@ -432,14 +417,39 @@ class InMemoryBackend(
 
     // endregion
 
-    private fun post(
+    // region Для наследников: начальные данные демо-режима
+
+    /** Аккаунт создан, но ещё не опубликован в [account]. */
+    protected open fun onAccountCreated(id: UserId) {}
+
+    protected fun nextId(prefix: String): String = "$prefix${idCounter.incrementAndFetch()}"
+
+    protected fun chat(chatId: ChatId): Chat? = chats.value[chatId]
+
+    protected fun putUser(user: User) {
+        users.update { it + (user.id to user) }
+    }
+
+    protected fun putChat(chat: Chat) {
+        chats.update { it + (chat.id to chat) }
+    }
+
+    protected fun putDevice(
+        userId: UserId,
+        device: Device,
+    ) {
+        devices.update { all -> all + (userId to all[userId].orEmpty() + (device.id to device)) }
+    }
+
+    /** Сообщение с заданным временем отправки: [sendMessage] всегда ставит «сейчас». */
+    protected fun post(
         chatId: ChatId,
         senderId: UserId,
         text: String,
         at: Instant,
         extra: (Message) -> Message = { it },
     ) {
-        val message = extra(Message(MessageId("m${nextId.incrementAndGet()}"), senderId, text, at))
+        val message = extra(Message(MessageId(nextId("m")), senderId, text, at))
         val ttl = message.ttl
         messages.update { it + (chatId to it[chatId].orEmpty() + message) }
         chats.update { all ->
@@ -448,59 +458,10 @@ class InMemoryBackend(
         }
     }
 
-    private fun replyAsBot(chatId: ChatId) {
-        scope.launch {
-            delay(700)
-            markRead(chatId, BOT_ID)
-            setTyping(chatId, BOT_ID, true)
-            delay(1_200)
-            val ttl = chats.value[chatId]?.disappearing?.duration
-            post(chatId, BOT_ID, BOT_REPLIES[botReplyIndex++ % BOT_REPLIES.size], clock.now()) { it.copy(ttl = ttl) }
-        }
-    }
+    // endregion
 
-    private fun seed(me: UserId) {
-        val now = clock.now()
-        users.value =
-            mapOf(
-                BOT_ID to User(BOT_ID, "Призрак", online = true),
-                ANYA_ID to User(ANYA_ID, "Аня", online = false, lastSeen = now - 2.hours),
-            )
-        val botChat = ChatId.of(me, BOT_ID)
-        val anyaChat = ChatId.of(me, ANYA_ID)
-        chats.value =
-            mapOf(
-                botChat to Chat(botChat, listOf(me, BOT_ID).sortedBy { it.value }, updatedAt = now),
-                anyaChat to Chat(anyaChat, listOf(me, ANYA_ID).sortedBy { it.value }, updatedAt = now),
-            )
-        post(anyaChat, ANYA_ID, "Привет! Спасибо, что отсканировал(а) мой код на встрече 🙂", now - 1.days - 3.hours)
-        post(anyaChat, me, "Привет! Рад(а) знакомству", now - 1.days - 2.hours)
-        post(anyaChat, ANYA_ID, "Скинешь фотки с митапа?", now - 1.days - 1.hours)
-        post(anyaChat, me, "Конечно, вечером пришлю", now - 3.hours)
-        markRead(anyaChat, ANYA_ID)
-        post(anyaChat, ANYA_ID, "Жду 👀", now - 2.hours)
-        devices.value = mapOf(me to mapOf(DEMO_LAPTOP to Device(DEMO_LAPTOP, "MacBook Air", Platform.MacOs, now - 3.hours)))
-        post(botChat, BOT_ID, "Бу! Я Призрак — собеседник для демо-режима. Напиши мне что-нибудь 👻", now - 10.minutes)
-        val group = ChatId("g-demo")
-        val members = listOf(me, ANYA_ID, BOT_ID).sortedBy { it.value }
-        chats.update { it + (group to Chat(group, members, updatedAt = now, group = GroupInfo("Митап 👻", ANYA_ID))) }
-        post(group, ANYA_ID, "Собрала всех с митапа в одну группу", now - 1.hours)
-        post(group, BOT_ID, "Бу! Я тоже тут", now - 30.minutes)
-    }
-
-    companion object {
-        val ME = UserId("demo-me")
-        val BOT_ID = UserId("ghost-bot")
-        val ANYA_ID = UserId("demo-anya")
-        private val DEMO_LAPTOP = DeviceId("demo-laptop")
-
-        private val BOT_REPLIES =
-            listOf(
-                "Я тебя слышу, даже если ты меня не видишь 👻",
-                "В Ghostlink нельзя найти человека по номеру — только встретиться и отсканировать код.",
-                "Открой «Мой код», покажи QR другу — и вы сразу окажетесь в общем чате.",
-                "Видишь две галочки? Значит, я прочитал. Призраки всё читают.",
-                "Я живу только в демо-режиме. Подключи Firebase — и появятся настоящие люди.",
-            )
+    private companion object {
+        /** Как у автоматических id Firestore. */
+        const val LINK_REQUEST_ID_LENGTH = 20
     }
 }

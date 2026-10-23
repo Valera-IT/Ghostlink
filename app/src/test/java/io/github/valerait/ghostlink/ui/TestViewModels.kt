@@ -12,9 +12,9 @@ import io.github.valerait.ghostlink.core.domain.usecase.RequestDeviceLinkUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.RestoreWithRecoveryCodeUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.SendMessageUseCase
 import io.github.valerait.ghostlink.core.model.ChatId
-import io.github.valerait.ghostlink.data.demo.InMemoryBackend
+import io.github.valerait.ghostlink.core.testing.FakeBackend
+import io.github.valerait.ghostlink.core.testing.FakeLinkCipher
 import io.github.valerait.ghostlink.data.device.ThisDevice
-import io.github.valerait.ghostlink.data.link.JvmLinkCipher
 import io.github.valerait.ghostlink.di.AppConfig
 import io.github.valerait.ghostlink.ui.chat.ChatViewModel
 import io.github.valerait.ghostlink.ui.chats.ChatListViewModel
@@ -25,9 +25,9 @@ import io.github.valerait.ghostlink.ui.onboarding.OnboardingViewModel
 import io.github.valerait.ghostlink.ui.recovery.RecoveryViewModel
 import kotlin.time.Clock
 
-// ViewModel на InMemoryBackend с настоящими use case — так, как их собирает UseCaseModule.
+// ViewModel на FakeBackend с настоящими use case — так, как их собирает UseCaseModule.
 
-fun InMemoryBackend.chatViewModel(
+fun FakeBackend.chatViewModel(
     chatId: ChatId,
     clock: Clock = Clock.System,
 ) = ChatViewModel(
@@ -41,22 +41,22 @@ fun InMemoryBackend.chatViewModel(
     DeleteMessageUseCase(this),
 )
 
-fun InMemoryBackend.chatListViewModel(clock: Clock = Clock.System) =
+fun FakeBackend.chatListViewModel(clock: Clock = Clock.System) =
     ChatListViewModel(this, ObserveChatListUseCase(this, this, clock), this, LeaveGroupUseCase(this), AppConfig(demoMode = false))
 
-fun InMemoryBackend.groupInfoViewModel(chatId: ChatId) =
+fun FakeBackend.groupInfoViewModel(chatId: ChatId) =
     GroupInfoViewModel(SavedStateHandle(mapOf("chatId" to chatId.value)), this, this, this, LeaveGroupUseCase(this))
 
-fun InMemoryBackend.linkReceiveViewModel(
+fun FakeBackend.linkReceiveViewModel(
     device: ThisDevice,
     clock: Clock = Clock.System,
-) = LinkReceiveViewModel(RequestDeviceLinkUseCase(this, this, JvmLinkCipher, clock), device)
+) = LinkReceiveViewModel(RequestDeviceLinkUseCase(this, this, FakeLinkCipher, clock), device)
 
-fun InMemoryBackend.linkApproveViewModel(
+fun FakeBackend.linkApproveViewModel(
     code: String?,
     clock: Clock = Clock.System,
-) = LinkApproveViewModel(SavedStateHandle(mapOf("code" to code)), ApproveDeviceLinkUseCase(this, this, JvmLinkCipher, clock))
+) = LinkApproveViewModel(SavedStateHandle(mapOf("code" to code)), ApproveDeviceLinkUseCase(this, this, FakeLinkCipher, clock))
 
-fun InMemoryBackend.recoveryViewModel() = RecoveryViewModel(RestoreWithRecoveryCodeUseCase(this))
+fun FakeBackend.recoveryViewModel() = RecoveryViewModel(RestoreWithRecoveryCodeUseCase(this))
 
-fun InMemoryBackend.onboardingViewModel(config: AppConfig) = OnboardingViewModel(CreateAccountUseCase(this, this), config)
+fun FakeBackend.onboardingViewModel(config: AppConfig) = OnboardingViewModel(CreateAccountUseCase(this, this), config)

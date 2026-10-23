@@ -28,8 +28,8 @@ core/
   platform                 expect/actual: SecureStore, DeviceInfo, AppLifecycle, DeepLinks, Clock
   designsystem             тема, цвета, типографика, базовые компоненты
   ui                       общие экранные куски: Avatar, форматирование времени, QR-картинка
-  testing                  фейки репозиториев (бывший InMemoryBackend), тестовые правила, фикстуры
-  demo                     демо-бэкенд с ботом для запуска без Firebase
+  testing                  фейки репозиториев (FakeBackend, бывший InMemoryBackend), FakeLinkCipher, TestClock
+  demo                     DemoBackend: FakeBackend со стартовыми чатами и ботом, для запуска без Firebase
 feature/
   onboarding               имя → аккаунт; «уже есть аккаунт» → link или recovery
   chats                    список чатов
@@ -54,6 +54,8 @@ apps/*      → feature/*, core/*
 feature/*   → core:domain, core:model, core:designsystem, core:ui   (не feature/*, не core:data)
 core:data   → core:domain, core:model, core:firebase, core:crypto, core:platform
 core:domain → core:model
+core:testing → core:domain
+core:demo   → core:testing
 core:model  → ничего
 ```
 
