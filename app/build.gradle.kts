@@ -68,7 +68,7 @@ android {
 // Покрытие считаем на demo-варианте: на нём идут unit-тесты в CI.
 kover {
     merge {
-        projects(":core:model", ":core:domain", ":core:testing", ":core:demo")
+        projects(":core:model", ":core:domain", ":core:crypto", ":core:testing", ":core:demo")
     }
     currentProject {
         createVariant("ci") {
@@ -96,6 +96,7 @@ kover {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:domain"))
+    implementation(project(":core:crypto"))
     implementation(project(":core:demo"))
 
     implementation(libs.androidx.core.ktx)

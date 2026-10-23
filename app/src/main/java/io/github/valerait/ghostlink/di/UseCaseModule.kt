@@ -4,6 +4,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import io.github.valerait.ghostlink.core.crypto.LinkCrypto
 import io.github.valerait.ghostlink.core.domain.crypto.LinkCipher
 import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
 import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
@@ -25,7 +26,6 @@ import io.github.valerait.ghostlink.core.domain.usecase.RestoreWithRecoveryCodeU
 import io.github.valerait.ghostlink.core.domain.usecase.SendMessageUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.SignOutEverywhereUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.SignOutUseCase
-import io.github.valerait.ghostlink.data.link.JvmLinkCipher
 import kotlin.time.Clock
 
 /** Use case живут в KMP-модуле без javax.inject, поэтому собираются здесь (до перехода на Koin в 3.7). */
@@ -34,7 +34,7 @@ import kotlin.time.Clock
 @InstallIn(SingletonComponent::class)
 object UseCaseModule {
     @Provides
-    fun provideLinkCipher(): LinkCipher = JvmLinkCipher
+    fun provideLinkCipher(): LinkCipher = LinkCrypto
 
     @Provides
     fun provideCreateAccount(
