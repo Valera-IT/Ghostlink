@@ -4,6 +4,14 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
+import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
+import io.github.valerait.ghostlink.core.domain.repository.UserRepository
+import io.github.valerait.ghostlink.core.domain.repository.requireUserId
+import io.github.valerait.ghostlink.core.domain.usecase.DeleteMessageUseCase
+import io.github.valerait.ghostlink.core.domain.usecase.EditMessageUseCase
+import io.github.valerait.ghostlink.core.domain.usecase.ObserveChatMessagesUseCase
+import io.github.valerait.ghostlink.core.domain.usecase.SendMessageUseCase
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.DisappearingTimer
 import io.github.valerait.ghostlink.core.model.GroupInfo
@@ -13,10 +21,6 @@ import io.github.valerait.ghostlink.core.model.MessageStatus
 import io.github.valerait.ghostlink.core.model.ReplyTo
 import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.ChatRepository
-import io.github.valerait.ghostlink.data.repository.UserRepository
-import io.github.valerait.ghostlink.data.repository.requireUserId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,8 +43,6 @@ import javax.inject.Inject
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.time.toJavaInstant
-
-const val MAX_MESSAGE_LENGTH = 4000
 
 data class MessageItem(
     val message: Message,
@@ -103,8 +105,11 @@ class ChatViewModel
         savedStateHandle: SavedStateHandle,
         auth: AuthRepository,
         users: UserRepository,
+        observeMessages: ObserveChatMessagesUseCase,
         private val chats: ChatRepository,
-        private val clock: Clock,
+        private val sendMessage: SendMessageUseCase,
+        private val editMessage: EditMessageUseCase,
+        private val deleteMessage: DeleteMessageUseCase,
     ) : ViewModel() {
         // Аргумент типобезопасного маршрута ChatRoute(chatId) лежит в SavedStateHandle под именем поля.
         private val chatId = ChatId(checkNotNull(savedStateHandle["chatId"]))
@@ -120,29 +125,8 @@ class ChatViewModel
                 .observeChat(chatId)
                 .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
-        // Исчезнувшие сообщения, которые этот клиент уже попросил стереть из базы.
-        private val expiredRequested = HashSet<MessageId>()
-
-        // Сообщения до удаления чата из списка (ChatPrefs.clearedAt) у этого пользователя больше не показываем.
-        // Исчезающие пропадают ровно в свой срок, даже если из базы ничего нового не пришло.
         private val messages =
-            combine(
-                chats.observeMessages(chatId),
-                chats.observeChatPrefs(me).map { it[chatId] }.distinctUntilChanged(),
-            ) { messages, prefs ->
-                if (prefs?.clearedAt == null) messages else messages.filterNot { prefs.isCleared(it.sentAt) }
-            }.transformLatest { list ->
-                while (true) {
-                    val now = clock.now()
-                    val (expired, alive) = list.partition { it.isExpired(now) }
-                    // Стирать из базы может любой участник; локально сообщение уже скрыто.
-                    val erase = expired.filter { !it.pending && expiredRequested.add(it.id) }.map { it.id }
-                    if (erase.isNotEmpty()) chats.deleteExpired(chatId, erase)
-                    emit(alive)
-                    val next = alive.mapNotNull { it.expiresAt }.minOrNull() ?: break
-                    delay(next - now)
-                }
-            }.shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+            observeMessages(chatId, me).shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
         // Собеседник в личном чате или все участники группы (и бывшие — их имена нужны у старых сообщений).
         private val people =
@@ -233,54 +217,25 @@ class ChatViewModel
 
         fun delete(messageId: MessageId) {
             val list = messages.replayCache.firstOrNull() ?: return
-            val index = list.indexOfFirst { it.id == messageId }
-            if (index < 0 || list[index].senderId != me || list[index].deleted) return
-            // Превью в списке чатов показывает последнее неудалённое сообщение.
-            chats.deleteMessage(
-                chatId,
-                messageId,
-                isLatest = list.isLatestVisible(index),
-                previous = list.subList(0, index).lastOrNull { !it.deleted },
-            )
+            if (!deleteMessage(chatId, me, list, messageId)) return
             if (replyingToId.value == messageId) replyingToId.value = null
             if (editingId.value == messageId) editingId.value = null
         }
 
         /** Отправляет новое сообщение или, в режиме правки, сохраняет исправленный текст. */
         fun send(text: String) {
-            val trimmed = text.trim().take(MAX_MESSAGE_LENGTH)
-            if (trimmed.isEmpty()) return
             val editing = state.value.editing
             if (editing != null) {
-                saveEdit(editing.message, trimmed)
+                if (text.isBlank()) return
+                editingId.value = null
+                typing.stop()
+                editMessage(chatId, messages.replayCache.firstOrNull().orEmpty(), editing.message, text)
             } else {
-                // Отвечать можно только на сообщение, уже записанное на сервер: у pending ещё нет стабильного места в чате.
-                val replyTo =
-                    state.value.replyingTo
-                        ?.message
-                        ?.takeUnless { it.pending }
-                        ?.let(ReplyTo::of)
+                val timer = chat.replayCache.firstOrNull()?.disappearing
+                if (!sendMessage(chatId, me, text, state.value.replyingTo?.message, timer)) return
                 typing.onSent()
-                val ttl =
-                    chat.replayCache
-                        .firstOrNull()
-                        ?.disappearing
-                        ?.duration
-                chats.sendMessage(chatId, me, trimmed, replyTo, ttl)
                 replyingToId.value = null
             }
-        }
-
-        private fun saveEdit(
-            message: Message,
-            text: String,
-        ) {
-            editingId.value = null
-            typing.stop()
-            if (text == message.text) return
-            val list = messages.replayCache.firstOrNull().orEmpty()
-            val isLatest = list.isLatestVisible(list.indexOfFirst { it.id == message.id })
-            chats.editMessage(chatId, message.id, text, isLatest)
         }
     }
 
@@ -304,6 +259,3 @@ private fun buildRows(
     }
     return rows.asReversed()
 }
-
-/** После сообщения с номером [index] остались только удалённые — значит, оно сейчас в превью чата. */
-private fun List<Message>.isLatestVisible(index: Int): Boolean = index >= 0 && subList(index + 1, size).all { it.deleted }

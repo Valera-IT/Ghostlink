@@ -1,24 +1,23 @@
-package io.github.valerait.ghostlink.data
+package io.github.valerait.ghostlink.core.model
 
-import io.github.valerait.ghostlink.data.model.AccountKey
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class AccountKeyTest {
     @Test
-    fun `recovery code round-trips`() {
+    fun recoveryCodeRoundTrips() {
         val key = AccountKey.generate()
         val code = key.toRecoveryCode()
 
-        assertTrue(code, Regex("([0-9A-Z]{5}-){7}[0-9A-Z]{5}").matches(code))
+        assertTrue(Regex("([0-9A-Z]{5}-){7}[0-9A-Z]{5}").matches(code), code)
         assertEquals(key, AccountKey.parseRecoveryCode(code))
     }
 
     @Test
-    fun `recovery code tolerates case, spaces and look-alike letters`() {
+    fun recoveryCodeToleratesCaseSpacesAndLookAlikeLetters() {
         val key = AccountKey(ByteArray(AccountKey.SIZE) { it.toByte() })
         val messy =
             key
@@ -32,7 +31,7 @@ class AccountKeyTest {
     }
 
     @Test
-    fun `garbage is not a recovery code`() {
+    fun garbageIsNotARecoveryCode() {
         assertNull(AccountKey.parseRecoveryCode(""))
         assertNull(AccountKey.parseRecoveryCode("hello world"))
         assertNull(AccountKey.parseRecoveryCode(AccountKey.generate().toRecoveryCode().dropLast(5)))
@@ -40,17 +39,17 @@ class AccountKeyTest {
     }
 
     @Test
-    fun `email is a service address that never leaks the secret`() {
+    fun emailIsAServiceAddressThatNeverLeaksTheSecret() {
         val key = AccountKey.generate()
 
-        assertTrue(key.email, Regex("[0-9a-f]{16}@ghostlink\\.invalid").matches(key.email))
+        assertTrue(Regex("[0-9a-f]{16}@ghostlink\\.invalid").matches(key.email), key.email)
         assertTrue(AccountKey.isServiceEmail(key.email))
         assertEquals(false, AccountKey.isServiceEmail("someone@gmail.com"))
         assertTrue(key.password.length >= 20)
     }
 
     @Test
-    fun `rotation keeps the login and changes the secret`() {
+    fun rotationKeepsTheLoginAndChangesTheSecret() {
         val key = AccountKey.generate()
         val rotated = key.rotated()
 
@@ -59,7 +58,7 @@ class AccountKeyTest {
     }
 
     @Test
-    fun `new secret for a known service email keeps the login`() {
+    fun newSecretForAKnownServiceEmailKeepsTheLogin() {
         val key = AccountKey.generate()
 
         assertEquals(key.email, AccountKey.forEmail(key.email)?.email)

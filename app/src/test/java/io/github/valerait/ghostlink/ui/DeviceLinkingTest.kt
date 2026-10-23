@@ -2,6 +2,7 @@ package io.github.valerait.ghostlink.ui
 
 import androidx.lifecycle.SavedStateHandle
 import io.github.valerait.ghostlink.MainDispatcherRule
+import io.github.valerait.ghostlink.core.model.AccountKey
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.DeviceId
 import io.github.valerait.ghostlink.core.model.LINK_TTL
@@ -12,7 +13,6 @@ import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.demo.InMemoryBackend
 import io.github.valerait.ghostlink.data.device.ThisDevice
 import io.github.valerait.ghostlink.data.link.LinkCrypto
-import io.github.valerait.ghostlink.data.model.AccountKey
 import io.github.valerait.ghostlink.ui.link.LinkApproveState
 import io.github.valerait.ghostlink.ui.link.LinkApproveViewModel
 import io.github.valerait.ghostlink.ui.link.LinkReceiveState
@@ -50,7 +50,7 @@ class DeviceLinkingTest {
             val key = backend.accountKey.value!!
             backend.signOut()
 
-            val receiver = LinkReceiveViewModel(backend, backend, laptop)
+            val receiver = backend.linkReceiveViewModel(laptop)
             val code = LinkCode.parse((receiver.state.value as LinkReceiveState.ShowCode).link)!!
             assertEquals("MacBook Air", backend.getLinkRequest(code.requestId)?.deviceName)
 
@@ -67,7 +67,7 @@ class DeviceLinkingTest {
     fun `code expires if nobody approves it`() =
         runTest {
             val backend = backend()
-            val receiver = LinkReceiveViewModel(backend, backend, laptop)
+            val receiver = backend.linkReceiveViewModel(laptop)
             val code = LinkCode.parse((receiver.state.value as LinkReceiveState.ShowCode).link)!!
 
             advanceTimeBy(LINK_TTL + 1.milliseconds)
@@ -83,7 +83,7 @@ class DeviceLinkingTest {
     fun `payload for another key fails instead of signing in`() =
         runTest {
             val backend = backend()
-            val receiver = LinkReceiveViewModel(backend, backend, laptop)
+            val receiver = backend.linkReceiveViewModel(laptop)
             val code = LinkCode.parse((receiver.state.value as LinkReceiveState.ShowCode).link)!!
             val stranger = LinkCrypto.encodePublicKey(LinkCrypto.generateKeyPair().public)
 
@@ -104,7 +104,7 @@ class DeviceLinkingTest {
             val requestId = backend.createLinkRequest("Pixel 9", Platform.Android)
             val code = LinkCode(requestId, LinkCrypto.encodePublicKey(newDevice.public))
 
-            val vm = LinkApproveViewModel(SavedStateHandle(mapOf("code" to code.toUri())), backend, backend)
+            val vm = backend.linkApproveViewModel(code.toUri())
             assertEquals(LinkApproveState.Confirm("Pixel 9", Platform.Android), vm.state.value)
             vm.approve()
 
@@ -122,13 +122,8 @@ class DeviceLinkingTest {
             val requestId = backend.createLinkRequest("Pixel 9", Platform.Android)
             backend.approveLinkRequest(requestId, ByteArray(100))
 
-            val used = LinkApproveViewModel(SavedStateHandle(mapOf("code" to LinkCode(requestId, publicKey).toUri())), backend, backend)
-            val unknown =
-                LinkApproveViewModel(
-                    SavedStateHandle(mapOf("code" to LinkCode(LinkRequestId("NoSuchRequest0000000"), publicKey).toUri())),
-                    backend,
-                    backend,
-                )
+            val used = backend.linkApproveViewModel(LinkCode(requestId, publicKey).toUri())
+            val unknown = backend.linkApproveViewModel(LinkCode(LinkRequestId("NoSuchRequest0000000"), publicKey).toUri())
 
             assertEquals(LinkApproveState.Invalid, used.state.value)
             assertEquals(LinkApproveState.Invalid, unknown.state.value)
@@ -143,7 +138,7 @@ class DeviceLinkingTest {
             val newCode = backend.rotateKey().toRecoveryCode()
             backend.signOut()
 
-            val vm = RecoveryViewModel(backend)
+            val vm = backend.recoveryViewModel()
             vm.onCodeChange(oldCode)
             vm.submit()
             assertNull(backend.account.value)

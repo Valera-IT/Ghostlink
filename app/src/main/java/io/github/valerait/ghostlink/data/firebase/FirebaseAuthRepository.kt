@@ -5,12 +5,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
 import io.github.valerait.ghostlink.core.model.Account
+import io.github.valerait.ghostlink.core.model.AccountKey
 import io.github.valerait.ghostlink.core.model.GhostlinkError
 import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.device.AccountKeyStore
-import io.github.valerait.ghostlink.data.model.AccountKey
-import io.github.valerait.ghostlink.data.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

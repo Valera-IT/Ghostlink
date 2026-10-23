@@ -4,12 +4,12 @@ import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
+import io.github.valerait.ghostlink.core.domain.repository.DeviceRepository
+import io.github.valerait.ghostlink.core.domain.repository.UserRepository
 import io.github.valerait.ghostlink.core.model.Device
 import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.device.ThisDevice
-import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.DeviceRepository
-import io.github.valerait.ghostlink.data.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

@@ -8,7 +8,8 @@ naming:
 
 complexity:
   LongParameterList:
-    ignoreAnnotated: ['Composable']
+    # Конструкторы для DI: зависимости ViewModel перечислены явно, это не запах.
+    ignoreAnnotated: ['Composable', 'Inject']
   LongMethod:
     ignoreAnnotated: ['Composable']
   TooManyFunctions:

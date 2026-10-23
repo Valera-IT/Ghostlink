@@ -68,7 +68,7 @@ class GroupChatTest {
     }
 
     private fun TestScope.chatVm(s: Setup) =
-        ChatViewModel(SavedStateHandle(mapOf("chatId" to s.groupId.value)), s.backend, s.backend, s.backend, clock).also { vm ->
+        s.backend.chatViewModel(s.groupId, clock).also { vm ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         }
 
@@ -122,7 +122,7 @@ class GroupChatTest {
             s.backend.setTyping(s.groupId, BORIS, true)
             assertEquals("Борис", vm.state.value.typingName)
 
-            val list = ChatListViewModel(s.backend, s.backend, s.backend, AppConfig(demoMode = false), clock)
+            val list = s.backend.chatListViewModel(clock)
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { list.state.collect {} }
             val row =
                 list.state.value.items
@@ -136,7 +136,7 @@ class GroupChatTest {
     fun `admin removes a member and leaving passes admin rights on`() =
         runTest {
             val s = setUp()
-            val info = GroupInfoViewModel(SavedStateHandle(mapOf("chatId" to s.groupId.value)), s.backend, s.backend, s.backend)
+            val info = s.backend.groupInfoViewModel(s.groupId)
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { info.state.collect {} }
             assertTrue(info.state.value.isOwner)
             assertEquals(

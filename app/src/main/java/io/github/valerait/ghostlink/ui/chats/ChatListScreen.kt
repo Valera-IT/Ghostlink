@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.domain.usecase.ChatSummary
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.DemoModeBanner
@@ -170,7 +171,7 @@ fun ChatListScreen(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChatRow(
-    item: ChatListItem,
+    item: ChatSummary,
     now: Instant,
     onClick: () -> Unit,
     onPin: () -> Unit,
@@ -195,7 +196,7 @@ private fun ChatRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box {
-                Avatar(name = name, id = item.avatarId, size = 52.dp)
+                Avatar(name = name, id = (item.partnerId?.value ?: item.chat.id.value), size = 52.dp)
                 if (item.partner?.isOnline(now) == true) {
                     Box(
                         Modifier
@@ -240,12 +241,7 @@ private fun ChatRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val typing = rememberIsTyping(item.typingUntil)
                     Text(
-                        text =
-                            when {
-                                !typing -> previewText(item)
-                                item.typingName != null -> stringResource(R.string.chat_typing_named, item.typingName)
-                                else -> stringResource(R.string.chat_typing)
-                            },
+                        text = if (typing) typingText(item.typingName) else previewText(item),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (typing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = if (item.unread) FontWeight.SemiBold else FontWeight.Normal,
@@ -278,7 +274,7 @@ private fun ChatRow(
 @Composable
 private fun ChatMenu(
     expanded: Boolean,
-    item: ChatListItem,
+    item: ChatSummary,
     onDismiss: () -> Unit,
     onPin: () -> Unit,
     onMute: () -> Unit,
@@ -378,12 +374,17 @@ private fun EmptyState(
 }
 
 @Composable
-private fun previewText(item: ChatListItem): String {
+private fun typingText(name: String?): String =
+    if (name != null) stringResource(R.string.chat_typing_named, name) else stringResource(R.string.chat_typing)
+
+@Composable
+private fun previewText(item: ChatSummary): String {
     val last = item.lastMessage
+    val sender = item.lastSenderName
     return when {
         last == null -> stringResource(R.string.chats_no_messages)
         item.lastMessageIsMine -> stringResource(R.string.chats_you_prefix, last.text)
-        item.lastSenderName != null -> stringResource(R.string.chats_sender_prefix, item.lastSenderName, last.text)
+        sender != null -> stringResource(R.string.chats_sender_prefix, sender, last.text)
         else -> last.text
     }
 }

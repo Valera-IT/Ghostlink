@@ -112,14 +112,22 @@ Use case заводится, только когда сценарий затра
 
 | Use case | Что делает |
 |---|---|
-| `CreateAccountUseCase` | ключ → аккаунт → профиль → регистрация устройства |
-| `RequestDeviceLinkUseCase` | анонимный вход → ECDH-пара → заявка → `Flow<LinkState>` до входа по ключу |
-| `ApproveDeviceLinkUseCase` | разбор QR → проверка заявки → шифрование ключа → запись payload |
-| `RestoreWithRecoveryCodeUseCase` | разбор кода → вход → регистрация устройства |
-| `SignOutEverywhereUseCase` | смена секрета → очистка реестра → новый код восстановления |
-| `AddFriendUseCase` | разбор QR или ссылки → профиль → `startChat` |
-| `SendMessageUseCase` | проверка текста → отправка (позже → вызов push-worker) |
-| `ObserveChatListUseCase` | чаты + профили собеседников + присутствие → `List<ChatSummary>` |
+| `CreateAccountUseCase` | имя → аккаунт с ключом (или временный аккаунт становится настоящим) → профиль; устройство записывает `DeviceRegistry` |
+| `RenameProfileUseCase` | то же правило имени (1–40 символов без пробелов по краям) → профиль |
+| `RequestDeviceLinkUseCase` | анонимный вход → пара ключей → заявка → `Flow<LinkState>` до входа по ключу; заявка удаляется при любом исходе |
+| `ApproveDeviceLinkUseCase` | `load()`: заявка ещё действует (иначе `LinkExpired` / `LinkAlreadyApproved`) → шифрование ключа → запись payload |
+| `RestoreWithRecoveryCodeUseCase` | разбор кода (`MalformedRecoveryCode`) → вход (`InvalidAccountKey`) |
+| `GetRecoveryCodeUseCase` | ключ аккаунта (выдаёт, если на устройстве его нет) → код восстановления |
+| `SignOutUseCase` | «не в сети» → запись устройства из реестра → выход |
+| `SignOutEverywhereUseCase` | смена секрета → очистка реестра, кроме этого устройства → новый код восстановления |
+| `AddFriendUseCase` | не сам себя → `startChat` |
+| `ObserveChatListUseCase` | чаты + профили + личные настройки → `List<ChatSummary>`, закреплённые сверху, исчезнувшие превью гаснут в срок |
+| `ObserveChatMessagesUseCase` | сообщения без удалённых вместе с чатом и исчезнувших; исчезнувшие стирает из базы |
+| `SendMessageUseCase` | проверка текста → ответ только на подтверждённое → TTL из таймера чата (позже → вызов push-worker) |
+| `EditMessageUseCase`, `DeleteMessageUseCase` | только свои сообщения; превью в списке чатов следует за последним неудалённым |
+| `LeaveGroupUseCase` | админ передаёт права следующему участнику → чат пропадает из своего списка |
+
+Шифрование при привязке спрятано за портом `LinkCipher` в `core:domain`: use case не знают, на чём оно сделано.
 
 ### Data (`core:firebase`)
 

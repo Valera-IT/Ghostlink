@@ -1,9 +1,9 @@
 package io.github.valerait.ghostlink.ui
 
 import io.github.valerait.ghostlink.MainDispatcherRule
+import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.data.demo.InMemoryBackend
 import io.github.valerait.ghostlink.di.AppConfig
-import io.github.valerait.ghostlink.ui.onboarding.MAX_NAME_LENGTH
 import io.github.valerait.ghostlink.ui.onboarding.OnboardingViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -23,7 +23,7 @@ class OnboardingViewModelTest {
     fun `submit creates an account with a key and a profile`() =
         runTest {
             val backend = InMemoryBackend(backgroundScope, seedDemoData = false)
-            val vm = OnboardingViewModel(backend, backend, config)
+            val vm = backend.onboardingViewModel(config)
 
             vm.onNameChange("  Валера ")
             vm.submit()
@@ -38,7 +38,7 @@ class OnboardingViewModelTest {
     fun `blank name cannot be submitted`() =
         runTest {
             val backend = InMemoryBackend(backgroundScope, seedDemoData = false)
-            val vm = OnboardingViewModel(backend, backend, config)
+            val vm = backend.onboardingViewModel(config)
 
             vm.onNameChange("   ")
             assertFalse(vm.state.value.canSubmit)
@@ -50,9 +50,9 @@ class OnboardingViewModelTest {
     fun `name is limited in length`() =
         runTest {
             val backend = InMemoryBackend(backgroundScope, seedDemoData = false)
-            val vm = OnboardingViewModel(backend, backend, config)
+            val vm = backend.onboardingViewModel(config)
 
             vm.onNameChange("a".repeat(100))
-            assertEquals(MAX_NAME_LENGTH, vm.state.value.name.length)
+            assertEquals(User.NAME_MAX_LENGTH, vm.state.value.name.length)
         }
 }

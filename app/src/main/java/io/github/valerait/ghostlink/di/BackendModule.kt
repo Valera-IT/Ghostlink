@@ -11,6 +11,11 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.valerait.ghostlink.BuildConfig
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
+import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
+import io.github.valerait.ghostlink.core.domain.repository.DeviceRepository
+import io.github.valerait.ghostlink.core.domain.repository.LinkRepository
+import io.github.valerait.ghostlink.core.domain.repository.UserRepository
 import io.github.valerait.ghostlink.data.demo.InMemoryBackend
 import io.github.valerait.ghostlink.data.device.AndroidAccountKeyStore
 import io.github.valerait.ghostlink.data.device.ThisDevice
@@ -19,11 +24,6 @@ import io.github.valerait.ghostlink.data.firebase.FirebaseChatRepository
 import io.github.valerait.ghostlink.data.firebase.FirebaseDeviceRepository
 import io.github.valerait.ghostlink.data.firebase.FirebaseLinkRepository
 import io.github.valerait.ghostlink.data.firebase.FirebaseUserRepository
-import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.ChatRepository
-import io.github.valerait.ghostlink.data.repository.DeviceRepository
-import io.github.valerait.ghostlink.data.repository.LinkRepository
-import io.github.valerait.ghostlink.data.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

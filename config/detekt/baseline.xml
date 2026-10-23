@@ -2,7 +2,6 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>InstanceOfCheckForException:LinkReceiveViewModel.kt$LinkReceiveViewModel$e is CancellationException</ID>
     <ID>MagicNumber:AccountKey.kt$AccountKey.Companion$16</ID>
     <ID>MagicNumber:AccountKey.kt$Base32$0xFF</ID>
     <ID>MagicNumber:AccountKey.kt$Base32$31</ID>
@@ -51,6 +50,7 @@
     <ID>SwallowedException:FirebaseAuthRepository.kt$FirebaseAuthRepository$e: FirebaseAuthUserCollisionException</ID>
     <ID>SwallowedException:GoogleSignIn.kt$e: GetCredentialCancellationException</ID>
     <ID>SwallowedException:RecoveryViewModel.kt$RecoveryViewModel$e: GhostlinkError.InvalidAccountKey</ID>
+    <ID>SwallowedException:RecoveryViewModel.kt$RecoveryViewModel$e: GhostlinkError.MalformedRecoveryCode</ID>
     <ID>SwallowedException:SettingsViewModel.kt$SettingsViewModel$e: AccountAlreadyLinkedException</ID>
     <ID>TooGenericExceptionCaught:AccountKeyStore.kt$AndroidAccountKeyStore$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ConnectViewModel.kt$ConnectViewModel$e: Exception</ID>

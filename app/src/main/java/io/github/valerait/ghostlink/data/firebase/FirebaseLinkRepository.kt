@@ -5,11 +5,11 @@ import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import io.github.valerait.ghostlink.core.domain.repository.LinkRepository
 import io.github.valerait.ghostlink.core.model.LINK_TTL
 import io.github.valerait.ghostlink.core.model.LinkRequest
 import io.github.valerait.ghostlink.core.model.LinkRequestId
 import io.github.valerait.ghostlink.core.model.Platform
-import io.github.valerait.ghostlink.data.repository.LinkRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 import kotlin.time.Clock

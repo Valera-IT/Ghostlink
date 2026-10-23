@@ -68,7 +68,7 @@ android {
 // Покрытие считаем на demo-варианте: на нём идут unit-тесты в CI.
 kover {
     merge {
-        projects(":core:model")
+        projects(":core:model", ":core:domain")
     }
     currentProject {
         createVariant("ci") {
@@ -95,6 +95,7 @@ kover {
 
 dependencies {
     implementation(project(":core:model"))
+    implementation(project(":core:domain"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

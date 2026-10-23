@@ -1,6 +1,12 @@
 package io.github.valerait.ghostlink.data.demo
 
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
+import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
+import io.github.valerait.ghostlink.core.domain.repository.DeviceRepository
+import io.github.valerait.ghostlink.core.domain.repository.LinkRepository
+import io.github.valerait.ghostlink.core.domain.repository.UserRepository
 import io.github.valerait.ghostlink.core.model.Account
+import io.github.valerait.ghostlink.core.model.AccountKey
 import io.github.valerait.ghostlink.core.model.Chat
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.ChatPrefs
@@ -19,12 +25,6 @@ import io.github.valerait.ghostlink.core.model.Platform
 import io.github.valerait.ghostlink.core.model.ReplyTo
 import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.data.model.AccountKey
-import io.github.valerait.ghostlink.data.repository.AuthRepository
-import io.github.valerait.ghostlink.data.repository.ChatRepository
-import io.github.valerait.ghostlink.data.repository.DeviceRepository
-import io.github.valerait.ghostlink.data.repository.LinkRepository
-import io.github.valerait.ghostlink.data.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow

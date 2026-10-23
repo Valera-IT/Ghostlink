@@ -6,9 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.domain.usecase.RestoreWithRecoveryCodeUseCase
 import io.github.valerait.ghostlink.core.model.GhostlinkError
-import io.github.valerait.ghostlink.data.model.AccountKey
-import io.github.valerait.ghostlink.data.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +28,7 @@ data class RecoveryState(
 class RecoveryViewModel
     @Inject
     constructor(
-        private val auth: AuthRepository,
+        private val restore: RestoreWithRecoveryCodeUseCase,
     ) : ViewModel() {
         private val _state = MutableStateFlow(RecoveryState())
         val state: StateFlow<RecoveryState> = _state.asStateFlow()
@@ -41,16 +40,13 @@ class RecoveryViewModel
         fun submit() {
             val current = _state.value
             if (!current.canSubmit) return
-            val key = AccountKey.parseRecoveryCode(current.code)
-            if (key == null) {
-                _state.update { it.copy(error = R.string.recovery_error_format) }
-                return
-            }
             _state.update { it.copy(busy = true, error = null) }
             viewModelScope.launch {
                 try {
-                    auth.signInWithKey(key)
+                    restore(current.code)
                     // Дальше корень сам переключится на чаты.
+                } catch (e: GhostlinkError.MalformedRecoveryCode) {
+                    _state.update { it.copy(busy = false, error = R.string.recovery_error_format) }
                 } catch (e: GhostlinkError.InvalidAccountKey) {
                     _state.update { it.copy(busy = false, error = R.string.recovery_error_wrong) }
                 } catch (e: Exception) {
