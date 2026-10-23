@@ -23,19 +23,18 @@ Kotlin · Jetpack Compose · Material 3 · MVVM (ViewModel + StateFlow) · Hilt 
 ## Архитектура
 
 ```
-ui/            Compose-экраны + ViewModel на каждый экран (UDF: state вниз, события вверх)
-data/model     чистые модели и логика: статусы сообщений, непрочитанное, id чатов, приглашения
-data/repository  интерфейсы AuthRepository / UserRepository / ChatRepository
-data/firebase  реализация на Firebase
-data/link      шифрование ключа аккаунта для нового устройства
-data/device    хранение ключа в Android Keystore, id этого устройства
-data/demo      InMemoryBackend — демо-режим и фейк для тестов
-di/            Hilt: выбирает Firebase или демо в зависимости от наличия конфига
+core/model     чистые модели и логика: статусы сообщений, непрочитанное, id чатов, приглашения (KMP)
+core/domain    интерфейсы репозиториев и use case (KMP)
+core/testing   FakeBackend — все репозитории в памяти, фейк для тестов (KMP)
+core/demo      DemoBackend — демо-режим со стартовыми чатами и ботом (KMP)
+app/ui         Compose-экраны + ViewModel на каждый экран (UDF: state вниз, события вверх)
+app/data       Firebase-реализации, шифрование ключа для нового устройства, Android Keystore
+app/di         Hilt: выбирает Firebase или демо в зависимости от наличия конфига
 ```
 
 Целевая модульная архитектура (KMP, Clean Architecture, модели по слоям) описана в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), план — в [docs/ROADMAP.md](docs/ROADMAP.md).
 
-UI зависит только от интерфейсов репозиториев. Поэтому ViewModel тестируются на `InMemoryBackend` без моков и эмулятора, а бэкенд можно заменить, не трогая экраны.
+UI зависит только от интерфейсов репозиториев. Поэтому ViewModel и use case тестируются на `FakeBackend` без моков и эмулятора, а бэкенд можно заменить, не трогая экраны.
 
 **Модель данных Firestore:**
 

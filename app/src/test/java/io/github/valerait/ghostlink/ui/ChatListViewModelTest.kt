@@ -5,7 +5,8 @@ import io.github.valerait.ghostlink.MainDispatcherRule
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.DisappearingTimer
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.data.demo.InMemoryBackend
+import io.github.valerait.ghostlink.core.testing.FakeBackend
+import io.github.valerait.ghostlink.core.testing.TestClock
 import io.github.valerait.ghostlink.di.AppConfig
 import io.github.valerait.ghostlink.ui.chat.ChatRow
 import io.github.valerait.ghostlink.ui.chat.ChatViewModel
@@ -22,23 +23,17 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 
 class ChatListViewModelTest {
     @get:Rule val mainRule = MainDispatcherRule()
 
-    private var now = Instant.fromEpochMilliseconds(1_000_000)
-    private val clock =
-        object : Clock {
-            override fun now() = now
-        }
+    private val clock = TestClock()
 
     private class Setup(
-        val backend: InMemoryBackend,
+        val backend: FakeBackend,
         val me: UserId,
         val anya: ChatId,
         val boris: ChatId,
@@ -46,13 +41,13 @@ class ChatListViewModelTest {
     )
 
     private suspend fun TestScope.setUp(): Setup {
-        val backend = InMemoryBackend(backgroundScope, clock = clock, seedDemoData = false)
+        val backend = FakeBackend(clock)
         val me = backend.createAccount().id
         backend.saveProfile(ANYA, "Аня")
         backend.saveProfile(BORIS, "Борис")
         val anya = backend.startChat(me, ANYA)
         backend.sendMessage(anya, ANYA, "привет от Ани")
-        now += 1.seconds
+        clock.advanceBy(1.seconds)
         val boris = backend.startChat(me, BORIS)
         backend.sendMessage(boris, BORIS, "привет от Бориса")
         val vm = backend.chatListViewModel(clock)
@@ -100,7 +95,7 @@ class ChatListViewModelTest {
             s.vm.remove(s.anya)
             assertEquals(listOf(s.boris), s.vm.ids())
 
-            now += 1.seconds
+            clock.advanceBy(1.seconds)
             s.backend.sendMessage(s.anya, ANYA, "снова я")
             val anya =
                 s.vm.state.value.items
@@ -122,7 +117,7 @@ class ChatListViewModelTest {
         runTest {
             val s = setUp()
             s.vm.remove(s.anya)
-            now += 1.seconds
+            clock.advanceBy(1.seconds)
             assertEquals(s.anya, s.backend.startChat(s.me, ANYA))
 
             val anya =
@@ -165,7 +160,7 @@ class ChatListViewModelTest {
                     ?.text,
             )
 
-            now += DisappearingTimer.HOUR.duration
+            clock.advanceBy(DisappearingTimer.HOUR.duration)
             advanceTimeBy(DisappearingTimer.HOUR.duration + 1.milliseconds)
             assertNull(
                 s.vm.state.value.items

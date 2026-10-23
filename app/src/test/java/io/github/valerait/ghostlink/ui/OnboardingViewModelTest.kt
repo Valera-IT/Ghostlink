@@ -2,7 +2,7 @@ package io.github.valerait.ghostlink.ui
 
 import io.github.valerait.ghostlink.MainDispatcherRule
 import io.github.valerait.ghostlink.core.model.User
-import io.github.valerait.ghostlink.data.demo.InMemoryBackend
+import io.github.valerait.ghostlink.core.testing.FakeBackend
 import io.github.valerait.ghostlink.di.AppConfig
 import io.github.valerait.ghostlink.ui.onboarding.OnboardingViewModel
 import kotlinx.coroutines.flow.first
@@ -22,7 +22,7 @@ class OnboardingViewModelTest {
     @Test
     fun `submit creates an account with a key and a profile`() =
         runTest {
-            val backend = InMemoryBackend(backgroundScope, seedDemoData = false)
+            val backend = FakeBackend()
             val vm = backend.onboardingViewModel(config)
 
             vm.onNameChange("  Валера ")
@@ -37,7 +37,7 @@ class OnboardingViewModelTest {
     @Test
     fun `blank name cannot be submitted`() =
         runTest {
-            val backend = InMemoryBackend(backgroundScope, seedDemoData = false)
+            val backend = FakeBackend()
             val vm = backend.onboardingViewModel(config)
 
             vm.onNameChange("   ")
@@ -49,7 +49,7 @@ class OnboardingViewModelTest {
     @Test
     fun `name is limited in length`() =
         runTest {
-            val backend = InMemoryBackend(backgroundScope, seedDemoData = false)
+            val backend = FakeBackend()
             val vm = backend.onboardingViewModel(config)
 
             vm.onNameChange("a".repeat(100))
