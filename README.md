@@ -18,7 +18,7 @@
 
 ## Стек
 
-Kotlin · Jetpack Compose · Material 3 · MVVM (ViewModel + StateFlow) · Hilt · Coroutines/Flow · Navigation Compose (типобезопасные маршруты) · Firebase Auth + Firestore · CameraX · ML Kit Barcode · ZXing · JUnit + kotlinx-coroutines-test
+Kotlin · Jetpack Compose · Material 3 · MVVM (ViewModel + StateFlow) · Hilt · Coroutines/Flow · Navigation Compose (типобезопасные маршруты) · Firebase Auth + Firestore (GitLive firebase-kotlin-sdk) · CameraX · ML Kit Barcode · ZXing · JUnit + kotlinx-coroutines-test
 
 ## Архитектура
 
@@ -26,10 +26,12 @@ Kotlin · Jetpack Compose · Material 3 · MVVM (ViewModel + StateFlow) · Hilt 
 core/model     чистые модели и логика: статусы сообщений, непрочитанное, id чатов, приглашения (KMP)
 core/domain    интерфейсы репозиториев и use case (KMP)
 core/crypto    шифрование ключа для нового устройства на cryptography-kotlin (KMP)
+core/firebase  DTO документов Firestore и поля bytes через нативный SDK (KMP: Android, JVM, iOS)
+core/data      репозитории на Firebase (GitLive), мапперы DTO → domain, ошибки → GhostlinkError (KMP)
 core/testing   FakeBackend — все репозитории в памяти, фейк для тестов (KMP)
 core/demo      DemoBackend — демо-режим со стартовыми чатами и ботом (KMP)
 app/ui         Compose-экраны + ViewModel на каждый экран (UDF: state вниз, события вверх)
-app/data       Firebase-реализации, Android Keystore
+app/data       Android Keystore для ключа аккаунта, настройки темы
 app/di         Hilt: выбирает Firebase или демо в зависимости от наличия конфига
 ```
 
@@ -121,7 +123,15 @@ npx firebase-tools emulators:start --only auth,firestore --project demo-ghostlin
 Покрыты модели (статусы, непрочитанное, онлайн, приглашения), ViewModel чата и онбординга, а также привязка устройств:
 - ключ аккаунта и ключ восстановления;
 - шифрование: подмена payload, чужой ключ, точка вне кривой, а также test vectors — шифротексты старого Android-кода и iOS расшифровываются общим кодом на JVM и iOS;
-- сценарий входа на новом устройстве целиком, истечение кода, вход по ключу восстановления и отказ старого ключа после смены.
+- сценарий входа на новом устройстве целиком, истечение кода, вход по ключу восстановления и отказ старого ключа после смены;
+- мапперы DTO → domain и перевод исключений Firebase в `GhostlinkError`.
+
+**Репозитории `core:data` против эмулятора** — настоящий Firebase-код (GitLive на JVM) с боевыми `firestore.rules`: вход на новом устройстве через заявку, реестр устройств, чат и группа в реальном времени, отказы правил. В обычный `jvmTest` не входят, в CI идут отдельным job:
+
+```bash
+cd firebase && npm ci && cd ..
+firebase/node_modules/.bin/firebase emulators:exec --config firebase.json --only auth,firestore --project demo-ghostlink "./gradlew :core:data:jvmEmulatorTest"
+```
 
 **Правила Firestore** проверяются на эмуляторе (нужны Node 20+ и Java 21):
 

@@ -54,6 +54,7 @@ apps/*      → feature/*, core/*
 feature/*   → core:domain, core:model, core:designsystem, core:ui   (не feature/*, не core:data)
 core:data   → core:domain, core:model, core:firebase, core:crypto, core:platform
 core:domain → core:model
+core:firebase → только GitLive (android, jvm, ios)
 core:crypto → core:domain
 core:testing → core:domain
 core:demo   → core:testing
@@ -107,7 +108,7 @@ sealed class GhostlinkError(message: String?, cause: Throwable?) : Exception(mes
 
 Это исключения, а не `data object`: так их можно бросать из `suspend`-функций репозиториев и не терять исходную причину.
 
-Исключения Firebase переводит в `GhostlinkError` только `core:data`: выше этого слоя типов Firebase нет.
+Исключения Firebase переводит в `GhostlinkError` только `core:data`: выше этого слоя типов Firebase нет. Приложение получает репозитории из `FirebaseBackend` (`core:data`) и типов GitLive не видит.
 
 ### Use case (`core:domain`)
 
