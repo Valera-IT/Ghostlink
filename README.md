@@ -25,10 +25,11 @@ Kotlin · Jetpack Compose · Material 3 · MVVM (ViewModel + StateFlow) · Hilt 
 ```
 core/model     чистые модели и логика: статусы сообщений, непрочитанное, id чатов, приглашения (KMP)
 core/domain    интерфейсы репозиториев и use case (KMP)
+core/crypto    шифрование ключа для нового устройства на cryptography-kotlin (KMP)
 core/testing   FakeBackend — все репозитории в памяти, фейк для тестов (KMP)
 core/demo      DemoBackend — демо-режим со стартовыми чатами и ботом (KMP)
 app/ui         Compose-экраны + ViewModel на каждый экран (UDF: state вниз, события вверх)
-app/data       Firebase-реализации, шифрование ключа для нового устройства, Android Keystore
+app/data       Firebase-реализации, Android Keystore
 app/di         Hilt: выбирает Firebase или демо в зависимости от наличия конфига
 ```
 
@@ -114,12 +115,12 @@ npx firebase-tools emulators:start --only auth,firestore --project demo-ghostlin
 ## Тесты
 
 ```bash
-./gradlew testDemoDebugUnitTest
+./gradlew testDemoDebugUnitTest jvmTest
 ```
 
 Покрыты модели (статусы, непрочитанное, онлайн, приглашения), ViewModel чата и онбординга, а также привязка устройств:
 - ключ аккаунта и ключ восстановления;
-- шифрование: подмена payload, чужой ключ, точка вне кривой;
+- шифрование: подмена payload, чужой ключ, точка вне кривой, а также test vectors — шифротексты старого Android-кода и iOS расшифровываются общим кодом на JVM и iOS;
 - сценарий входа на новом устройстве целиком, истечение кода, вход по ключу восстановления и отказ старого ключа после смены.
 
 **Правила Firestore** проверяются на эмуляторе (нужны Node 20+ и Java 21):

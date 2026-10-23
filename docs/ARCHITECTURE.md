@@ -22,7 +22,7 @@ build-logic/convention     convention-плагины Gradle: ghostlink.kmp.libra
 core/
   model                    доменные модели: чистый Kotlin, без зависимостей
   domain                   интерфейсы репозиториев + use case
-  crypto                   AccountKey, RecoveryCode, LinkCrypto (cryptography-kotlin)
+  crypto                   LinkCrypto: шифрование привязки устройства на cryptography-kotlin
   data                     реализации репозиториев, мапперы DTO ↔ domain
   firebase                 обёртки GitLive, DTO Firestore, конфиг окружений
   platform                 expect/actual: SecureStore, DeviceInfo, AppLifecycle, DeepLinks, Clock
@@ -54,6 +54,7 @@ apps/*      → feature/*, core/*
 feature/*   → core:domain, core:model, core:designsystem, core:ui   (не feature/*, не core:data)
 core:data   → core:domain, core:model, core:firebase, core:crypto, core:platform
 core:domain → core:model
+core:crypto → core:domain
 core:testing → core:domain
 core:demo   → core:testing
 core:model  → ничего
