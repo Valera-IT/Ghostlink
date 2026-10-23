@@ -18,5 +18,6 @@ rootProject.name = "Ghostlink"
 include(":app")
 include(":core:model")
 include(":core:domain")
+include(":core:crypto")
 include(":core:testing")
 include(":core:demo")
