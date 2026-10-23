@@ -378,12 +378,15 @@ private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit, onPi
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                if (item.muted) {
-                    Spacer(Modifier.width(4.dp))
-                    Icon(Icons.Outlined.NotificationsOff, contentDescription = "Уведомления выключены", tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
+                // Имя занимает всё место до времени; отдельный Spacer с весом отнимал у него половину строки.
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    if (item.muted) {
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Outlined.NotificationsOff, contentDescription = "Уведомления выключены", tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
+                    }
                 }
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.width(8.dp))
                 item.lastMessage?.sentAt?.let {
                     Text(
                         formatChatListTime(it, now),
