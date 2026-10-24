@@ -11,4 +11,5 @@ plugins {
     alias(libs.plugins.kover) apply false
     alias(libs.plugins.ghostlink.spotless)
     alias(libs.plugins.ghostlink.detekt)
+    alias(libs.plugins.ghostlink.module.graph)
 }

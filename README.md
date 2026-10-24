@@ -36,9 +36,9 @@ core/ui        аватар, время и «в сети», QR-картинка,
 feature/*      экраны по модулям: onboarding, chats, chat, friends, devices, link, recovery, settings.
                ViewModel по UDF (UiState вниз, Action вверх, разовые Effect), свои маршруты и Koin-модуль;
                видят только core:domain, core:platform и UI-модули, друг о друге не знают (Compose Multiplatform)
-app/ui         корневой граф навигации: соединяет фичи между собой
-app/data       выбранные тема и язык
-app/di         Koin: собирает модули core:* и feature:*, выбирает Firebase или демо в зависимости от наличия конфига
+apps/android/ui  корневой граф навигации: соединяет фичи между собой
+apps/android/data  выбранные тема и язык
+apps/android/di  Koin: собирает модули core:* и feature:*, выбирает Firebase или демо в зависимости от наличия конфига
 ```
 
 Целевая модульная архитектура (KMP, Clean Architecture, модели по слоям) описана в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), план — в [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -104,7 +104,7 @@ QR  ghostlink://link/{id}.{publicKey}
 **С Firebase:**
 
 1. Создать проект в [Firebase Console](https://console.firebase.google.com) и добавить Android-приложение с пакетом `io.github.valerait.ghostlink` (для `dev` — `io.github.valerait.ghostlink.dev`).
-2. Положить `google-services.json` в `app/src/prod/` (или `app/src/dev/`). Файлы в `.gitignore`: у каждого свой проект. В CI конфиг `dev` берётся из секрета `GOOGLE_SERVICES_DEV`.
+2. Положить `google-services.json` в `apps/android/src/prod/` (или `apps/android/src/dev/`). Файлы в `.gitignore`: у каждого свой проект. В CI конфиг `dev` берётся из секрета `GOOGLE_SERVICES_DEV`.
 3. В разделе **Authentication → Sign-in method** включить **Email/Password** и **Anonymous**. Других способов входа нет: потерянный аккаунт возвращает только ключ восстановления.
 4. Создать базу **Firestore** и вставить содержимое `firestore.rules` во вкладку **Rules**.
 5. Только на Blaze: в Firestore → **TTL** добавить политику для коллекции `linkRequests` по полю `expiresAt`, чтобы брошенные заявки удалялись сами. На Spark TTL недоступен, но это не страшно: приложение удаляет свои заявки само, а просроченную заявку правила не дают подтвердить.
@@ -147,7 +147,7 @@ cd firebase && npm ci && npm test
 
 На каждую коллекцию есть разрешённые и запрещённые случаи: чужой профиль, чужое устройство, повторное подтверждение заявки, просроченная заявка, сообщение от чужого имени, клиентское время вместо серверного.
 
-**Статический анализ:** `./gradlew spotlessCheck detekt` (форматирование — `./gradlew spotlessApply`). **Покрытие:** `./gradlew :app:koverHtmlReportCi`. Всё это и сборка запускаются в CI на каждый PR; зависимости обновляет Renovate, CHANGELOG собирает release-please из заголовков PR (Conventional Commits).
+**Статический анализ:** `./gradlew spotlessCheck detekt` (форматирование — `./gradlew spotlessApply`). **Покрытие:** `./gradlew :apps:android:koverHtmlReportCi`. Всё это и сборка запускаются в CI на каждый PR; зависимости обновляет Renovate, CHANGELOG собирает release-please из заголовков PR (Conventional Commits).
 
 ## Дальше
 

@@ -52,6 +52,10 @@ gradlePlugin {
             id = "ghostlink.detekt"
             implementationClass = "DetektConventionPlugin"
         }
+        register("moduleGraph") {
+            id = "ghostlink.module-graph"
+            implementationClass = "ModuleGraphConventionPlugin"
+        }
         register("spotless") {
             id = "ghostlink.spotless"
             implementationClass = "SpotlessConventionPlugin"

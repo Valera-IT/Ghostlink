@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.kover)
 }
 
-// Конфиг Firebase лежит в app/src/dev|prod/google-services.json и в git не попадает (в CI — из секретов).
+// Конфиг Firebase лежит в apps/android/src/dev|prod/google-services.json и в git не попадает (в CI — из секретов).
 // Если его нет, сборка всё равно проходит, а приложение работает в демо-режиме (см. README).
 googleServices {
     missingGoogleServicesStrategy = com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy.IGNORE

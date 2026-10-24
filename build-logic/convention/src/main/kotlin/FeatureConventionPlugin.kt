@@ -1,13 +1,12 @@
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.kotlin.dsl.configure
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
 /**
  * Модуль фичи: экраны на Compose Multiplatform, ViewModel и маршруты навигации.
  * Видит только core:domain, core:platform и UI-модули: реализации репозиториев подключает приложение через Koin,
- * а в другую фичу экран переходит через переданную лямбду (см. ARCHITECTURE.md).
+ * а в другую фичу экран переходит через переданную лямбду. Границы проверяет ghostlink.module-graph.
  */
 class FeatureConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) =
@@ -32,15 +31,6 @@ class FeatureConventionPlugin : Plugin<Project> {
                 sourceSets.commonTest.dependencies {
                     implementation(project(":core:testing"))
                     implementation(libs.library("kotlinx-coroutines-test"))
-                }
-            }
-
-            // Границы модулей проверяет сборка, а не ревью.
-            configurations.configureEach {
-                dependencies.withType(ProjectDependency::class.java).configureEach {
-                    check(path == target.path || (!path.startsWith(":feature:") && path != ":core:data")) {
-                        "${target.path} не может зависеть от $path: фичи видят только core:domain, core:platform и UI-модули"
-                    }
                 }
             }
         }

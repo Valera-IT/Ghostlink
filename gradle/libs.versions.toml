@@ -119,3 +119,4 @@ ghostlink-feature = { id = "ghostlink.feature" }
 ghostlink-kmp-android-library = { id = "ghostlink.kmp.android.library" }
 ghostlink-detekt = { id = "ghostlink.detekt" }
 ghostlink-spotless = { id = "ghostlink.spotless" }
+ghostlink-module-graph = { id = "ghostlink.module-graph" }

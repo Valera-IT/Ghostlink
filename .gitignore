@@ -14,8 +14,8 @@ captures/
 *-debug.log
 
 # Конфиги Firebase-проектов (dev, prod): без них приложение запускается в демо-режиме
-app/google-services.json
-app/src/*/google-services.json
+apps/android/google-services.json
+apps/android/src/*/google-services.json
 
 # Конфиг Firebase для iOS-разведки
 spike/ios/iosApp/GoogleService-Info.plist

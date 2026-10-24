@@ -18,7 +18,7 @@
 ```
 build-logic/convention     convention-плагины Gradle: ghostlink.kmp.library, ghostlink.kmp.compose,
                            ghostlink.feature, ghostlink.android.app, ghostlink.android.compose,
-                           ghostlink.detekt, ghostlink.spotless
+                           ghostlink.detekt, ghostlink.spotless, ghostlink.module-graph
 core/
   model                    доменные модели: чистый Kotlin, без зависимостей
   domain                   интерфейсы репозиториев + use case
@@ -47,18 +47,22 @@ push-worker/               Cloudflare Worker (этап 6), TypeScript
 firebase/                  firestore.rules, firestore.indexes.json, тесты правил
 ```
 
-**Правила зависимостей** (для `feature/*` проверяет сама сборка: плагин `ghostlink.feature` падает на зависимости от другой фичи или `core:data`):
+**Правила зависимостей.** Их проверяет сама сборка: плагин `ghostlink.module-graph` в корневом `build.gradle.kts` роняет любой запуск Gradle (и CI) на зависимости не по таблице или от модуля, которого в ней нет. Таблица в коде — `ModuleGraph` в `build-logic`.
 
 ```
 apps/*      → feature/*, core/*
 feature/*   → core:domain, core:model, core:platform, core:designsystem, core:ui   (не feature/*, не core:data)
 core:data   → core:domain, core:model, core:firebase, core:crypto, core:platform
+core:ui     → core:designsystem, core:model, core:platform
+core:platform → core:model
 core:domain → core:model
 core:firebase → только GitLive (android, jvm, ios)
+core:designsystem → ничего из проекта
 core:crypto → core:domain
 core:testing → core:domain
 core:demo   → core:testing
 core:model  → ничего
+тесты любого модуля → дополнительно core:testing
 ```
 
 Фичи не видят `core:data`: реализации подключаются только в app-модулях через Koin. Поэтому фичу нельзя случайно связать с Firebase.
