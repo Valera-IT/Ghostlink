@@ -17,6 +17,8 @@ kotlin {
             // api: строки (Res.string.*) нужны экранам приложения, а StringResource — их состоянию.
             api(libs.cmp.components.resources)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.cmp.material.icons.extended)
+            implementation(libs.qrose)
         }
         jvmTest.dependencies {
             implementation(libs.kotlinx.coroutines.test)

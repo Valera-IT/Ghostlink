@@ -13,6 +13,12 @@ composeBom = "2026.09.00"
 # Compose Multiplatform для KMP-модулей с UI; на Android его артефакты сводятся к androidx.compose.
 composeMultiplatform = "1.12.2"
 composeMultiplatformMaterial3 = "1.9.0"
+# Иконки Material для Compose Multiplatform больше не выпускаются: 1.7.3 — последняя версия.
+composeMultiplatformIcons = "1.7.3"
+# Навигация и ViewModel для KMP от JetBrains; на Android сводятся к androidx.
+jbNavigation = "2.10.0"
+jbLifecycle = "2.11.0"
+qrose = "1.3.1"
 navigation = "2.10.2"
 serialization = "1.12.0"
 coroutines = "1.11.0"
@@ -22,7 +28,6 @@ concurrentFutures = "1.3.0"
 # Уже приходит транзитивно (Firebase/CameraX); нужна в compile classpath ради ListenableFuture
 guava = "33.7.2-android"
 mlkitBarcode = "17.3.0"
-zxing = "3.5.4"
 junit = "4.13.2"
 spotless = "8.10.4"
 ktlint = "1.8.0"
@@ -50,10 +55,16 @@ cmp-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = 
 cmp-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
 cmp-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
 cmp-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMultiplatformMaterial3" }
+cmp-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "composeMultiplatformIcons" }
+jb-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "jbNavigation" }
+jb-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "jbLifecycle" }
+jb-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "jbLifecycle" }
+qrose = { module = "io.github.alexzhirkevich:qrose", version.ref = "qrose" }
 cmp-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
 koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
 koin-test = { module = "io.insert-koin:koin-test", version.ref = "koin" }
 koin-test-junit4 = { module = "io.insert-koin:koin-test-junit4", version.ref = "koin" }
@@ -75,7 +86,6 @@ camera-view = { module = "androidx.camera:camera-view", version.ref = "camerax" 
 concurrent-futures-ktx = { module = "androidx.concurrent:concurrent-futures-ktx", version.ref = "concurrentFutures" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkitBarcode" }
-zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 gitlive-firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "gitlive" }
 gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitlive" }
@@ -105,6 +115,7 @@ kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 ghostlink-android-app = { id = "ghostlink.android.app" }
 ghostlink-android-compose = { id = "ghostlink.android.compose" }
 ghostlink-kmp-library = { id = "ghostlink.kmp.library" }
+ghostlink-feature = { id = "ghostlink.feature" }
 ghostlink-kmp-android-library = { id = "ghostlink.kmp.android.library" }
 ghostlink-detekt = { id = "ghostlink.detekt" }
 ghostlink-spotless = { id = "ghostlink.spotless" }

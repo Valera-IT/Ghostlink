@@ -112,6 +112,7 @@
     <string name="scan_hint">Point the camera at a friend's code or at a sign-in code from another device</string>
     <string name="scan_not_ghostlink">This is not a Ghostlink code</string>
     <string name="scan_permission_denied">Ghostlink needs camera access to scan your friends' codes.</string>
+    <string name="scan_camera_unavailable">Scanning codes isn't available on this device yet.</string>
     <string name="scan_open_settings">Open settings</string>
 
     <!-- Добавление друга -->

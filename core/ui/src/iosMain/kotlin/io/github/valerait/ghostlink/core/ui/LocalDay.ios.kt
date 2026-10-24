@@ -10,7 +10,7 @@ import platform.Foundation.currentLocale
 import platform.Foundation.dateWithTimeIntervalSince1970
 import kotlin.time.Instant
 
-internal actual fun Instant.localDay(): LocalDay {
+actual fun Instant.localDay(): LocalDay {
     val calendar = NSCalendar.currentCalendar
     val date = toNSDate()
     val epoch = NSDate.dateWithTimeIntervalSince1970(0.0)

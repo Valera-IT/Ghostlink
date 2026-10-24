@@ -32,7 +32,6 @@
     <ID>ReturnCount:AccountKey.kt$AccountKey.Companion$private fun emailToLogin(email: String): ByteArray?</ID>
     <ID>ReturnCount:AndroidAccountKeyStore.kt$AndroidAccountKeyStore$override fun get(userId: String): AccountKey?</ID>
     <ID>ReturnCount:BackendModule.kt$BackendModule$@SuppressLint("DiscouragedApi") // ресурс генерирует google-services, и его может не быть @Provides @Singleton fun provideAppConfig( @ApplicationContext context: Context, ): AppConfig</ID>
-    <ID>ReturnCount:LinkApproveViewModel.kt$LinkApproveViewModel$fun approve()</ID>
     <ID>ReturnCount:LinkCode.kt$LinkCode.Companion$fun parse(raw: String?): LinkCode?</ID>
     <ID>SwallowedException:GoogleSignIn.kt$e: GetCredentialCancellationException</ID>
     <ID>SwallowedException:RecoveryViewModel.kt$RecoveryViewModel$e: GhostlinkError.InvalidAccountKey</ID>

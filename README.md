@@ -18,7 +18,7 @@
 
 ## Стек
 
-Kotlin · Jetpack Compose · Material 3 · MVVM (ViewModel + StateFlow) · Koin · Coroutines/Flow · Navigation Compose (типобезопасные маршруты) · Firebase Auth + Firestore (GitLive firebase-kotlin-sdk) · CameraX · ML Kit Barcode · ZXing · JUnit + kotlinx-coroutines-test
+Kotlin · Jetpack Compose · Material 3 · MVVM (ViewModel + StateFlow) · Koin · Coroutines/Flow · Navigation Compose (типобезопасные маршруты) · Firebase Auth + Firestore (GitLive firebase-kotlin-sdk) · CameraX · ML Kit Barcode · qrose · kotlin.test + kotlinx-coroutines-test
 
 ## Архитектура
 
@@ -31,10 +31,13 @@ core/data      репозитории на Firebase (GitLive), мапперы DT
 core/testing   FakeBackend — все репозитории в памяти, фейк для тестов (KMP)
 core/demo      DemoBackend — демо-режим со стартовыми чатами и ботом (KMP)
 core/designsystem  тема: палитры, формы сообщений, типографика, логотип (Compose Multiplatform)
-core/ui        аватар, время и «в сети», плашка демо-режима, строки интерфейса en/ru в Compose Resources
-app/ui         Compose-экраны + ViewModel на каждый экран (UDF: state вниз, события вверх)
+core/ui        аватар, время и «в сети», QR-картинка, плашка демо-режима, строки интерфейса en/ru в Compose Resources
+feature/*      экраны по модулям: onboarding, chats, chat, friends, devices, link, recovery, settings.
+               ViewModel по UDF (UiState вниз, Action вверх, разовые Effect), свои маршруты и Koin-модуль;
+               видят только core:domain и UI-модули, друг о друге не знают (Compose Multiplatform)
+app/ui         корневой граф навигации: соединяет фичи между собой
 app/data       Android Keystore для ключа аккаунта, выбранные тема и язык
-app/di         Koin: собирает модули core:* и выбирает Firebase или демо в зависимости от наличия конфига
+app/di         Koin: собирает модули core:* и feature:*, выбирает Firebase или демо в зависимости от наличия конфига
 ```
 
 Целевая модульная архитектура (KMP, Clean Architecture, модели по слоям) описана в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), план — в [docs/ROADMAP.md](docs/ROADMAP.md).

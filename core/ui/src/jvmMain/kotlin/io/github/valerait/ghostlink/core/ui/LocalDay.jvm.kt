@@ -8,7 +8,7 @@ import kotlin.time.toJavaInstant
 
 // Язык интерфейса Android-приложение кладёт в Locale.getDefault() (см. LanguagePreferences.wrap).
 
-internal actual fun Instant.localDay(): LocalDay {
+actual fun Instant.localDay(): LocalDay {
     val date = toJavaInstant().atZone(ZoneId.systemDefault()).toLocalDate()
     return LocalDay(year = date.year, epochDay = date.toEpochDay())
 }

@@ -5,6 +5,9 @@ naming:
     ignoreAnnotated: ['Composable']
   TopLevelPropertyNaming:
     constantPattern: '[A-Z][A-Za-z0-9_]*'
+  MatchingDeclarationName:
+    # <Name>Feature.kt — точка входа фичи: маршруты, расширения навигации и Koin-модуль в одном файле.
+    excludes: ['**/*Feature.kt']
 
 complexity:
   LongParameterList:

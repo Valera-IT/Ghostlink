@@ -1,0 +1,140 @@
+package io.github.valerait.ghostlink.feature.friends
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.valerait.ghostlink.core.designsystem.GhostLogo
+import io.github.valerait.ghostlink.core.model.ChatId
+import io.github.valerait.ghostlink.core.ui.Avatar
+import io.github.valerait.ghostlink.core.ui.CollectEffects
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.connect_action
+import io.github.valerait.ghostlink.core.ui.resources.connect_body
+import io.github.valerait.ghostlink.core.ui.resources.connect_not_found_body
+import io.github.valerait.ghostlink.core.ui.resources.connect_not_found_title
+import io.github.valerait.ghostlink.core.ui.resources.connect_self_body
+import io.github.valerait.ghostlink.core.ui.resources.connect_self_title
+import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.viewmodel.koinViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConnectScreen(
+    onBack: () -> Unit,
+    onChatReady: (ChatId) -> Unit,
+    viewModel: ConnectViewModel = koinViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    CollectEffects(viewModel.effects) { effect ->
+        when (effect) {
+            is ConnectEffect.ChatReady -> onChatReady(effect.chatId)
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            when (val s = state) {
+                ConnectUiState.Loading -> {
+                    CircularProgressIndicator()
+                }
+
+                ConnectUiState.Self -> {
+                    Message(stringResource(Res.string.connect_self_title), stringResource(Res.string.connect_self_body))
+                }
+
+                ConnectUiState.NotFound -> {
+                    Message(
+                        stringResource(Res.string.connect_not_found_title),
+                        stringResource(Res.string.connect_not_found_body),
+                    )
+                }
+
+                is ConnectUiState.Found -> {
+                    Avatar(s.user.name, s.user.id.value, size = 112.dp)
+                    Spacer(Modifier.height(20.dp))
+                    Text(s.user.name, style = MaterialTheme.typography.headlineMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(Res.string.connect_body),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                    s.error?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(stringResource(it), color = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(Modifier.height(32.dp))
+                    Button(
+                        onClick = { viewModel.onAction(ConnectAction.Connect) },
+                        enabled = !s.busy,
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                    ) {
+                        if (s.busy) {
+                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text(stringResource(Res.string.connect_action))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Message(
+    title: String,
+    body: String,
+) {
+    GhostLogo(size = 88.dp, tint = MaterialTheme.colorScheme.outline)
+    Spacer(Modifier.height(20.dp))
+    Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = body,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+    )
+}
