@@ -33,13 +33,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.action_cancel
+import io.github.valerait.ghostlink.core.ui.resources.action_done
+import io.github.valerait.ghostlink.core.ui.resources.error_generic
+import io.github.valerait.ghostlink.core.ui.resources.link_approve_action
+import io.github.valerait.ghostlink.core.ui.resources.link_approve_done_body
+import io.github.valerait.ghostlink.core.ui.resources.link_approve_done_title
+import io.github.valerait.ghostlink.core.ui.resources.link_approve_invalid_body
+import io.github.valerait.ghostlink.core.ui.resources.link_approve_invalid_title
+import io.github.valerait.ghostlink.core.ui.resources.link_approve_question
+import io.github.valerait.ghostlink.core.ui.resources.link_approve_title
+import io.github.valerait.ghostlink.core.ui.resources.link_approve_warning
 import io.github.valerait.ghostlink.ui.devices.platformIcon
 import io.github.valerait.ghostlink.ui.devices.platformLabel
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,10 +65,10 @@ fun LinkApproveScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.link_approve_title)) },
+                title = { Text(stringResource(Res.string.link_approve_title)) },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -84,8 +96,8 @@ fun LinkApproveScreen(
                 LinkApproveState.Done -> {
                     Outcome(
                         icon = Icons.Outlined.CheckCircle,
-                        title = stringResource(R.string.link_approve_done_title),
-                        body = stringResource(R.string.link_approve_done_body),
+                        title = stringResource(Res.string.link_approve_done_title),
+                        body = stringResource(Res.string.link_approve_done_body),
                         onClose = onClose,
                     )
                 }
@@ -93,8 +105,8 @@ fun LinkApproveScreen(
                 LinkApproveState.Invalid -> {
                     Outcome(
                         icon = Icons.Outlined.ErrorOutline,
-                        title = stringResource(R.string.link_approve_invalid_title),
-                        body = stringResource(R.string.link_approve_invalid_body),
+                        title = stringResource(Res.string.link_approve_invalid_title),
+                        body = stringResource(Res.string.link_approve_invalid_body),
                         onClose = onClose,
                     )
                 }
@@ -113,7 +125,7 @@ private fun Confirm(
     Icon(platformIcon(state.platform), contentDescription = null, modifier = Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
     Spacer(Modifier.height(16.dp))
     Text(
-        text = stringResource(R.string.link_approve_question),
+        text = stringResource(Res.string.link_approve_question),
         style = MaterialTheme.typography.titleMedium,
         textAlign = TextAlign.Center,
     )
@@ -134,12 +146,12 @@ private fun Confirm(
         Row(Modifier.padding(16.dp)) {
             Icon(Icons.Outlined.WarningAmber, contentDescription = null)
             Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.link_approve_warning), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(Res.string.link_approve_warning), style = MaterialTheme.typography.bodyMedium)
         }
     }
     if (state.failed) {
         Text(
-            text = stringResource(R.string.error_generic),
+            text = stringResource(Res.string.error_generic),
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 12.dp),
@@ -150,12 +162,12 @@ private fun Confirm(
         if (state.busy) {
             CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
         } else {
-            Text(stringResource(R.string.link_approve_action))
+            Text(stringResource(Res.string.link_approve_action))
         }
     }
     Spacer(Modifier.height(8.dp))
     OutlinedButton(onClick = onCancel, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.action_cancel))
+        Text(stringResource(Res.string.action_cancel))
     }
 }
 
@@ -178,5 +190,5 @@ private fun Outcome(
         textAlign = TextAlign.Center,
     )
     Spacer(Modifier.height(24.dp))
-    Button(onClick = onClose) { Text(stringResource(R.string.action_done)) }
+    Button(onClick = onClose) { Text(stringResource(Res.string.action_done)) }
 }

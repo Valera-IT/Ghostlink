@@ -9,9 +9,11 @@ import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.PhoneIphone
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
-import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.model.Platform
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.platform_unknown
+import io.github.valerait.ghostlink.core.ui.resources.platform_web
+import org.jetbrains.compose.resources.stringResource
 
 fun platformIcon(platform: Platform): ImageVector =
     when (platform) {
@@ -31,6 +33,6 @@ fun platformLabel(platform: Platform): String =
         Platform.MacOs -> "macOS"
         Platform.Windows -> "Windows"
         Platform.Linux -> "Linux"
-        Platform.Web -> stringResource(R.string.platform_web)
-        Platform.Unknown -> stringResource(R.string.platform_unknown)
+        Platform.Web -> stringResource(Res.string.platform_web)
+        Platform.Unknown -> stringResource(Res.string.platform_unknown)
     }

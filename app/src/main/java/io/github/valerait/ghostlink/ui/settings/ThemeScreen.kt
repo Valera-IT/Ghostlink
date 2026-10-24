@@ -1,6 +1,5 @@
 package io.github.valerait.ghostlink.ui.settings
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -36,16 +35,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.valerait.ghostlink.R
-import io.github.valerait.ghostlink.data.settings.ThemeId
+import io.github.valerait.ghostlink.core.designsystem.GhostlinkTheme
+import io.github.valerait.ghostlink.core.designsystem.LocalChatStyle
+import io.github.valerait.ghostlink.core.designsystem.ThemeId
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.theme_acid_circuit
+import io.github.valerait.ghostlink.core.ui.resources.theme_amber_alert
+import io.github.valerait.ghostlink.core.ui.resources.theme_custom_spectrum
+import io.github.valerait.ghostlink.core.ui.resources.theme_icewire
+import io.github.valerait.ghostlink.core.ui.resources.theme_neon_sunset
+import io.github.valerait.ghostlink.core.ui.resources.theme_preview_incoming
+import io.github.valerait.ghostlink.core.ui.resources.theme_preview_outgoing
+import io.github.valerait.ghostlink.core.ui.resources.theme_selected
+import io.github.valerait.ghostlink.core.ui.resources.theme_title
+import io.github.valerait.ghostlink.core.ui.resources.theme_toxic_yellow
 import io.github.valerait.ghostlink.data.settings.ThemePreferences
-import io.github.valerait.ghostlink.ui.theme.GhostlinkTheme
-import io.github.valerait.ghostlink.ui.theme.LocalChatStyle
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 class ThemeViewModel(
@@ -56,16 +67,15 @@ class ThemeViewModel(
     fun select(theme: ThemeId) = prefs.setTheme(theme)
 }
 
-@get:StringRes
-val ThemeId.title: Int
+val ThemeId.title: StringResource
     get() =
         when (this) {
-            ThemeId.TOXIC_YELLOW -> R.string.theme_toxic_yellow
-            ThemeId.NEON_SUNSET -> R.string.theme_neon_sunset
-            ThemeId.ICEWIRE -> R.string.theme_icewire
-            ThemeId.ACID_CIRCUIT -> R.string.theme_acid_circuit
-            ThemeId.AMBER_ALERT -> R.string.theme_amber_alert
-            ThemeId.CUSTOM_SPECTRUM -> R.string.theme_custom_spectrum
+            ThemeId.TOXIC_YELLOW -> Res.string.theme_toxic_yellow
+            ThemeId.NEON_SUNSET -> Res.string.theme_neon_sunset
+            ThemeId.ICEWIRE -> Res.string.theme_icewire
+            ThemeId.ACID_CIRCUIT -> Res.string.theme_acid_circuit
+            ThemeId.AMBER_ALERT -> Res.string.theme_amber_alert
+            ThemeId.CUSTOM_SPECTRUM -> Res.string.theme_custom_spectrum
         }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,10 +88,10 @@ fun ThemeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.theme_title)) },
+                title = { Text(stringResource(Res.string.theme_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -129,16 +139,16 @@ private fun ThemeCard(
                 if (selected) {
                     Icon(
                         Icons.Filled.CheckCircle,
-                        contentDescription = stringResource(R.string.theme_selected),
+                        contentDescription = stringResource(Res.string.theme_selected),
                         tint = colors.primary,
                         modifier = Modifier.size(18.dp),
                     )
                 }
             }
             Spacer(Modifier.height(8.dp))
-            PreviewBubble(stringResource(R.string.theme_preview_incoming), mine = false)
+            PreviewBubble(stringResource(Res.string.theme_preview_incoming), mine = false)
             Spacer(Modifier.height(6.dp))
-            PreviewBubble(stringResource(R.string.theme_preview_outgoing), mine = true)
+            PreviewBubble(stringResource(Res.string.theme_preview_outgoing), mine = true)
             Spacer(Modifier.height(10.dp))
             Text(
                 text = stringResource(theme.title),

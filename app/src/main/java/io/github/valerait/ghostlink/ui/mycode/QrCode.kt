@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,13 +20,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
-import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.designsystem.GhostLogo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -63,12 +61,7 @@ fun QrCard(
             qr?.let { Image(it, contentDescription = contentDescription) }
             // Призрак в центре: коррекция ошибок M спокойно переживает такую «дырку».
             Surface(color = Color.White, shape = CircleShape, modifier = Modifier.size(56.dp)) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_ghost),
-                    contentDescription = null,
-                    tint = QrInk,
-                    modifier = Modifier.padding(10.dp),
-                )
+                GhostLogo(size = 36.dp, tint = QrInk, modifier = Modifier.padding(10.dp))
             }
         }
     }

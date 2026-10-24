@@ -1,6 +1,5 @@
 package io.github.valerait.ghostlink.ui.settings
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,18 +45,41 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.BuildConfig
-import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.designsystem.LocalThemeId
 import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.core.ui.Avatar
+import io.github.valerait.ghostlink.core.ui.DemoModeBanner
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.action_cancel
+import io.github.valerait.ghostlink.core.ui.resources.action_save
+import io.github.valerait.ghostlink.core.ui.resources.language_english
+import io.github.valerait.ghostlink.core.ui.resources.language_russian
+import io.github.valerait.ghostlink.core.ui.resources.language_system
+import io.github.valerait.ghostlink.core.ui.resources.onboarding_name_label
+import io.github.valerait.ghostlink.core.ui.resources.settings_account
+import io.github.valerait.ghostlink.core.ui.resources.settings_appearance
+import io.github.valerait.ghostlink.core.ui.resources.settings_devices
+import io.github.valerait.ghostlink.core.ui.resources.settings_devices_hint
+import io.github.valerait.ghostlink.core.ui.resources.settings_language
+import io.github.valerait.ghostlink.core.ui.resources.settings_recovery_key
+import io.github.valerait.ghostlink.core.ui.resources.settings_recovery_key_hint
+import io.github.valerait.ghostlink.core.ui.resources.settings_rename
+import io.github.valerait.ghostlink.core.ui.resources.settings_sign_out
+import io.github.valerait.ghostlink.core.ui.resources.settings_sign_out_body
+import io.github.valerait.ghostlink.core.ui.resources.settings_sign_out_title
+import io.github.valerait.ghostlink.core.ui.resources.settings_tap_to_rename
+import io.github.valerait.ghostlink.core.ui.resources.settings_theme
+import io.github.valerait.ghostlink.core.ui.resources.settings_title
+import io.github.valerait.ghostlink.core.ui.resources.settings_version
 import io.github.valerait.ghostlink.data.settings.AppLanguage
-import io.github.valerait.ghostlink.ui.common.Avatar
-import io.github.valerait.ghostlink.ui.common.DemoModeBanner
 import io.github.valerait.ghostlink.ui.recovery.RecoveryCodeDialog
-import io.github.valerait.ghostlink.ui.theme.LocalThemeId
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,10 +109,10 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
+                title = { Text(stringResource(Res.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -117,50 +139,50 @@ fun SettingsScreen(
                 Column(Modifier.weight(1f)) {
                     Text(state.name, style = MaterialTheme.typography.headlineSmall)
                     Text(
-                        text = stringResource(R.string.settings_tap_to_rename),
+                        text = stringResource(Res.string.settings_tap_to_rename),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.settings_rename))
+                Icon(Icons.Outlined.Edit, contentDescription = stringResource(Res.string.settings_rename))
             }
             HorizontalDivider()
 
             Text(
-                text = stringResource(R.string.settings_appearance),
+                text = stringResource(Res.string.settings_appearance),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp),
             )
             ListItem(
                 leadingContent = { Icon(Icons.Outlined.Palette, contentDescription = null) },
-                headlineContent = { Text(stringResource(R.string.settings_theme)) },
+                headlineContent = { Text(stringResource(Res.string.settings_theme)) },
                 supportingContent = { Text(stringResource(LocalThemeId.current.title)) },
                 modifier = Modifier.clickable(onClick = onTheme),
             )
             ListItem(
                 leadingContent = { Icon(Icons.Outlined.Language, contentDescription = null) },
-                headlineContent = { Text(stringResource(R.string.settings_language)) },
+                headlineContent = { Text(stringResource(Res.string.settings_language)) },
                 supportingContent = { Text(stringResource(language.title)) },
                 modifier = Modifier.clickable { pickingLanguage = true },
             )
 
             Text(
-                text = stringResource(R.string.settings_account),
+                text = stringResource(Res.string.settings_account),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 8.dp),
             )
             ListItem(
                 leadingContent = { Icon(Icons.Outlined.Devices, contentDescription = null) },
-                headlineContent = { Text(stringResource(R.string.settings_devices)) },
-                supportingContent = { Text(stringResource(R.string.settings_devices_hint)) },
+                headlineContent = { Text(stringResource(Res.string.settings_devices)) },
+                supportingContent = { Text(stringResource(Res.string.settings_devices_hint)) },
                 modifier = Modifier.clickable(onClick = onDevices),
             )
             ListItem(
                 leadingContent = { Icon(Icons.Outlined.Key, contentDescription = null) },
-                headlineContent = { Text(stringResource(R.string.settings_recovery_key)) },
-                supportingContent = { Text(stringResource(R.string.settings_recovery_key_hint)) },
+                headlineContent = { Text(stringResource(Res.string.settings_recovery_key)) },
+                supportingContent = { Text(stringResource(Res.string.settings_recovery_key_hint)) },
                 modifier = Modifier.clickable(enabled = !state.busy, onClick = viewModel::showRecoveryKey),
             )
 
@@ -173,12 +195,12 @@ fun SettingsScreen(
                         tint = MaterialTheme.colorScheme.error,
                     )
                 },
-                headlineContent = { Text(stringResource(R.string.settings_sign_out), color = MaterialTheme.colorScheme.error) },
+                headlineContent = { Text(stringResource(Res.string.settings_sign_out), color = MaterialTheme.colorScheme.error) },
                 modifier = Modifier.clickable(enabled = !state.busy) { confirmSignOut = true },
             )
 
             Text(
-                text = stringResource(R.string.settings_version, BuildConfig.VERSION_NAME),
+                text = stringResource(Res.string.settings_version, BuildConfig.VERSION_NAME),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp),
@@ -189,7 +211,7 @@ fun SettingsScreen(
     state.recoveryCode?.let { code ->
         RecoveryCodeDialog(
             code = code,
-            title = stringResource(R.string.settings_recovery_key),
+            title = stringResource(Res.string.settings_recovery_key),
             onDismiss = viewModel::onRecoveryKeyShown,
         )
     }
@@ -216,30 +238,29 @@ fun SettingsScreen(
     if (confirmSignOut) {
         AlertDialog(
             onDismissRequest = { confirmSignOut = false },
-            title = { Text(stringResource(R.string.settings_sign_out_title)) },
+            title = { Text(stringResource(Res.string.settings_sign_out_title)) },
             text = {
-                Text(stringResource(R.string.settings_sign_out_body))
+                Text(stringResource(Res.string.settings_sign_out_body))
             },
             confirmButton = {
                 TextButton(onClick = {
                     confirmSignOut = false
                     viewModel.signOut()
-                }) { Text(stringResource(R.string.settings_sign_out), color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(Res.string.settings_sign_out), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmSignOut = false }) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = { confirmSignOut = false }) { Text(stringResource(Res.string.action_cancel)) }
             },
         )
     }
 }
 
-@get:StringRes
-private val AppLanguage.title: Int
+private val AppLanguage.title: StringResource
     get() =
         when (this) {
-            AppLanguage.SYSTEM -> R.string.language_system
-            AppLanguage.RUSSIAN -> R.string.language_russian
-            AppLanguage.ENGLISH -> R.string.language_english
+            AppLanguage.SYSTEM -> Res.string.language_system
+            AppLanguage.RUSSIAN -> Res.string.language_russian
+            AppLanguage.ENGLISH -> Res.string.language_english
         }
 
 @Composable
@@ -250,7 +271,7 @@ private fun LanguageDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_language)) },
+        title = { Text(stringResource(Res.string.settings_language)) },
         text = {
             Column(Modifier.selectableGroup()) {
                 AppLanguage.entries.forEach { language ->
@@ -273,7 +294,7 @@ private fun LanguageDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }
@@ -287,22 +308,22 @@ private fun RenameDialog(
     var value by rememberSaveable { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_rename)) },
+        title = { Text(stringResource(Res.string.settings_rename)) },
         text = {
             OutlinedTextField(
                 value = value,
                 onValueChange = { value = it.take(User.NAME_MAX_LENGTH) },
                 singleLine = true,
-                label = { Text(stringResource(R.string.onboarding_name_label)) },
+                label = { Text(stringResource(Res.string.onboarding_name_label)) },
             )
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(value) }, enabled = value.isNotBlank()) {
-                Text(stringResource(R.string.action_save))
+                Text(stringResource(Res.string.action_save))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

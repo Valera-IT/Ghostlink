@@ -79,7 +79,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.toClipEntry
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -90,18 +89,36 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.designsystem.LocalChatStyle
 import io.github.valerait.ghostlink.core.model.Message
 import io.github.valerait.ghostlink.core.model.MessageId
 import io.github.valerait.ghostlink.core.model.MessageStatus
 import io.github.valerait.ghostlink.core.model.ReplyTo
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.ui.common.dayLabel
-import io.github.valerait.ghostlink.ui.common.formatTime
-import io.github.valerait.ghostlink.ui.common.rememberNow
-import io.github.valerait.ghostlink.ui.theme.LocalChatStyle
+import io.github.valerait.ghostlink.core.ui.dayLabel
+import io.github.valerait.ghostlink.core.ui.formatTime
+import io.github.valerait.ghostlink.core.ui.rememberNow
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.action_save
+import io.github.valerait.ghostlink.core.ui.resources.action_send
+import io.github.valerait.ghostlink.core.ui.resources.chat_actions
+import io.github.valerait.ghostlink.core.ui.resources.chat_deleted
+import io.github.valerait.ghostlink.core.ui.resources.chat_edit_cancel
+import io.github.valerait.ghostlink.core.ui.resources.chat_edited
+import io.github.valerait.ghostlink.core.ui.resources.chat_editing
+import io.github.valerait.ghostlink.core.ui.resources.chat_empty
+import io.github.valerait.ghostlink.core.ui.resources.chat_input_hint
+import io.github.valerait.ghostlink.core.ui.resources.chat_reply_cancel
+import io.github.valerait.ghostlink.core.ui.resources.chat_reply_original_unavailable
+import io.github.valerait.ghostlink.core.ui.resources.chat_reply_you
+import io.github.valerait.ghostlink.core.ui.resources.status_read
+import io.github.valerait.ghostlink.core.ui.resources.status_read_all
+import io.github.valerait.ghostlink.core.ui.resources.status_sending
+import io.github.valerait.ghostlink.core.ui.resources.status_sent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,8 +137,8 @@ fun ChatScreen(
     var confirmDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
 
     val nameOf: (UserId?) -> String = { state.names[it].orEmpty() }
-    val you = stringResource(R.string.chat_reply_you)
-    val originalUnavailable = stringResource(R.string.chat_reply_original_unavailable)
+    val you = stringResource(Res.string.chat_reply_you)
+    val originalUnavailable = stringResource(Res.string.chat_reply_original_unavailable)
 
     // Нажатие на цитату — прокрутка к исходному сообщению и короткая подсветка.
     val showOriginal: (MessageId) -> Unit = { id ->
@@ -174,7 +191,7 @@ fun ChatScreen(
                 actions = { DisappearingMenu(state.disappearing, viewModel::setDisappearing) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
                 title = { ChatTitle(state, now, onGroupInfo) },
@@ -196,7 +213,7 @@ fun ChatScreen(
         if (!state.loading && state.rows.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text(
-                    text = stringResource(R.string.chat_empty),
+                    text = stringResource(Res.string.chat_empty),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -300,7 +317,7 @@ private fun MessageBubble(
                         .clip(if (mine) chatStyle.outgoingShape else chatStyle.incomingShape)
                         .combinedClickable(
                             enabled = !item.message.deleted,
-                            onLongClickLabel = stringResource(R.string.chat_actions),
+                            onLongClickLabel = stringResource(Res.string.chat_actions),
                             onLongClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 menuOpen = true
@@ -313,7 +330,7 @@ private fun MessageBubble(
                     item.message.replyTo?.let { reply ->
                         ReplyQuote(
                             author = quoteAuthor,
-                            preview = if (item.replyToDeleted) stringResource(R.string.chat_deleted) else reply.preview,
+                            preview = if (item.replyToDeleted) stringResource(Res.string.chat_deleted) else reply.preview,
                             previewDeleted = item.replyToDeleted,
                             accent = LocalContentColor.current,
                             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp).clickable { onQuoteClick(reply.id) },
@@ -330,7 +347,7 @@ private fun MessageBubble(
                     ) {
                         if (item.message.editedAt != null) {
                             Text(
-                                text = stringResource(R.string.chat_edited),
+                                text = stringResource(Res.string.chat_edited),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = mutedContentColor(),
                             )
@@ -373,7 +390,7 @@ private fun DeletedText() {
         Icon(Icons.Outlined.Block, contentDescription = null, tint = mutedContentColor(), modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
         Text(
-            text = stringResource(R.string.chat_deleted),
+            text = stringResource(Res.string.chat_deleted),
             style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
             color = mutedContentColor(),
         )
@@ -395,7 +412,7 @@ private fun StatusIcon(status: MessageStatus) {
             Icon(Icons.Filled.Done, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
             Icon(
                 Icons.Filled.DoneAll,
-                contentDescription = stringResource(R.string.status_read_all),
+                contentDescription = stringResource(Res.string.status_read_all),
                 tint = tint,
                 modifier = Modifier.size(16.dp).align(Alignment.CenterEnd),
             )
@@ -404,9 +421,9 @@ private fun StatusIcon(status: MessageStatus) {
     }
     val (icon, description) =
         when (status) {
-            MessageStatus.SENDING -> Icons.Filled.Schedule to R.string.status_sending
-            MessageStatus.SENT -> Icons.Filled.Done to R.string.status_sent
-            else -> Icons.Filled.DoneAll to R.string.status_read
+            MessageStatus.SENDING -> Icons.Filled.Schedule to Res.string.status_sending
+            MessageStatus.SENT -> Icons.Filled.Done to Res.string.status_sent
+            else -> Icons.Filled.DoneAll to Res.string.status_read
         }
     Icon(
         imageVector = icon,
@@ -483,9 +500,9 @@ private fun MessageInput(
                 editing != null -> {
                     InputContextBar(
                         icon = Icons.Outlined.Edit,
-                        title = stringResource(R.string.chat_editing),
+                        title = stringResource(Res.string.chat_editing),
                         preview = ReplyTo.previewOf(editing.message.text),
-                        cancelLabel = stringResource(R.string.chat_edit_cancel),
+                        cancelLabel = stringResource(Res.string.chat_edit_cancel),
                         onCancel = onCancelEdit,
                     )
                 }
@@ -495,7 +512,7 @@ private fun MessageInput(
                         icon = Icons.AutoMirrored.Filled.Reply,
                         title = replyAuthor(replyingTo),
                         preview = ReplyTo.previewOf(replyingTo.message.text),
-                        cancelLabel = stringResource(R.string.chat_reply_cancel),
+                        cancelLabel = stringResource(Res.string.chat_reply_cancel),
                         onCancel = onCancelReply,
                     )
                 }
@@ -514,7 +531,7 @@ private fun MessageInput(
                             if (it.text.length > Message.TEXT_MAX_LENGTH) it.copy(text = it.text.take(Message.TEXT_MAX_LENGTH)) else it
                         onDraftChanged(text.text)
                     },
-                    placeholder = { Text(stringResource(R.string.chat_input_hint)) },
+                    placeholder = { Text(stringResource(Res.string.chat_input_hint)) },
                     maxLines = 5,
                     shape = RoundedCornerShape(24.dp),
                     colors =
@@ -537,9 +554,9 @@ private fun MessageInput(
                     modifier = Modifier.size(56.dp),
                 ) {
                     if (editing != null) {
-                        Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.action_save))
+                        Icon(Icons.Filled.Check, contentDescription = stringResource(Res.string.action_save))
                     } else {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.action_send))
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(Res.string.action_send))
                     }
                 }
             }

@@ -16,9 +16,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.stringResource
-import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.model.DisappearingTimer
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.disappearing_day
+import io.github.valerait.ghostlink.core.ui.resources.disappearing_hour
+import io.github.valerait.ghostlink.core.ui.resources.disappearing_off
+import io.github.valerait.ghostlink.core.ui.resources.disappearing_title
+import io.github.valerait.ghostlink.core.ui.resources.disappearing_week
+import org.jetbrains.compose.resources.stringResource
 
 /** Кнопка таймера исчезающих сообщений в шапке чата; подсвечена, пока таймер включён. */
 @Composable
@@ -31,13 +36,13 @@ fun DisappearingMenu(
         IconButton(onClick = { open = true }) {
             Icon(
                 Icons.Outlined.Timer,
-                contentDescription = stringResource(R.string.disappearing_title),
+                contentDescription = stringResource(Res.string.disappearing_title),
                 tint = if (current != null) MaterialTheme.colorScheme.primary else LocalContentColor.current,
             )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.disappearing_title), style = MaterialTheme.typography.labelLarge) },
+                text = { Text(stringResource(Res.string.disappearing_title), style = MaterialTheme.typography.labelLarge) },
                 onClick = {},
                 enabled = false,
             )
@@ -59,9 +64,9 @@ fun DisappearingMenu(
 fun disappearingLabel(timer: DisappearingTimer?): String =
     stringResource(
         when (timer) {
-            null -> R.string.disappearing_off
-            DisappearingTimer.HOUR -> R.string.disappearing_hour
-            DisappearingTimer.DAY -> R.string.disappearing_day
-            DisappearingTimer.WEEK -> R.string.disappearing_week
+            null -> Res.string.disappearing_off
+            DisappearingTimer.HOUR -> Res.string.disappearing_hour
+            DisappearingTimer.DAY -> Res.string.disappearing_day
+            DisappearingTimer.WEEK -> Res.string.disappearing_week
         },
     )

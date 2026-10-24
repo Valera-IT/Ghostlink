@@ -28,11 +28,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.action_scan_friend
+import io.github.valerait.ghostlink.core.ui.resources.my_code_hint
+import io.github.valerait.ghostlink.core.ui.resources.my_code_qr_description
+import io.github.valerait.ghostlink.core.ui.resources.my_code_share
+import io.github.valerait.ghostlink.core.ui.resources.my_code_share_text
+import io.github.valerait.ghostlink.core.ui.resources.my_code_title
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,16 +51,16 @@ fun MyCodeScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val shareText = stringResource(R.string.my_code_share_text, state.link)
-    val shareTitle = stringResource(R.string.my_code_share)
+    val shareText = stringResource(Res.string.my_code_share_text, state.link)
+    val shareTitle = stringResource(Res.string.my_code_share)
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.my_code_title)) },
+                title = { Text(stringResource(Res.string.my_code_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -68,12 +75,12 @@ fun MyCodeScreen(
                     .padding(horizontal = 32.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            QrCard(state.link, stringResource(R.string.my_code_qr_description))
+            QrCard(state.link, stringResource(Res.string.my_code_qr_description))
             Spacer(Modifier.height(20.dp))
             Text(state.name, style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.my_code_hint),
+                text = stringResource(Res.string.my_code_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -82,7 +89,7 @@ fun MyCodeScreen(
             Button(onClick = onScan, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Filled.QrCodeScanner, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.action_scan_friend))
+                Text(stringResource(Res.string.action_scan_friend))
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(

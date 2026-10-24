@@ -37,14 +37,32 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.model.Device
-import io.github.valerait.ghostlink.ui.common.formatChatListTime
-import io.github.valerait.ghostlink.ui.common.rememberNow
+import io.github.valerait.ghostlink.core.ui.formatChatListTime
+import io.github.valerait.ghostlink.core.ui.rememberNow
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.action_cancel
+import io.github.valerait.ghostlink.core.ui.resources.devices_active_now
+import io.github.valerait.ghostlink.core.ui.resources.devices_add
+import io.github.valerait.ghostlink.core.ui.resources.devices_add_body
+import io.github.valerait.ghostlink.core.ui.resources.devices_last_active
+import io.github.valerait.ghostlink.core.ui.resources.devices_new_key_title
+import io.github.valerait.ghostlink.core.ui.resources.devices_others
+import io.github.valerait.ghostlink.core.ui.resources.devices_remove
+import io.github.valerait.ghostlink.core.ui.resources.devices_remove_body
+import io.github.valerait.ghostlink.core.ui.resources.devices_remove_title
+import io.github.valerait.ghostlink.core.ui.resources.devices_sign_out_others
+import io.github.valerait.ghostlink.core.ui.resources.devices_sign_out_others_body
+import io.github.valerait.ghostlink.core.ui.resources.devices_sign_out_others_confirm
+import io.github.valerait.ghostlink.core.ui.resources.devices_sign_out_others_hint
+import io.github.valerait.ghostlink.core.ui.resources.devices_sign_out_others_title
+import io.github.valerait.ghostlink.core.ui.resources.devices_this
+import io.github.valerait.ghostlink.core.ui.resources.devices_title
 import io.github.valerait.ghostlink.ui.recovery.RecoveryCodeDialog
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,10 +90,10 @@ fun DevicesScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.devices_title)) },
+                title = { Text(stringResource(Res.string.devices_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -89,7 +107,7 @@ fun DevicesScreen(
         ) {
             Column(Modifier.padding(16.dp)) {
                 Text(
-                    text = stringResource(R.string.devices_add_body),
+                    text = stringResource(Res.string.devices_add_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -97,22 +115,22 @@ fun DevicesScreen(
                 Button(onClick = onScan, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Filled.QrCodeScanner, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.devices_add))
+                    Text(stringResource(Res.string.devices_add))
                 }
             }
             HorizontalDivider()
 
-            SectionTitle(stringResource(R.string.devices_this))
-            state.thisDevice?.let { DeviceRow(it, subtitle = stringResource(R.string.devices_active_now)) }
+            SectionTitle(stringResource(Res.string.devices_this))
+            state.thisDevice?.let { DeviceRow(it, subtitle = stringResource(Res.string.devices_active_now)) }
 
             if (state.others.isNotEmpty()) {
-                SectionTitle(stringResource(R.string.devices_others))
+                SectionTitle(stringResource(Res.string.devices_others))
                 state.others.forEach { device ->
                     DeviceRow(
                         device = device,
                         subtitle =
                             device.lastActiveAt
-                                ?.let { stringResource(R.string.devices_last_active, formatChatListTime(it, now)) }
+                                ?.let { stringResource(Res.string.devices_last_active, formatChatListTime(it, now)) }
                                 .orEmpty(),
                         onRemove = { removing = device }.takeUnless { state.busy },
                     )
@@ -122,8 +140,8 @@ fun DevicesScreen(
                     leadingContent = {
                         Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     },
-                    headlineContent = { Text(stringResource(R.string.devices_sign_out_others), color = MaterialTheme.colorScheme.error) },
-                    supportingContent = { Text(stringResource(R.string.devices_sign_out_others_hint)) },
+                    headlineContent = { Text(stringResource(Res.string.devices_sign_out_others), color = MaterialTheme.colorScheme.error) },
+                    supportingContent = { Text(stringResource(Res.string.devices_sign_out_others_hint)) },
                     modifier = Modifier.clickable(enabled = !state.busy) { confirmSignOutOthers = true },
                 )
             }
@@ -133,37 +151,37 @@ fun DevicesScreen(
     removing?.let { device ->
         AlertDialog(
             onDismissRequest = { removing = null },
-            title = { Text(stringResource(R.string.devices_remove_title, device.name)) },
-            text = { Text(stringResource(R.string.devices_remove_body)) },
+            title = { Text(stringResource(Res.string.devices_remove_title, device.name)) },
+            text = { Text(stringResource(Res.string.devices_remove_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.remove(device.id)
                     removing = null
-                }) { Text(stringResource(R.string.devices_remove), color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(Res.string.devices_remove), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { removing = null }) { Text(stringResource(R.string.action_cancel)) } },
+            dismissButton = { TextButton(onClick = { removing = null }) { Text(stringResource(Res.string.action_cancel)) } },
         )
     }
     if (confirmSignOutOthers) {
         AlertDialog(
             onDismissRequest = { confirmSignOutOthers = false },
-            title = { Text(stringResource(R.string.devices_sign_out_others_title)) },
-            text = { Text(stringResource(R.string.devices_sign_out_others_body)) },
+            title = { Text(stringResource(Res.string.devices_sign_out_others_title)) },
+            text = { Text(stringResource(Res.string.devices_sign_out_others_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.signOutOthers()
                     confirmSignOutOthers = false
-                }) { Text(stringResource(R.string.devices_sign_out_others_confirm), color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(Res.string.devices_sign_out_others_confirm), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmSignOutOthers = false }) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = { confirmSignOutOthers = false }) { Text(stringResource(Res.string.action_cancel)) }
             },
         )
     }
     state.newRecoveryCode?.let { code ->
         RecoveryCodeDialog(
             code = code,
-            title = stringResource(R.string.devices_new_key_title),
+            title = stringResource(Res.string.devices_new_key_title),
             onDismiss = viewModel::onRecoveryCodeShown,
         )
     }
@@ -193,7 +211,7 @@ private fun DeviceRow(
             onRemove?.let {
                 {
                     IconButton(onClick = it) {
-                        Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.devices_remove))
+                        Icon(Icons.Outlined.Close, contentDescription = stringResource(Res.string.devices_remove))
                     }
                 }
             },
