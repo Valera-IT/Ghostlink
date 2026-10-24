@@ -92,9 +92,9 @@ import io.github.valerait.ghostlink.core.model.MessageId
 import io.github.valerait.ghostlink.core.model.MessageStatus
 import io.github.valerait.ghostlink.core.model.ReplyTo
 import io.github.valerait.ghostlink.core.model.UserId
+import io.github.valerait.ghostlink.core.platform.rememberCopyToClipboard
 import io.github.valerait.ghostlink.core.ui.dayLabel
 import io.github.valerait.ghostlink.core.ui.formatTime
-import io.github.valerait.ghostlink.core.ui.rememberCopyToClipboard
 import io.github.valerait.ghostlink.core.ui.rememberNow
 import io.github.valerait.ghostlink.core.ui.resources.Res
 import io.github.valerait.ghostlink.core.ui.resources.action_back

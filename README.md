@@ -30,13 +30,14 @@ core/firebase  DTO документов Firestore и поля bytes через �
 core/data      репозитории на Firebase (GitLive), мапперы DTO → domain, ошибки → GhostlinkError (KMP)
 core/testing   FakeBackend — все репозитории в памяти, фейк для тестов (KMP)
 core/demo      DemoBackend — демо-режим со стартовыми чатами и ботом (KMP)
+core/platform  защищённое хранилище, это устройство, жизненный цикл, диплинки, сканер QR, буфер обмена (KMP)
 core/designsystem  тема: палитры, формы сообщений, типографика, логотип (Compose Multiplatform)
 core/ui        аватар, время и «в сети», QR-картинка, плашка демо-режима, строки интерфейса en/ru в Compose Resources
 feature/*      экраны по модулям: onboarding, chats, chat, friends, devices, link, recovery, settings.
                ViewModel по UDF (UiState вниз, Action вверх, разовые Effect), свои маршруты и Koin-модуль;
-               видят только core:domain и UI-модули, друг о друге не знают (Compose Multiplatform)
+               видят только core:domain, core:platform и UI-модули, друг о друге не знают (Compose Multiplatform)
 app/ui         корневой граф навигации: соединяет фичи между собой
-app/data       Android Keystore для ключа аккаунта, выбранные тема и язык
+app/data       выбранные тема и язык
 app/di         Koin: собирает модули core:* и feature:*, выбирает Firebase или демо в зависимости от наличия конфига
 ```
 

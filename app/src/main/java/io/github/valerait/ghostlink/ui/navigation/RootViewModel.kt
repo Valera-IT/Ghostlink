@@ -5,11 +5,10 @@ import androidx.lifecycle.viewModelScope
 import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
 import io.github.valerait.ghostlink.core.domain.repository.UserRepository
 import io.github.valerait.ghostlink.core.model.UserId
+import io.github.valerait.ghostlink.core.platform.DeepLinks
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -31,6 +30,7 @@ sealed interface RootState {
 class RootViewModel(
     auth: AuthRepository,
     users: UserRepository,
+    private val deepLinks: DeepLinks,
 ) : ViewModel() {
     val state: StateFlow<RootState> =
         auth.account
@@ -46,14 +46,7 @@ class RootViewModel(
             .stateIn(viewModelScope, SharingStarted.Eagerly, RootState.Loading)
 
     // Приглашение может прийти до онбординга — тогда откроем его сразу после.
-    private val _pendingInvite = MutableStateFlow<UserId?>(null)
-    val pendingInvite: StateFlow<UserId?> = _pendingInvite.asStateFlow()
+    val pendingInvite: StateFlow<UserId?> = deepLinks.pendingInvite
 
-    fun onInvite(userId: UserId) {
-        _pendingInvite.value = userId
-    }
-
-    fun onInviteHandled() {
-        _pendingInvite.value = null
-    }
+    fun onInviteHandled() = deepLinks.inviteHandled()
 }

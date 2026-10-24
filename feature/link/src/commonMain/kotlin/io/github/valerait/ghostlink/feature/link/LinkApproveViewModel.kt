@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.valerait.ghostlink.core.domain.usecase.ApproveDeviceLinkUseCase
 import io.github.valerait.ghostlink.core.model.LinkCode
 import io.github.valerait.ghostlink.core.model.Platform
-import io.github.valerait.ghostlink.core.ui.logWarning
+import io.github.valerait.ghostlink.core.platform.logWarning
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

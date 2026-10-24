@@ -2,7 +2,7 @@ package io.github.valerait.ghostlink.core.data
 
 import io.github.valerait.ghostlink.core.model.AccountKey
 
-/** Где устройство хранит ключ своего аккаунта. Реализация платформенная: Android Keystore, Keychain. */
+/** Где устройство хранит ключ своего аккаунта. */
 interface AccountKeyStore {
     fun get(userId: String): AccountKey?
 

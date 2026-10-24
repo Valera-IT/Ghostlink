@@ -10,10 +10,10 @@ import io.github.valerait.ghostlink.core.domain.usecase.RenameProfileUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.SignOutUseCase
 import io.github.valerait.ghostlink.core.model.ThisDevice
 import io.github.valerait.ghostlink.core.model.UserId
+import io.github.valerait.ghostlink.core.platform.logWarning
 import io.github.valerait.ghostlink.core.ui.AppConfig
 import io.github.valerait.ghostlink.core.ui.AppLanguage
 import io.github.valerait.ghostlink.core.ui.LanguageSettings
-import io.github.valerait.ghostlink.core.ui.logWarning
 import io.github.valerait.ghostlink.core.ui.resources.Res
 import io.github.valerait.ghostlink.core.ui.resources.error_generic
 import kotlinx.coroutines.flow.MutableStateFlow

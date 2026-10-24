@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
 /**
  * Модуль фичи: экраны на Compose Multiplatform, ViewModel и маршруты навигации.
- * Видит только core:domain и UI-модули: реализации репозиториев подключает приложение через Koin,
+ * Видит только core:domain, core:platform и UI-модули: реализации репозиториев подключает приложение через Koin,
  * а в другую фичу экран переходит через переданную лямбду (см. ARCHITECTURE.md).
  */
 class FeatureConventionPlugin : Plugin<Project> {
@@ -21,6 +21,7 @@ class FeatureConventionPlugin : Plugin<Project> {
                 sourceSets.commonMain.dependencies {
                     implementation(project(":core:domain"))
                     implementation(project(":core:ui"))
+                    implementation(project(":core:platform"))
                     implementation(libs.library("cmp-material-icons-extended"))
                     implementation(libs.library("jb-navigation-compose"))
                     implementation(libs.library("jb-lifecycle-viewmodel-compose"))
@@ -38,7 +39,7 @@ class FeatureConventionPlugin : Plugin<Project> {
             configurations.configureEach {
                 dependencies.withType(ProjectDependency::class.java).configureEach {
                     check(path == target.path || (!path.startsWith(":feature:") && path != ":core:data")) {
-                        "${target.path} не может зависеть от $path: фичи видят только core:domain и UI-модули"
+                        "${target.path} не может зависеть от $path: фичи видят только core:domain, core:platform и UI-модули"
                     }
                 }
             }

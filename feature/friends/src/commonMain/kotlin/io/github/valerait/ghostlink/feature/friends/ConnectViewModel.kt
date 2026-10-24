@@ -10,7 +10,7 @@ import io.github.valerait.ghostlink.core.domain.usecase.AddFriendUseCase
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.core.ui.logWarning
+import io.github.valerait.ghostlink.core.platform.logWarning
 import io.github.valerait.ghostlink.core.ui.resources.Res
 import io.github.valerait.ghostlink.core.ui.resources.error_generic
 import kotlinx.coroutines.channels.Channel
