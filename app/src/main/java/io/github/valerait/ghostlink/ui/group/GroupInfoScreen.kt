@@ -42,13 +42,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.model.GroupInfo
 import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.ui.common.Avatar
+import org.koin.compose.viewmodel.koinViewModel
 
 /** Карточка группы: участники, название; админ добавляет и удаляет участников, любой может выйти. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,7 +57,7 @@ fun GroupInfoScreen(
     onBack: () -> Unit,
     onAddMembers: () -> Unit,
     onLeft: () -> Unit,
-    viewModel: GroupInfoViewModel = hiltViewModel(),
+    viewModel: GroupInfoViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var renaming by rememberSaveable { mutableStateOf(false) }

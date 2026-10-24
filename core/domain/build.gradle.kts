@@ -8,6 +8,7 @@ kotlin {
         commonMain.dependencies {
             api(project(":core:model"))
             api(libs.kotlinx.coroutines.core)
+            api(libs.koin.core)
         }
         commonTest.dependencies {
             implementation(project(":core:testing"))

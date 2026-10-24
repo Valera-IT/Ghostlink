@@ -1,18 +1,20 @@
 package io.github.valerait.ghostlink
 
 import android.app.Application
-import dagger.hilt.android.HiltAndroidApp
-import javax.inject.Inject
+import io.github.valerait.ghostlink.di.AppConfig
+import io.github.valerait.ghostlink.di.appModules
+import org.koin.android.ext.android.get
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.startKoin
 
-@HiltAndroidApp
 class GhostlinkApp : Application() {
-    @Inject lateinit var presence: PresenceTracker
-
-    @Inject lateinit var deviceRegistry: DeviceRegistry
-
     override fun onCreate() {
         super.onCreate()
-        presence.start()
-        deviceRegistry.start()
+        startKoin {
+            androidContext(this@GhostlinkApp)
+            modules(appModules(AppConfig.detect(this@GhostlinkApp)))
+        }
+        get<PresenceTracker>().start()
+        get<DeviceRegistry>().start()
     }
 }

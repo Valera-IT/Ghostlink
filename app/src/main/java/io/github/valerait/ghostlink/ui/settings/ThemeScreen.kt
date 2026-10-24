@@ -39,27 +39,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.data.settings.ThemeId
 import io.github.valerait.ghostlink.data.settings.ThemePreferences
 import io.github.valerait.ghostlink.ui.theme.GhostlinkTheme
 import io.github.valerait.ghostlink.ui.theme.LocalChatStyle
-import javax.inject.Inject
+import org.koin.compose.viewmodel.koinViewModel
 
-@HiltViewModel
-class ThemeViewModel
-    @Inject
-    constructor(
-        private val prefs: ThemePreferences,
-    ) : ViewModel() {
-        val theme = prefs.theme
+class ThemeViewModel(
+    private val prefs: ThemePreferences,
+) : ViewModel() {
+    val theme = prefs.theme
 
-        fun select(theme: ThemeId) = prefs.setTheme(theme)
-    }
+    fun select(theme: ThemeId) = prefs.setTheme(theme)
+}
 
 @get:StringRes
 val ThemeId.title: Int
@@ -77,7 +72,7 @@ val ThemeId.title: Int
 @Composable
 fun ThemeScreen(
     onBack: () -> Unit,
-    viewModel: ThemeViewModel = hiltViewModel(),
+    viewModel: ThemeViewModel = koinViewModel(),
 ) {
     val current by viewModel.theme.collectAsStateWithLifecycle()
     Scaffold(

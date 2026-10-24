@@ -5,7 +5,6 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
 import io.github.valerait.ghostlink.core.domain.repository.UserRepository
@@ -22,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed interface ConnectState {
     data object Loading : ConnectState
@@ -38,59 +36,56 @@ sealed interface ConnectState {
     ) : ConnectState
 }
 
-@HiltViewModel
-class ConnectViewModel
-    @Inject
-    constructor(
-        savedStateHandle: SavedStateHandle,
-        auth: AuthRepository,
-        private val users: UserRepository,
-        private val addFriend: AddFriendUseCase,
-    ) : ViewModel() {
-        private val friendId = UserId(checkNotNull(savedStateHandle["userId"]))
-        private val me = auth.requireUserId()
+class ConnectViewModel(
+    savedStateHandle: SavedStateHandle,
+    auth: AuthRepository,
+    private val users: UserRepository,
+    private val addFriend: AddFriendUseCase,
+) : ViewModel() {
+    private val friendId = UserId(checkNotNull(savedStateHandle["userId"]))
+    private val me = auth.requireUserId()
 
-        private val _state = MutableStateFlow<ConnectState>(ConnectState.Loading)
-        val state: StateFlow<ConnectState> = _state.asStateFlow()
+    private val _state = MutableStateFlow<ConnectState>(ConnectState.Loading)
+    val state: StateFlow<ConnectState> = _state.asStateFlow()
 
-        private val _chatReady = Channel<ChatId>(Channel.BUFFERED)
-        val chatReady: Flow<ChatId> = _chatReady.receiveAsFlow()
+    private val _chatReady = Channel<ChatId>(Channel.BUFFERED)
+    val chatReady: Flow<ChatId> = _chatReady.receiveAsFlow()
 
-        init {
-            viewModelScope.launch {
-                _state.value =
-                    when {
-                        friendId == me -> {
-                            ConnectState.Self
-                        }
+    init {
+        viewModelScope.launch {
+            _state.value =
+                when {
+                    friendId == me -> {
+                        ConnectState.Self
+                    }
 
-                        else -> {
-                            try {
-                                users.getUser(friendId)?.let { ConnectState.Found(it) } ?: ConnectState.NotFound
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Failed to load user", e)
-                                ConnectState.NotFound
-                            }
+                    else -> {
+                        try {
+                            users.getUser(friendId)?.let { ConnectState.Found(it) } ?: ConnectState.NotFound
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to load user", e)
+                            ConnectState.NotFound
                         }
                     }
-            }
-        }
-
-        fun connect() {
-            val found = _state.value as? ConnectState.Found ?: return
-            if (found.busy) return
-            _state.value = found.copy(busy = true, error = null)
-            viewModelScope.launch {
-                try {
-                    _chatReady.send(addFriend(friendId))
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to start chat", e)
-                    _state.update { (it as? ConnectState.Found)?.copy(busy = false, error = R.string.error_generic) ?: it }
                 }
-            }
-        }
-
-        private companion object {
-            const val TAG = "Connect"
         }
     }
+
+    fun connect() {
+        val found = _state.value as? ConnectState.Found ?: return
+        if (found.busy) return
+        _state.value = found.copy(busy = true, error = null)
+        viewModelScope.launch {
+            try {
+                _chatReady.send(addFriend(friendId))
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to start chat", e)
+                _state.update { (it as? ConnectState.Found)?.copy(busy = false, error = R.string.error_generic) ?: it }
+            }
+        }
+    }
+
+    private companion object {
+        const val TAG = "Connect"
+    }
+}
