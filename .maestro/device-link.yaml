@@ -1,0 +1,29 @@
+# Привязка устройств на одном эмуляторе.
+# Новое устройство показывает QR с обратным отсчётом; устройство с аккаунтом видит свои устройства и удаляет лишнее.
+# Подтверждение камерой проверяется вручную на iPhone (пункт 4.2): сканер на эмуляторе не работает,
+# а принимать код входа из диплинка приложение намеренно не умеет — так увели бы аккаунт присланной ссылкой.
+appId: io.github.valerait.ghostlink.demo
+name: Привязка устройств
+---
+- runFlow: common/launch.yaml
+# На маленьком экране кнопки входа уходят ниже края.
+- scrollUntilVisible:
+    element: "Sign in from another device"
+- tapOn: "Sign in from another device"
+- assertVisible: "QR code for signing in on this device"
+- assertVisible: "Code expires in .*"
+- assertVisible: "How to sign in"
+- tapOn: "Back"
+- assertVisible: "Get started"
+
+- runFlow: common/register.yaml
+- tapOn: "Settings"
+- tapOn: "Devices"
+- assertVisible: "This device"
+- assertVisible: "Link a device"
+- assertVisible: "MacBook Air"
+- tapOn: "Remove device"
+- assertVisible: "Remove “MacBook Air”?"
+# Пока открыт диалог, Maestro видит только его окно: кнопка подтверждения там одна.
+- tapOn: "Remove device"
+- assertNotVisible: "MacBook Air"

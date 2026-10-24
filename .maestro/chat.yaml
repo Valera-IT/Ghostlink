@@ -1,0 +1,16 @@
+# Чат: отправка сообщения, статус «прочитано» и ответ бота.
+appId: io.github.valerait.ghostlink.demo
+name: Чат
+---
+- runFlow: common/register.yaml
+- tapOn: "Призрак"
+- tapOn: "Message"
+- inputText: "Hello from Maestro"
+- tapOn: "Send"
+- assertVisible: "Hello from Maestro"
+- extendedWaitUntil:
+    visible: "Я тебя слышу, даже если ты меня не видишь 👻"
+    timeout: 10000
+- assertVisible: "Read"
+- tapOn: "Back"
+- assertVisible: "You: Hello from Maestro|Я тебя слышу.*"

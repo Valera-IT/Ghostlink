@@ -1,0 +1,24 @@
+# Чистый запуск приложения. Только что загруженный эмулятор иногда показывает
+# «System UI / Pixel Launcher isn't responding» поверх приложения — ждём, а не закрываем.
+# Запуск сразу после прошлого сценария Android иногда убивает вместе с недобитой старой задачей
+# («Destroy timeout of remove-task» → «failed to attach»), и экран остаётся пустым — тогда запускаем ещё раз.
+appId: io.github.valerait.ghostlink.demo
+---
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            visible: ".*isn't responding"
+          commands:
+            - tapOn: "Wait"
+      - launchApp:
+          clearState: true
+      - runFlow:
+          when:
+            visible: ".*isn't responding"
+          commands:
+            - tapOn: "Wait"
+      - extendedWaitUntil:
+          visible: "Get started"
+          timeout: 15000

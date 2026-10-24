@@ -1,0 +1,5 @@
+# Сценарии на demo-флейворе: бэкенд в памяти с ботом, без Firebase и секретов.
+# Запуск: ./gradlew :apps:android:installDemoDebug && maestro test .maestro
+# Тексты интерфейса — английские: локаль эмулятора en-US.
+flows:
+  - "*.yaml"

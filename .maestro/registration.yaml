@@ -1,0 +1,13 @@
+# Регистрация: имя → список чатов со стартовыми чатами демо-режима.
+appId: io.github.valerait.ghostlink.demo
+name: Регистрация
+---
+- runFlow:
+    file: common/register.yaml
+    env:
+      NAME: Maestro
+- assertVisible: "Призрак"
+- assertVisible: "Аня"
+- assertVisible: "Митап 👻"
+- tapOn: "Settings"
+- assertVisible: "Maestro"
