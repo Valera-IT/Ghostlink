@@ -175,6 +175,10 @@ class Strings(
 
     // Настройки
     val tapToRename: String,
+    val profilePhoto: String,
+    val pickPhoto: String,
+    val removePhoto: String,
+    val photoFailed: String,
     val rename: String,
     val appearance: String,
     val theme: String,
@@ -362,6 +366,10 @@ val RuStrings = Strings(
     connectError = "Что-то пошло не так. Попробуйте ещё раз.",
 
     tapToRename = "Нажмите, чтобы изменить имя",
+    profilePhoto = "Фото профиля",
+    pickPhoto = "Выбрать фото",
+    removePhoto = "Удалить фото",
+    photoFailed = "Не удалось поставить фото. Попробуйте другое.",
     rename = "Изменить имя",
     appearance = "Оформление",
     theme = "Тема",
@@ -529,6 +537,10 @@ val EnStrings = Strings(
     connectError = "Something went wrong. Please try again.",
 
     tapToRename = "Tap to change your name",
+    profilePhoto = "Profile photo",
+    pickPhoto = "Choose a photo",
+    removePhoto = "Remove photo",
+    photoFailed = "Couldn't set this photo. Try another one.",
     rename = "Change name",
     appearance = "Appearance",
     theme = "Theme",

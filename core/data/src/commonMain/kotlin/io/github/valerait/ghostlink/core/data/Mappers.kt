@@ -39,7 +39,8 @@ internal val Platform.wireName: String get() = name.lowercase()
 
 internal fun platformOf(wireName: String?): Platform = Platform.entries.firstOrNull { it.wireName == wireName } ?: Platform.Unknown
 
-internal fun UserDto.toUser(id: String) = User(id = UserId(id), name = name, online = online, lastSeen = lastSeen?.instant)
+internal fun UserDto.toUser(id: String) =
+    User(id = UserId(id), name = name, online = online, lastSeen = lastSeen?.instant, avatarVersion = avatarVersion?.takeIf { it > 0 })
 
 internal fun DeviceDto.toDevice(id: String) =
     Device(id = DeviceId(id), name = name, platform = platformOf(platform), lastActiveAt = lastActiveAt?.instant)

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -33,6 +34,8 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.PhoneIphone
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.AlertDialog
@@ -48,6 +51,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -88,6 +93,7 @@ import io.github.valerait.ghostlink.model.LinkCode
 import io.github.valerait.ghostlink.platform.DeviceInfo
 import io.github.valerait.ghostlink.platform.logWarning
 import io.github.valerait.ghostlink.platform.nowMillis
+import io.github.valerait.ghostlink.platform.rememberAvatarPicker
 import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.BackButton
 import io.github.valerait.ghostlink.ui.common.formatChatListTime
@@ -114,12 +120,52 @@ fun SettingsScreen(onBack: () -> Unit, onDevices: () -> Unit, onTheme: () -> Uni
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
     var pickingLanguage by rememberSaveable { mutableStateOf(false) }
     var recoveryCode by remember { mutableStateOf<String?>(null) }
+    var photoMenu by rememberSaveable { mutableStateOf(false) }
+    var photoBusy by remember { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
     val name = user?.name.orEmpty()
 
-    Scaffold(topBar = { TopAppBar(title = { Text(strings.settings) }, navigationIcon = { BackButton(onBack) }) }) { padding ->
+    fun photoAction(block: suspend () -> Unit) {
+        if (photoBusy) return
+        photoBusy = true
+        scope.launch {
+            runCatching { block() }.onFailure {
+                logWarning("Settings", "Photo update failed", it)
+                snackbar.showSnackbar(strings.photoFailed)
+            }
+            photoBusy = false
+        }
+    }
+    val pickPhoto = rememberAvatarPicker(
+        onPicked = { jpeg -> photoAction { AppGraph.users.setAvatar(me, jpeg) } },
+        onFailed = { scope.launch { snackbar.showSnackbar(strings.photoFailed) } },
+    )
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
+        topBar = { TopAppBar(title = { Text(strings.settings) }, navigationIcon = { BackButton(onBack) }) },
+    ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             Row(Modifier.fillMaxWidth().clickable { renaming = true }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Avatar(name, me, size = 72.dp)
+                // Нажатие на аватар ставит фото, а если оно уже есть — предлагает сменить или удалить.
+                Box(
+                    Modifier.clickable(enabled = !photoBusy, onClickLabel = strings.profilePhoto) {
+                        if (user?.avatarVersion != null) photoMenu = true else pickPhoto()
+                    },
+                ) {
+                    Avatar(name, me, size = 72.dp, photoVersion = user?.avatarVersion)
+                    if (photoBusy) {
+                        CircularProgressIndicator(Modifier.size(72.dp))
+                    } else {
+                        Icon(
+                            Icons.Outlined.PhotoCamera,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.align(Alignment.BottomEnd).size(24.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape).padding(4.dp),
+                        )
+                    }
+                }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Text(name, style = MaterialTheme.typography.headlineSmall)
@@ -176,6 +222,33 @@ fun SettingsScreen(onBack: () -> Unit, onDevices: () -> Unit, onTheme: () -> Uni
     }
 
     recoveryCode?.let { RecoveryCodeDialog(it, strings.recoveryKey) { recoveryCode = null } }
+    if (photoMenu) {
+        AlertDialog(
+            onDismissRequest = { photoMenu = false },
+            title = { Text(strings.profilePhoto) },
+            text = {
+                Column {
+                    ListItem(
+                        leadingContent = { Icon(Icons.Outlined.PhotoLibrary, contentDescription = null) },
+                        headlineContent = { Text(strings.pickPhoto) },
+                        modifier = Modifier.clickable {
+                            photoMenu = false
+                            pickPhoto()
+                        },
+                    )
+                    ListItem(
+                        leadingContent = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                        headlineContent = { Text(strings.removePhoto, color = MaterialTheme.colorScheme.error) },
+                        modifier = Modifier.clickable {
+                            photoMenu = false
+                            photoAction { AppGraph.users.removeAvatar(me) }
+                        },
+                    )
+                }
+            },
+            confirmButton = { TextButton(onClick = { photoMenu = false }) { Text(strings.cancel) } },
+        )
+    }
     if (renaming) {
         RenameDialog(name, onDismiss = { renaming = false }) { newName ->
             renaming = false

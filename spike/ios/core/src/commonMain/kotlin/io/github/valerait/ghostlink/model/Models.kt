@@ -45,8 +45,18 @@ data class User(
     val name: String,
     val online: Boolean = false,
     val lastSeen: Long? = null,
+    /** Версия фото профиля из avatars/{uid}; null — фото нет, показываем инициалы. */
+    val avatarVersion: Long? = null,
 ) {
     fun isOnline(now: Long): Boolean = online && (lastSeen == null || now - lastSeen < ONLINE_TIMEOUT_MS)
+
+    companion object {
+        /** Сторона квадратного фото профиля. */
+        const val AVATAR_SIZE_PX = 256
+
+        /** Потолок JPEG фото профиля; совпадает с ограничением в firestore.rules. */
+        const val AVATAR_MAX_BYTES = 64 * 1024
+    }
 }
 
 data class LastMessage(

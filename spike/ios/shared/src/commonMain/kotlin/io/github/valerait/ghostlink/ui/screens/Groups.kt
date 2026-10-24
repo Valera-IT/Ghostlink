@@ -203,7 +203,7 @@ fun PickMembersScreen(
                     modifier = Modifier.fillMaxWidth().clickable(enabled = enabled) { viewModel.toggle(friend.id) }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    Avatar(friend.name, friend.id, size = 44.dp)
+                    Avatar(friend.name, friend.id, size = 44.dp, photoVersion = friend.avatarVersion)
                     Spacer(Modifier.width(14.dp))
                     Text(friend.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     Checkbox(checked = checked, onCheckedChange = { viewModel.toggle(friend.id) }, enabled = enabled)
@@ -353,7 +353,7 @@ fun GroupInfoScreen(
 @Composable
 private fun MemberRow(member: User, isMe: Boolean, isOwner: Boolean, onRemove: (() -> Unit)?) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Avatar(member.name, member.id, size = 44.dp)
+        Avatar(member.name, member.id, size = 44.dp, photoVersion = member.avatarVersion)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(if (isMe) strings.meSuffix(member.name) else member.name, style = MaterialTheme.typography.titleMedium)
