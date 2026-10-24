@@ -1,6 +1,5 @@
 package io.github.valerait.ghostlink.core.domain
 
-import io.github.valerait.ghostlink.core.domain.repository.DeviceRepository
 import io.github.valerait.ghostlink.core.domain.usecase.AddFriendUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.ApproveDeviceLinkUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.CreateAccountUseCase
@@ -101,22 +100,10 @@ class UseCasesTest {
             val backend = backend()
             val me = backend.createAccount().id
             backend.registerDevice(me, Device(PHONE, "Pixel", Platform.Android))
-            // Фейк забывает реестр при выходе, поэтому удаление запоминаем сами.
-            val removed = mutableListOf<DeviceId>()
-            val devices =
-                object : DeviceRepository by backend {
-                    override suspend fun removeDevice(
-                        userId: UserId,
-                        deviceId: DeviceId,
-                    ) {
-                        removed += deviceId
-                        backend.removeDevice(userId, deviceId)
-                    }
-                }
 
-            SignOutUseCase(backend, backend, devices)(PHONE)
+            SignOutUseCase(backend, backend, backend)(PHONE)
 
-            assertEquals(listOf(PHONE), removed)
+            assertEquals(emptyList(), backend.observeDevices(me).first())
             assertNull(backend.account.value)
         }
 

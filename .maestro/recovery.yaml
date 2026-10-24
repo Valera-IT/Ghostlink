@@ -1,0 +1,28 @@
+# Тот же аккаунт после выхода: ключ восстановления из настроек → выход → вход по ключу.
+appId: io.github.valerait.ghostlink.demo
+name: Ключ восстановления
+---
+- runFlow: common/register.yaml
+- tapOn: "Settings"
+- tapOn: "Recovery key"
+# Ключ в диалоге: 8 групп по 5 символов, по 4 группы в строке. Перенос строки при вводе отбрасывается, как и дефисы.
+- copyTextFrom: "[0-9A-Z]{5}(-[0-9A-Z]{5}){3}\\s[0-9A-Z]{5}(-[0-9A-Z]{5}){3}"
+- tapOn: "Done"
+- scrollUntilVisible:
+    element: "Sign out"
+- tapOn: "Sign out"
+- assertVisible: "Sign out of Ghostlink?"
+# Пока открыт диалог, Maestro видит только его окно: кнопка подтверждения там одна.
+- tapOn: "Sign out"
+- tapOn: "Enter recovery key"
+- tapOn: "Key"
+- pasteText
+- hideKeyboard
+- tapOn: "Sign in"
+- extendedWaitUntil:
+    visible: "My code"
+    timeout: 10000
+# Профиль и чаты живут на «сервере» и возвращаются после входа по ключу.
+- assertVisible: "Призрак"
+- tapOn: "Settings"
+- assertVisible: "Maestro"
