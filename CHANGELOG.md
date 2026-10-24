@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/Valera-IT/Ghostlink/compare/ghostlink-v0.4.0...ghostlink-v0.4.1) (2026-10-24)
+
+
+### Документация
+
+* **roadmap:** iOS becomes stage 4, desktop moves to stage 5 ([#52](https://github.com/Valera-IT/Ghostlink/issues/52)) ([bd57cac](https://github.com/Valera-IT/Ghostlink/commit/bd57cac556c073bd91cd7fc9b049b3bf342ed50f))
+* **roadmap:** store readiness stage 6.5 and E2E stage 8 ([#56](https://github.com/Valera-IT/Ghostlink/issues/56)) ([fd103f1](https://github.com/Valera-IT/Ghostlink/commit/fd103f1f43de6446d72a5a882a70e3971e107e91))
+
 ## [0.4.0](https://github.com/Valera-IT/Ghostlink/compare/ghostlink-v0.3.0...ghostlink-v0.4.0) (2026-10-24)
 
 
