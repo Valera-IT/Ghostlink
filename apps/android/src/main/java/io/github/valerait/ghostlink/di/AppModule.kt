@@ -7,8 +7,11 @@ import io.github.valerait.ghostlink.core.data.PresenceTracker
 import io.github.valerait.ghostlink.core.data.dataModule
 import io.github.valerait.ghostlink.core.demo.demoModule
 import io.github.valerait.ghostlink.core.domain.domainModule
+import io.github.valerait.ghostlink.core.domain.repository.UserRepository
+import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.core.platform.platformModule
 import io.github.valerait.ghostlink.core.ui.AppConfig
+import io.github.valerait.ghostlink.core.ui.AvatarPhotos
 import io.github.valerait.ghostlink.core.ui.LanguageSettings
 import io.github.valerait.ghostlink.core.ui.ThemeSettings
 import io.github.valerait.ghostlink.data.settings.LanguagePreferences
@@ -53,6 +56,10 @@ private fun appModule(config: AppConfig) =
         singleOf(::LanguagePreferences) { bind<LanguageSettings>() }
         singleOf(::PresenceTracker)
         singleOf(::DeviceRegistry)
+        single {
+            val users = get<UserRepository>()
+            AvatarPhotos { id, version -> users.getAvatar(UserId(id), version) }
+        }
 
         viewModelOf(::RootViewModel)
     }

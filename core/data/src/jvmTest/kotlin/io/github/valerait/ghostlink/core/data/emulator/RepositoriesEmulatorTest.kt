@@ -10,6 +10,7 @@ import io.github.valerait.ghostlink.core.model.GhostlinkError
 import io.github.valerait.ghostlink.core.model.MessageStatus
 import io.github.valerait.ghostlink.core.model.Platform
 import io.github.valerait.ghostlink.core.model.ReplyTo
+import io.github.valerait.ghostlink.core.model.User
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,11 +20,13 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlin.test.AfterTest
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -318,6 +321,40 @@ class RepositoriesEmulatorTest {
             // Повторное добавление друга снимает hidden.
             me.chats.startChat(meId, friendId)
             withTimeout(TIMEOUT) { me.chats.observeChatPrefs(meId).first { it[chatId]?.hidden == false } }
+        }
+
+    /** Фото профиля: bytes в avatars/{uid} проходит правила, друг видит новую версию и скачивает именно её. */
+    @Test
+    fun profilePhotoReachesFriendAndCanBeRemoved() =
+        emulatorTest {
+            val me = client()
+            val friend = client()
+            val meId =
+                me.auth
+                    .createAccount()
+                    .id
+                    .also { me.users.saveProfile(it, "Me") }
+            friend.auth.createAccount().also { friend.users.saveProfile(it.id, "Friend") }
+            val jpeg = ByteArray(User.AVATAR_MAX_BYTES) { it.toByte() }
+
+            me.users.setAvatar(meId, jpeg)
+            val version =
+                withTimeout(TIMEOUT) {
+                    friend.users
+                        .observeUser(meId)
+                        .mapNotNull { it?.avatarVersion }
+                        .first()
+                }
+            assertContentEquals(jpeg, friend.users.getAvatar(meId, version))
+            assertNull(friend.users.getAvatar(meId, version - 1), "устаревшая версия не отдаётся")
+            // Правила не пускают больше 64 КБ — клиент отказывает ещё до записи.
+            assertFailsWith<IllegalArgumentException> { me.users.setAvatar(meId, ByteArray(User.AVATAR_MAX_BYTES + 1)) }
+
+            me.users.removeAvatar(meId)
+            withTimeout(TIMEOUT) { friend.users.observeUser(meId).first { it?.avatarVersion == null } }
+            // У друга JPEG той версии остаётся в кэше, но без версии в профиле его больше не спросят; на сервере фото нет.
+            val stranger = client().also { it.auth.createAccount() }
+            assertNull(stranger.users.getAvatar(meId, version))
         }
 
     /**

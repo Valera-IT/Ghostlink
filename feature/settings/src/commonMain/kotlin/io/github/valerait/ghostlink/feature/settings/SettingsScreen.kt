@@ -1,6 +1,8 @@
 package io.github.valerait.ghostlink.feature.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,20 +10,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -50,6 +58,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.core.designsystem.LocalThemeId
 import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.core.platform.ImageRequest
+import io.github.valerait.ghostlink.core.platform.rememberImagePicker
 import io.github.valerait.ghostlink.core.ui.AppLanguage
 import io.github.valerait.ghostlink.core.ui.Avatar
 import io.github.valerait.ghostlink.core.ui.DemoModeBanner
@@ -67,6 +77,9 @@ import io.github.valerait.ghostlink.core.ui.resources.settings_appearance
 import io.github.valerait.ghostlink.core.ui.resources.settings_devices
 import io.github.valerait.ghostlink.core.ui.resources.settings_devices_hint
 import io.github.valerait.ghostlink.core.ui.resources.settings_language
+import io.github.valerait.ghostlink.core.ui.resources.settings_photo
+import io.github.valerait.ghostlink.core.ui.resources.settings_photo_pick
+import io.github.valerait.ghostlink.core.ui.resources.settings_photo_remove
 import io.github.valerait.ghostlink.core.ui.resources.settings_recovery_key
 import io.github.valerait.ghostlink.core.ui.resources.settings_recovery_key_hint
 import io.github.valerait.ghostlink.core.ui.resources.settings_rename
@@ -94,7 +107,14 @@ fun SettingsScreen(
     var renaming by rememberSaveable { mutableStateOf(false) }
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
     var pickingLanguage by rememberSaveable { mutableStateOf(false) }
+    var photoMenu by rememberSaveable { mutableStateOf(false) }
     val language by viewModel.language.collectAsStateWithLifecycle()
+    val pickPhoto =
+        rememberImagePicker(
+            request = AvatarRequest,
+            onPicked = { viewModel.onAction(SettingsAction.SetPhoto(it)) },
+            onFailed = { viewModel.onAction(SettingsAction.PhotoFailed) },
+        )
 
     val messageText = state.message?.let { stringResource(it) }
     LaunchedEffect(messageText) {
@@ -133,7 +153,10 @@ fun SettingsScreen(
                         .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Avatar(state.name, state.userId.value, size = 72.dp)
+                ProfilePhoto(
+                    state = state,
+                    onClick = { if (state.avatarVersion != null) photoMenu = true else pickPhoto() },
+                )
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Text(state.name, style = MaterialTheme.typography.headlineSmall)
@@ -224,6 +247,19 @@ fun SettingsScreen(
             },
         )
     }
+    if (photoMenu) {
+        PhotoDialog(
+            onDismiss = { photoMenu = false },
+            onPick = {
+                photoMenu = false
+                pickPhoto()
+            },
+            onRemove = {
+                photoMenu = false
+                viewModel.onAction(SettingsAction.RemovePhoto)
+            },
+        )
+    }
     if (pickingLanguage) {
         LanguageDialog(
             current = language,
@@ -252,6 +288,63 @@ fun SettingsScreen(
             },
         )
     }
+}
+
+private val AvatarRequest = ImageRequest(maxSidePx = User.AVATAR_SIZE_PX, maxBytes = User.AVATAR_MAX_BYTES, square = true)
+
+/** Аватар со значком камеры: нажатие ставит фото, а если оно уже есть — предлагает сменить или удалить. */
+@Composable
+private fun ProfilePhoto(
+    state: SettingsUiState,
+    onClick: () -> Unit,
+) {
+    Box(Modifier.clickable(enabled = !state.photoBusy, onClickLabel = stringResource(Res.string.settings_photo), onClick = onClick)) {
+        Avatar(state.name, state.userId.value, size = 72.dp, photoVersion = state.avatarVersion)
+        if (state.photoBusy) {
+            CircularProgressIndicator(Modifier.size(72.dp))
+        } else {
+            Icon(
+                Icons.Outlined.PhotoCamera,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(24.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .padding(4.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PhotoDialog(
+    onDismiss: () -> Unit,
+    onPick: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.settings_photo)) },
+        text = {
+            Column {
+                ListItem(
+                    leadingContent = { Icon(Icons.Outlined.PhotoLibrary, contentDescription = null) },
+                    headlineContent = { Text(stringResource(Res.string.settings_photo_pick)) },
+                    modifier = Modifier.clickable(onClick = onPick),
+                )
+                ListItem(
+                    leadingContent = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    headlineContent = { Text(stringResource(Res.string.settings_photo_remove), color = MaterialTheme.colorScheme.error) },
+                    modifier = Modifier.clickable(onClick = onRemove),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
+        },
+    )
 }
 
 private val AppLanguage.title: StringResource

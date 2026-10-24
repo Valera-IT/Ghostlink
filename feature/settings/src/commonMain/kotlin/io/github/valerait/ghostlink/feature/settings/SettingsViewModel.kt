@@ -16,6 +16,7 @@ import io.github.valerait.ghostlink.core.ui.AppLanguage
 import io.github.valerait.ghostlink.core.ui.LanguageSettings
 import io.github.valerait.ghostlink.core.ui.resources.Res
 import io.github.valerait.ghostlink.core.ui.resources.error_generic
+import io.github.valerait.ghostlink.core.ui.resources.settings_photo_failed
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,9 +28,12 @@ import org.jetbrains.compose.resources.StringResource
 data class SettingsUiState(
     val userId: UserId = UserId(""),
     val name: String = "",
+    val avatarVersion: Long? = null,
     val demoMode: Boolean = false,
     val versionName: String = "",
     val busy: Boolean = false,
+    /** Фото профиля загружается или удаляется. */
+    val photoBusy: Boolean = false,
     val message: StringResource? = null,
     /** Ключ восстановления, пока открыт диалог с ним. */
     val recoveryCode: String? = null,
@@ -44,6 +48,16 @@ sealed interface SettingsAction {
         val name: String,
     ) : SettingsAction
 
+    /** Готовый JPEG из выбора фото. Не data class: у массива нет equals по содержимому. */
+    class SetPhoto(
+        val jpeg: ByteArray,
+    ) : SettingsAction
+
+    data object RemovePhoto : SettingsAction
+
+    /** Выбранное фото не прочиталось или не сжалось. */
+    data object PhotoFailed : SettingsAction
+
     data object ShowRecoveryKey : SettingsAction
 
     data object RecoveryKeyShown : SettingsAction
@@ -55,7 +69,7 @@ sealed interface SettingsAction {
 
 class SettingsViewModel(
     auth: AuthRepository,
-    users: UserRepository,
+    private val users: UserRepository,
     private val thisDevice: ThisDevice,
     private val config: AppConfig,
     private val renameProfile: RenameProfileUseCase,
@@ -67,6 +81,7 @@ class SettingsViewModel(
 
     private val me = auth.requireUserId()
     private val busy = MutableStateFlow(false)
+    private val photoBusy = MutableStateFlow(false)
     private val message = MutableStateFlow<StringResource?>(null)
     private val recoveryCode = MutableStateFlow<String?>(null)
 
@@ -74,15 +89,18 @@ class SettingsViewModel(
         combine(
             users.observeUser(me),
             busy,
+            photoBusy,
             message,
             recoveryCode,
-        ) { user, busy, message, recoveryCode ->
+        ) { user, busy, photoBusy, message, recoveryCode ->
             SettingsUiState(
                 userId = me,
                 name = user?.name.orEmpty(),
+                avatarVersion = user?.avatarVersion,
                 demoMode = config.demoMode,
                 versionName = config.versionName,
                 busy = busy,
+                photoBusy = photoBusy,
                 message = message,
                 recoveryCode = recoveryCode,
             )
@@ -96,6 +114,9 @@ class SettingsViewModel(
         when (action) {
             is SettingsAction.SelectLanguage -> selectLanguage(action.language)
             is SettingsAction.Rename -> rename(action.name)
+            is SettingsAction.SetPhoto -> launchBusy(photoBusy) { users.setAvatar(me, action.jpeg) }
+            SettingsAction.RemovePhoto -> launchBusy(photoBusy) { users.removeAvatar(me) }
+            SettingsAction.PhotoFailed -> message.value = Res.string.settings_photo_failed
             SettingsAction.ShowRecoveryKey -> showRecoveryKey()
             SettingsAction.RecoveryKeyShown -> onRecoveryKeyShown()
             SettingsAction.SignOut -> signOut()
@@ -122,7 +143,10 @@ class SettingsViewModel(
         message.value = null
     }
 
-    private fun launchBusy(block: suspend () -> Unit) {
+    private fun launchBusy(
+        busy: MutableStateFlow<Boolean> = this.busy,
+        block: suspend () -> Unit,
+    ) {
         if (busy.value) return
         busy.value = true
         viewModelScope.launch {

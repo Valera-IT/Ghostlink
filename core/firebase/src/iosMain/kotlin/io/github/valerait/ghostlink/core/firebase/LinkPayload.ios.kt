@@ -29,12 +29,12 @@ actual suspend fun DocumentReference.approveLinkRequest(
 
 actual fun DocumentSnapshot.linkPayload(): ByteArray? = (ios.valueForField("payload") as? NSData)?.toByteArray()
 
-private fun ByteArray.toNSData(): NSData =
+internal fun ByteArray.toNSData(): NSData =
     usePinned { pinned ->
         NSData.create(bytes = pinned.addressOf(0), length = size.convert())
     }
 
-private fun NSData.toByteArray(): ByteArray {
+internal fun NSData.toByteArray(): ByteArray {
     val size = length.toInt()
     if (size == 0) return ByteArray(0)
     return ByteArray(size).apply { usePinned { memcpy(it.addressOf(0), bytes, length) } }

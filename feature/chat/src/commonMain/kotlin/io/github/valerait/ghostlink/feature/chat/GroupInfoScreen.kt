@@ -186,7 +186,7 @@ private fun MemberRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Avatar(member.name, member.id.value, size = 44.dp)
+        Avatar(member.name, member.id.value, size = 44.dp, photoVersion = member.avatarVersion)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(if (isMe) stringResource(Res.string.group_you, member.name) else member.name, style = MaterialTheme.typography.titleMedium)

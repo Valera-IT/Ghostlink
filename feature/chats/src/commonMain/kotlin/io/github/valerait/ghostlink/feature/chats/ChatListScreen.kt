@@ -225,7 +225,12 @@ private fun ChatRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box {
-                Avatar(name = name, id = (item.partnerId?.value ?: item.chat.id.value), size = 52.dp)
+                Avatar(
+                    name = name,
+                    id = (item.partnerId?.value ?: item.chat.id.value),
+                    size = 52.dp,
+                    photoVersion = item.partner?.avatarVersion,
+                )
                 if (item.partner?.isOnline(now) == true) {
                     Box(
                         Modifier

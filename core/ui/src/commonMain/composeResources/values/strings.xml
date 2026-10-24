@@ -127,6 +127,10 @@
     <string name="settings_title">Settings</string>
     <string name="settings_rename">Change name</string>
     <string name="settings_tap_to_rename">Tap to change your name</string>
+    <string name="settings_photo">Profile photo</string>
+    <string name="settings_photo_pick">Choose a photo</string>
+    <string name="settings_photo_remove">Remove photo</string>
+    <string name="settings_photo_failed">Couldn't open this photo. Try another one.</string>
     <string name="settings_account">Account</string>
     <string name="settings_devices">Devices</string>
     <string name="settings_devices_hint">Sign in on a computer or another phone</string>
