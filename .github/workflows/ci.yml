@@ -50,6 +50,52 @@ jobs:
             build/reports/
           retention-days: 7
 
+  # Сквозные сценарии на demo-флейворе в эмуляторе: регистрация, чат, друг, привязка, ключ восстановления.
+  maestro:
+    name: Maestro-сценарии
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      MAESTRO_VERSION: 2.11.0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - run: ./gradlew :apps:android:assembleDemoDebug --stacktrace
+      - name: KVM для эмулятора
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Установка Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          # Экран как у настоящего телефона: по умолчанию эмулятор 320×640, и часть кнопок уходит за край.
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb install apps/android/build/outputs/apk/demo/debug/android-demo-debug.apk
+            maestro test .maestro --format junit --output build/maestro-report.xml
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-reports
+          path: |
+            build/maestro-report.xml
+            ~/.maestro/tests/
+          retention-days: 7
+
   firestore-rules:
     name: Тесты правил Firestore
     runs-on: ubuntu-latest

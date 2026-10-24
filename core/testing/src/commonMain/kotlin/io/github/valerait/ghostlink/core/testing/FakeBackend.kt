@@ -116,14 +116,11 @@ open class FakeBackend(
         return next
     }
 
+    // Выход забывает только сессию этого устройства: профиль, чаты и устройства живут на «сервере»,
+    // как в Firebase, и возвращаются после входа по ключу или с другого устройства.
     override suspend fun signOut() {
         _account.value = null
         _accountKey.value = null
-        users.value = emptyMap()
-        chats.value = emptyMap()
-        messages.value = emptyMap()
-        chatPrefs.value = emptyMap()
-        devices.value = emptyMap()
     }
 
     // endregion

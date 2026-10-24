@@ -1,0 +1,36 @@
+# Друг: свой QR и добавление по ссылке-приглашению ghostlink://add/<id>.
+# Сканер на эмуляторе не работает, поэтому код друга приходит диплинком — тем же путём, что присланная ссылка.
+appId: io.github.valerait.ghostlink.demo
+name: Друг
+---
+- runFlow: common/register.yaml
+- tapOn: "My code"
+- assertVisible: "QR code for adding as a friend"
+- assertVisible: "Share link"
+- tapOn: "Back"
+- openLink: "ghostlink://add/maestro-friend"
+# Если рядом стоит другой флейвор Ghostlink, Android спросит, чем открыть ссылку:
+# либо предложит Ghostlink Demo сразу, либо покажет список приложений.
+- runFlow:
+    when:
+      visible: "Open with Ghostlink Demo"
+    commands:
+      - tapOn: "Just once"
+- runFlow:
+    when:
+      visible: "Ghostlink Demo"
+    commands:
+      - tapOn: "Ghostlink Demo"
+      - runFlow:
+          when:
+            visible: "Just once"
+          commands:
+            - tapOn: "Just once"
+- assertVisible: "Призрак #maes"
+- tapOn: "Add and message"
+- tapOn: "Message"
+- inputText: "Nice to meet you"
+- tapOn: "Send"
+- assertVisible: "Nice to meet you"
+- tapOn: "Back"
+- assertVisible: "Призрак #maes"

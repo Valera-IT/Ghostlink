@@ -51,6 +51,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -134,10 +136,13 @@ fun ChatListScreen(
         },
         floatingActionButton = {
             if (state.items.isNotEmpty()) {
+                val label = stringResource(Res.string.action_my_code)
+                // Текст ExtendedFloatingActionButton не попадает в дерево доступности: подпись дублируем явно.
                 ExtendedFloatingActionButton(
                     onClick = onMyCode,
                     icon = { Icon(Icons.Filled.QrCode2, contentDescription = null) },
-                    text = { Text(stringResource(Res.string.action_my_code)) },
+                    text = { Text(label) },
+                    modifier = Modifier.semantics { contentDescription = label },
                 )
             }
         },

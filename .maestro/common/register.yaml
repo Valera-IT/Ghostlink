@@ -1,0 +1,12 @@
+# Чистый запуск и регистрация в один шаг: только имя.
+appId: io.github.valerait.ghostlink.demo
+---
+- runFlow: launch.yaml
+- assertVisible: "Demo mode.*"
+- tapOn: "What's your name?"
+- inputText: ${NAME || 'Maestro'}
+- hideKeyboard
+- tapOn: "Get started"
+- extendedWaitUntil:
+    visible: "My code"
+    timeout: 10000
