@@ -27,26 +27,26 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       # Проверки идут на флейворе demo: ему не нужен ни Firebase, ни секреты.
-      - run: ./gradlew spotlessCheck detekt assembleDemoDebug testDemoDebugUnitTest jvmTest lintDemoDebug :app:koverXmlReportCi --stacktrace
+      - run: ./gradlew spotlessCheck detekt assembleDemoDebug testDemoDebugUnitTest jvmTest lintDemoDebug :apps:android:koverXmlReportCi --stacktrace
       - name: Покрытие в сводку
         run: |
           echo "### Покрытие (Kover, demoDebug)" >> "$GITHUB_STEP_SUMMARY"
-          ./gradlew -q :app:koverLogCi | grep -i coverage >> "$GITHUB_STEP_SUMMARY"
+          ./gradlew -q :apps:android:koverLogCi | grep -i coverage >> "$GITHUB_STEP_SUMMARY"
       # dev собирается с настоящим конфигом ghostlink-dev, если секрет доступен (в PR из форков его нет).
       - name: Сборка dev
         env:
           GOOGLE_SERVICES_DEV: ${{ secrets.GOOGLE_SERVICES_DEV }}
         if: env.GOOGLE_SERVICES_DEV != ''
         run: |
-          mkdir -p app/src/dev
-          printf '%s' "$GOOGLE_SERVICES_DEV" > app/src/dev/google-services.json
+          mkdir -p apps/android/src/dev
+          printf '%s' "$GOOGLE_SERVICES_DEV" > apps/android/src/dev/google-services.json
           ./gradlew assembleDevDebug --stacktrace
       - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: reports
           path: |
-            app/build/reports/
+            apps/android/build/reports/
             build/reports/
           retention-days: 7
 
