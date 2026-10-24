@@ -3,6 +3,7 @@ package io.github.valerait.ghostlink.platform
 import dev.gitlive.firebase.firestore.DocumentReference
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.ios
+import io.github.valerait.ghostlink.app.LanguageStore
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.convert
@@ -34,6 +35,7 @@ import platform.Foundation.NSUUID
 import platform.Foundation.NSUserDefaults
 import platform.Foundation.create
 import platform.Foundation.currentLocale
+import platform.Foundation.preferredLanguages
 import platform.Foundation.dateWithTimeIntervalSince1970
 import platform.Foundation.localTimeZone
 import platform.Security.SecItemAdd
@@ -130,27 +132,37 @@ actual object LocalSettings {
     actual fun putString(key: String, value: String) = NSUserDefaults.standardUserDefaults.setObject(value, key)
 }
 
+// NSLocale.currentLocale подстроен под локализации бандла, а preferredLanguages — честный список из настроек iOS.
+actual val systemLanguageCode: String
+    get() = (NSLocale.preferredLanguages.firstOrNull() as? String)?.substringBefore('-') ?: "en"
+
 actual fun logWarning(tag: String, message: String, error: Throwable?) {
     NSLog("[%@] %@ %@", tag, message, error?.toString() ?: "")
 }
 
 private fun date(millis: Long) = NSDate.dateWithTimeIntervalSince1970(millis / 1000.0)
 
-private fun formatter(template: String) = NSDateFormatter().apply {
-    locale = NSLocale.currentLocale
-    setLocalizedDateFormatFromTemplate(template)
+// Форматтеры дорогие — кэшируем на каждый язык. Если язык приложения совпал с системным, берём
+// системную локаль целиком: так сохраняется регион (например, en_GB).
+private val formatters = mutableMapOf<String, NSDateFormatter>()
+
+private fun formatter(template: String): NSDateFormatter {
+    val language = LanguageStore.code
+    return formatters.getOrPut("$language/$template") {
+        NSDateFormatter().apply {
+            locale = if (language == systemLanguageCode) NSLocale.currentLocale else NSLocale(localeIdentifier = language)
+            setLocalizedDateFormatFromTemplate(template)
+        }
+    }
 }
 
 private val timeFormatter by lazy { NSDateFormatter().apply { dateFormat = "HH:mm" } }
-private val weekdayFormatter by lazy { formatter("EEE") }
-private val dayMonthFormatter by lazy { formatter("dMMMM") }
-private val dayMonthYearFormatter by lazy { formatter("dMMMMyyyy") }
 private val shortDateFormatter by lazy { NSDateFormatter().apply { dateFormat = "dd.MM.yy" } }
 
 actual fun formatTime(millis: Long): String = timeFormatter.stringFromDate(date(millis))
-actual fun formatWeekday(millis: Long): String = weekdayFormatter.stringFromDate(date(millis))
+actual fun formatWeekday(millis: Long): String = formatter("EEE").stringFromDate(date(millis))
 actual fun formatDate(millis: Long, withYear: Boolean): String =
-    (if (withYear) dayMonthYearFormatter else dayMonthFormatter).stringFromDate(date(millis))
+    formatter(if (withYear) "dMMMMyyyy" else "dMMMM").stringFromDate(date(millis))
 actual fun formatShortDate(millis: Long): String = shortDateFormatter.stringFromDate(date(millis))
 
 actual fun localEpochDay(millis: Long): Long {

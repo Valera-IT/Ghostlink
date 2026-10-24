@@ -10,6 +10,7 @@ import io.github.valerait.ghostlink.core.demo.demoModule
 import io.github.valerait.ghostlink.core.domain.domainModule
 import io.github.valerait.ghostlink.data.device.AndroidAccountKeyStore
 import io.github.valerait.ghostlink.data.device.ThisDevice
+import io.github.valerait.ghostlink.data.settings.LanguagePreferences
 import io.github.valerait.ghostlink.data.settings.ThemePreferences
 import io.github.valerait.ghostlink.ui.chat.ChatViewModel
 import io.github.valerait.ghostlink.ui.chats.ChatListViewModel
@@ -51,6 +52,7 @@ private fun appModule(config: AppConfig) =
         single<AccountKeyStore> { AndroidAccountKeyStore(androidContext()) }
         single { ThisDevice.from(androidContext()) }
         singleOf(::ThemePreferences)
+        singleOf(::LanguagePreferences)
         singleOf(::PresenceTracker)
         singleOf(::DeviceRegistry)
 

@@ -29,9 +29,13 @@ expect object LocalSettings {
     fun putString(key: String, value: String)
 }
 
+/** Первый язык системы — двухбуквенный код, например "ru". */
+expect val systemLanguageCode: String
+
 expect fun logWarning(tag: String, message: String, error: Throwable? = null)
 
 // Форматирование дат через системные форматтеры: в commonMain нет java.time.
+// Названия дней и месяцев — на языке приложения (LanguageStore.code), а не системы.
 expect fun formatTime(millis: Long): String
 expect fun formatWeekday(millis: Long): String
 expect fun formatDate(millis: Long, withYear: Boolean): String

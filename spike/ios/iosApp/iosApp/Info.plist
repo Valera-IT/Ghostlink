@@ -5,7 +5,12 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ru</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Ghostlink</string>
 	<key>CFBundleExecutable</key>
@@ -34,7 +39,7 @@
 	<key>CFBundleVersion</key>
 	<string>3</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Камера нужна, чтобы сканировать QR-коды друзей и коды входа с других устройств.</string>
+	<string>The camera is used to scan friends' QR codes and sign-in codes from your other devices.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

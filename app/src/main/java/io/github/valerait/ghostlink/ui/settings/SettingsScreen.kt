@@ -1,5 +1,6 @@
 package io.github.valerait.ghostlink.ui.settings
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,6 +20,7 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -42,11 +47,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.BuildConfig
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.data.settings.AppLanguage
 import io.github.valerait.ghostlink.ui.common.Avatar
 import io.github.valerait.ghostlink.ui.common.DemoModeBanner
 import io.github.valerait.ghostlink.ui.recovery.RecoveryCodeDialog
@@ -65,6 +72,8 @@ fun SettingsScreen(
     val snackbar = remember { SnackbarHostState() }
     var renaming by rememberSaveable { mutableStateOf(false) }
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
+    var pickingLanguage by rememberSaveable { mutableStateOf(false) }
+    val language by viewModel.language.collectAsStateWithLifecycle()
 
     val messageText = state.message?.let { stringResource(it) }
     LaunchedEffect(messageText) {
@@ -129,6 +138,12 @@ fun SettingsScreen(
                 supportingContent = { Text(stringResource(LocalThemeId.current.title)) },
                 modifier = Modifier.clickable(onClick = onTheme),
             )
+            ListItem(
+                leadingContent = { Icon(Icons.Outlined.Language, contentDescription = null) },
+                headlineContent = { Text(stringResource(R.string.settings_language)) },
+                supportingContent = { Text(stringResource(language.title)) },
+                modifier = Modifier.clickable { pickingLanguage = true },
+            )
 
             Text(
                 text = stringResource(R.string.settings_account),
@@ -188,6 +203,16 @@ fun SettingsScreen(
             },
         )
     }
+    if (pickingLanguage) {
+        LanguageDialog(
+            current = language,
+            onDismiss = { pickingLanguage = false },
+            onSelect = {
+                pickingLanguage = false
+                viewModel.selectLanguage(it)
+            },
+        )
+    }
     if (confirmSignOut) {
         AlertDialog(
             onDismissRequest = { confirmSignOut = false },
@@ -206,6 +231,51 @@ fun SettingsScreen(
             },
         )
     }
+}
+
+@get:StringRes
+private val AppLanguage.title: Int
+    get() =
+        when (this) {
+            AppLanguage.SYSTEM -> R.string.language_system
+            AppLanguage.RUSSIAN -> R.string.language_russian
+            AppLanguage.ENGLISH -> R.string.language_english
+        }
+
+@Composable
+private fun LanguageDialog(
+    current: AppLanguage,
+    onDismiss: () -> Unit,
+    onSelect: (AppLanguage) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_language)) },
+        text = {
+            Column(Modifier.selectableGroup()) {
+                AppLanguage.entries.forEach { language ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .selectable(
+                                    selected = language == current,
+                                    role = Role.RadioButton,
+                                    onClick = { onSelect(language) },
+                                ).padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = language == current, onClick = null)
+                        Spacer(Modifier.width(16.dp))
+                        Text(stringResource(language.title))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }
 
 @Composable
