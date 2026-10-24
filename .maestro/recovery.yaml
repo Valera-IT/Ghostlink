@@ -14,6 +14,9 @@ name: Ключ восстановления
 - assertVisible: "Sign out of Ghostlink?"
 # Пока открыт диалог, Maestro видит только его окно: кнопка подтверждения там одна.
 - tapOn: "Sign out"
+# На маленьком экране кнопки входа уходят ниже края.
+- scrollUntilVisible:
+    element: "Enter recovery key"
 - tapOn: "Enter recovery key"
 - tapOn: "Key"
 - pasteText

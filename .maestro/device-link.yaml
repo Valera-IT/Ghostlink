@@ -6,6 +6,9 @@ appId: io.github.valerait.ghostlink.demo
 name: Привязка устройств
 ---
 - runFlow: common/launch.yaml
+# На маленьком экране кнопки входа уходят ниже края.
+- scrollUntilVisible:
+    element: "Sign in from another device"
 - tapOn: "Sign in from another device"
 - assertVisible: "QR code for signing in on this device"
 - assertVisible: "Code expires in .*"
