@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.valerait.ghostlink.app.strings
 import io.github.valerait.ghostlink.model.User
 import io.github.valerait.ghostlink.platform.formatDate
 import io.github.valerait.ghostlink.platform.formatShortDate
@@ -80,7 +81,7 @@ fun GhostLogo(modifier: Modifier = Modifier, size: Dp = 72.dp, tint: Color = Mat
 
 @Composable
 fun BackButton(onBack: () -> Unit) {
-    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад") }
+    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = strings.back) }
 }
 
 /** Время в списке чатов: сегодня — часы, на этой неделе — день недели, иначе — дата. */
@@ -96,8 +97,8 @@ fun formatChatListTime(millis: Long, now: Long): String {
 fun dayLabel(millis: Long, now: Long): String {
     val days = localEpochDay(now) - localEpochDay(millis)
     return when (days) {
-        0L -> "Сегодня"
-        1L -> "Вчера"
+        0L -> strings.today
+        1L -> strings.yesterday
         else -> formatDate(millis, withYear = days > 300)
     }
 }
@@ -106,10 +107,10 @@ fun presenceText(user: User?, now: Long): String {
     val lastSeen = user?.lastSeen
     return when {
         user == null -> ""
-        user.isOnline(now) -> "в сети"
-        lastSeen == null -> "был(а) в сети давно"
-        localEpochDay(lastSeen) == localEpochDay(now) -> "был(а) в сети в ${formatTime(lastSeen)}"
-        else -> "был(а) в сети ${formatChatListTime(lastSeen, now)}"
+        user.isOnline(now) -> strings.online
+        lastSeen == null -> strings.lastSeenLongAgo
+        localEpochDay(lastSeen) == localEpochDay(now) -> strings.lastSeenAt(formatTime(lastSeen))
+        else -> strings.lastSeenOn(formatChatListTime(lastSeen, now))
     }
 }
 

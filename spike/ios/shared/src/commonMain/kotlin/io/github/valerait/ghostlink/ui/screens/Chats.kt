@@ -111,6 +111,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.valerait.ghostlink.app.AppGraph
+import io.github.valerait.ghostlink.app.strings
 import io.github.valerait.ghostlink.data.requireUserId
 import io.github.valerait.ghostlink.model.Chat
 import io.github.valerait.ghostlink.model.ChatPrefs
@@ -281,10 +282,10 @@ fun ChatListScreen(
                 },
                 actions = {
                     if (state.items.any { !it.chat.isGroup }) {
-                        IconButton(onClick = onNewGroup) { Icon(Icons.Outlined.GroupAdd, contentDescription = "Новая группа") }
+                        IconButton(onClick = onNewGroup) { Icon(Icons.Outlined.GroupAdd, contentDescription = strings.newGroup) }
                     }
-                    IconButton(onClick = onScan) { Icon(Icons.Filled.QrCodeScanner, contentDescription = "Сканировать код") }
-                    IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, contentDescription = "Настройки") }
+                    IconButton(onClick = onScan) { Icon(Icons.Filled.QrCodeScanner, contentDescription = strings.scanCode) }
+                    IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, contentDescription = strings.settings) }
                 },
             )
         },
@@ -293,7 +294,7 @@ fun ChatListScreen(
                 ExtendedFloatingActionButton(
                     onClick = onMyCode,
                     icon = { Icon(Icons.Filled.QrCode2, contentDescription = null) },
-                    text = { Text("Мой код") },
+                    text = { Text(strings.myCode) },
                 )
             }
         },
@@ -320,16 +321,16 @@ fun ChatListScreen(
         val item = state.items.firstOrNull { it.chat.id == id }
         val isGroup = item?.chat?.isGroup == true
         val name = item?.title.orEmpty()
-        val action = if (isGroup) "Выйти из группы" else "Удалить"
+        val action = if (isGroup) strings.leaveGroup else strings.delete
         AlertDialog(
             onDismissRequest = { removingId = null },
-            title = { Text(if (isGroup) "Выйти из группы?" else "Удалить контакт?") },
+            title = { Text(if (isGroup) strings.leaveGroupTitle else strings.removeContactTitle) },
             text = {
                 Text(
                     if (isGroup) {
-                        "Вы перестанете получать сообщения «$name». Вернуть вас сможет только админ группы."
+                        strings.leaveGroupBody(name)
                     } else {
-                        "«$name» и переписка исчезнут только у вас. Если собеседник напишет снова, чат появится с новыми сообщениями."
+                        strings.removeContactBody(name)
                     },
                 )
             },
@@ -339,7 +340,7 @@ fun ChatListScreen(
                     viewModel.remove(id)
                 }) { Text(action, color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { removingId = null }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { removingId = null }) { Text(strings.cancel) } },
         )
     }
 }
@@ -356,7 +357,7 @@ private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit, onPi
         Modifier.fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
-                onLongClickLabel = "Действия с чатом",
+                onLongClickLabel = strings.chatActions,
                 onLongClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     menu = true
@@ -383,7 +384,7 @@ private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit, onPi
                     Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                     if (item.muted) {
                         Spacer(Modifier.width(4.dp))
-                        Icon(Icons.Outlined.NotificationsOff, contentDescription = "Уведомления выключены", tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Outlined.NotificationsOff, contentDescription = strings.muted, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                     }
                 }
                 Spacer(Modifier.width(8.dp))
@@ -399,10 +400,10 @@ private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit, onPi
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val last = item.lastMessage
                 val preview = when {
-                    typing && item.typingName != null -> "${item.typingName} печатает…"
-                    typing -> "печатает…"
-                    last == null -> "Нет сообщений — напишите первым"
-                    item.lastMessageIsMine -> "Вы: ${last.text}"
+                    typing && item.typingName != null -> strings.typingNamed(item.typingName)
+                    typing -> strings.typing
+                    last == null -> strings.noMessages
+                    item.lastMessageIsMine -> strings.youPrefix(last.text)
                     item.lastSenderName != null -> "${item.lastSenderName}: ${last.text}"
                     else -> last.text
                 }
@@ -421,24 +422,24 @@ private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit, onPi
                     Box(Modifier.size(10.dp).background(dot, CircleShape))
                 } else if (item.pinned) {
                     Spacer(Modifier.width(8.dp))
-                    Icon(Icons.Outlined.PushPin, contentDescription = "Закреплён", tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.PushPin, contentDescription = strings.pinned, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(16.dp))
                 }
             }
         }
     }
     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
         DropdownMenuItem(
-            text = { Text(if (item.pinned) "Открепить" else "Закрепить") },
+            text = { Text(if (item.pinned) strings.unpin else strings.pin) },
             leadingIcon = { Icon(Icons.Outlined.PushPin, contentDescription = null) },
             onClick = { menu = false; onPin() },
         )
         DropdownMenuItem(
-            text = { Text(if (item.muted) "Включить уведомления" else "Выключить уведомления") },
+            text = { Text(if (item.muted) strings.unmute else strings.mute) },
             leadingIcon = { Icon(if (item.muted) Icons.Outlined.Notifications else Icons.Outlined.NotificationsOff, contentDescription = null) },
             onClick = { menu = false; onMute() },
         )
         DropdownMenuItem(
-            text = { Text(if (item.chat.isGroup) "Выйти из группы" else "Удалить", color = MaterialTheme.colorScheme.error) },
+            text = { Text(if (item.chat.isGroup) strings.leaveGroup else strings.delete, color = MaterialTheme.colorScheme.error) },
             leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             onClick = { menu = false; onRemove() },
         )
@@ -451,18 +452,18 @@ private fun EmptyChats(onMyCode: () -> Unit, onScan: () -> Unit, modifier: Modif
     Column(modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         GhostLogo(size = 88.dp, tint = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(20.dp))
-        Text("Пока здесь пусто", style = MaterialTheme.typography.titleLarge)
+        Text(strings.emptyTitle, style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Встретьтесь с другом и отсканируйте его код — или покажите ему свой.",
+            strings.emptyBody,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
-        Button(onClick = onMyCode, modifier = Modifier.fillMaxWidth()) { Text("Мой код") }
+        Button(onClick = onMyCode, modifier = Modifier.fillMaxWidth()) { Text(strings.myCode) }
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onScan, modifier = Modifier.fillMaxWidth()) { Text("Сканировать код") }
+        OutlinedButton(onClick = onScan, modifier = Modifier.fillMaxWidth()) { Text(strings.scanCode) }
     }
 }
 
@@ -698,14 +699,14 @@ fun ChatScreen(chatId: String, onBack: () -> Unit, onGroupInfo: () -> Unit, view
     var highlightedId by remember { mutableStateOf<String?>(null) }
     var confirmDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
     val partnerName = state.partner?.name.orEmpty()
-    val authorName: (String, Boolean) -> String = { senderId, mine -> if (mine) "Вы" else state.names[senderId] ?: partnerName }
+    val authorName: (String, Boolean) -> String = { senderId, mine -> if (mine) strings.you else state.names[senderId] ?: partnerName }
 
     // Нажатие на цитату — прокрутка к исходному сообщению и короткая подсветка.
     val showOriginal: (String) -> Unit = { id ->
         val index = state.rows.indexOfFirst { it.key == id }
         scope.launch {
             if (index < 0) {
-                snackbar.showSnackbar("Исходное сообщение слишком старое")
+                snackbar.showSnackbar(strings.replyTooOld)
             } else {
                 listState.animateScrollToItem(index)
                 highlightedId = id
@@ -763,7 +764,7 @@ fun ChatScreen(chatId: String, onBack: () -> Unit, onGroupInfo: () -> Unit, view
     ) { padding ->
         if (!state.loading && state.rows.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Скажите привет 👋", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(strings.sayHi, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         LazyColumn(
@@ -797,15 +798,15 @@ fun ChatScreen(chatId: String, onBack: () -> Unit, onGroupInfo: () -> Unit, view
     confirmDeleteId?.let { id ->
         AlertDialog(
             onDismissRequest = { confirmDeleteId = null },
-            title = { Text("Удалить сообщение?") },
-            text = { Text("Сообщение исчезнет у всех в чате, на его месте останется отметка «Сообщение удалено».") },
+            title = { Text(strings.deleteMessageTitle) },
+            text = { Text(strings.deleteMessageBody) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDeleteId = null
                     viewModel.delete(id)
-                }) { Text("Удалить", color = MaterialTheme.colorScheme.error) }
+                }) { Text(strings.delete, color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmDeleteId = null }) { Text("Отмена") } },
+            dismissButton = { TextButton(onClick = { confirmDeleteId = null }) { Text(strings.cancel) } },
         )
     }
 }
@@ -835,24 +836,24 @@ private fun MessageMenu(expanded: Boolean, mine: Boolean, sent: Boolean, onDismi
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         if (sent) {
             DropdownMenuItem(
-                text = { Text("Ответить") },
+                text = { Text(strings.reply) },
                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = null) },
                 onClick = { onDismiss(); actions.onReply() },
             )
         }
         DropdownMenuItem(
-            text = { Text("Копировать") },
+            text = { Text(strings.copy) },
             leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
             onClick = { onDismiss(); onCopy() },
         )
         if (mine && sent) {
             DropdownMenuItem(
-                text = { Text("Изменить") },
+                text = { Text(strings.edit) },
                 leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
                 onClick = { onDismiss(); actions.onEdit() },
             )
             DropdownMenuItem(
-                text = { Text("Удалить", color = MaterialTheme.colorScheme.error) },
+                text = { Text(strings.delete, color = MaterialTheme.colorScheme.error) },
                 leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                 onClick = { onDismiss(); actions.onDelete() },
             )
@@ -885,7 +886,7 @@ private fun MessageBubble(item: MessageItem, highlighted: Boolean, quoteAuthor: 
                 border = if (mine) null else BorderStroke(1.dp, chatStyle.incomingBorder),
                 modifier = Modifier.widthIn(max = 300.dp).clip(shape).combinedClickable(
                     enabled = !item.message.deleted,
-                    onLongClickLabel = "Действия с сообщением",
+                    onLongClickLabel = strings.messageActions,
                     onLongClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         menuOpen = true
@@ -900,7 +901,7 @@ private fun MessageBubble(item: MessageItem, highlighted: Boolean, quoteAuthor: 
                     item.message.replyTo?.let { reply ->
                         ReplyQuote(
                             author = quoteAuthor,
-                            preview = if (item.replyToDeleted) DELETED_TEXT else reply.preview,
+                            preview = if (item.replyToDeleted) strings.messageDeleted else reply.preview,
                             previewDeleted = item.replyToDeleted,
                             accent = LocalContentColor.current,
                             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp).clickable { onQuoteClick(reply.id) },
@@ -913,7 +914,7 @@ private fun MessageBubble(item: MessageItem, highlighted: Boolean, quoteAuthor: 
                     }
                     Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                         if (item.message.editedAt != null) {
-                            Text("изменено", style = MaterialTheme.typography.labelSmall, color = LocalContentColor.current.copy(alpha = 0.6f))
+                            Text(strings.edited, style = MaterialTheme.typography.labelSmall, color = LocalContentColor.current.copy(alpha = 0.6f))
                             Spacer(Modifier.width(4.dp))
                         }
                         item.message.sentAt?.let {
@@ -938,7 +939,6 @@ private fun MessageBubble(item: MessageItem, highlighted: Boolean, quoteAuthor: 
     }
 }
 
-private const val DELETED_TEXT = "Сообщение удалено"
 
 /** На месте удалённого сообщения — курсивная отметка, как в мессенджерах. */
 @Composable
@@ -947,7 +947,7 @@ private fun DeletedText() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.Block, contentDescription = null, tint = muted, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
-        Text(DELETED_TEXT, style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic), color = muted)
+        Text(strings.messageDeleted, style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic), color = muted)
     }
 }
 
@@ -959,14 +959,14 @@ private fun StatusIcon(status: MessageStatus) {
         // Три галочки: двойная поверх одинарной со сдвигом влево.
         Box(Modifier.width(22.dp).height(16.dp)) {
             Icon(Icons.Filled.Done, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
-            Icon(Icons.Filled.DoneAll, contentDescription = "Прочитали все", tint = tint, modifier = Modifier.size(16.dp).align(Alignment.CenterEnd))
+            Icon(Icons.Filled.DoneAll, contentDescription = strings.readByAll, tint = tint, modifier = Modifier.size(16.dp).align(Alignment.CenterEnd))
         }
         return
     }
     val (icon, description) = when (status) {
-        MessageStatus.SENDING -> Icons.Filled.Schedule to "Отправляется"
-        MessageStatus.SENT -> Icons.Filled.Done to "Отправлено"
-        else -> Icons.Filled.DoneAll to "Прочитано"
+        MessageStatus.SENDING -> Icons.Filled.Schedule to strings.sending
+        MessageStatus.SENT -> Icons.Filled.Done to strings.sent
+        else -> Icons.Filled.DoneAll to strings.read
     }
     Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(16.dp))
 }
@@ -1022,12 +1022,12 @@ private fun MessageInput(
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding()) {
             when {
-                editing != null -> InputContextBar(Icons.Outlined.Edit, "Редактирование", ReplyTo.previewOf(editing.message.text), "Отменить редактирование", onCancelEdit)
+                editing != null -> InputContextBar(Icons.Outlined.Edit, strings.editing, ReplyTo.previewOf(editing.message.text), strings.cancelEdit, onCancelEdit)
                 replyingTo != null -> InputContextBar(
                     Icons.AutoMirrored.Filled.Reply,
                     replyAuthor(replyingTo),
                     ReplyTo.previewOf(replyingTo.message.text),
-                    "Отменить ответ",
+                    strings.cancelReply,
                     onCancelReply,
                 )
             }
@@ -1039,7 +1039,7 @@ private fun MessageInput(
                         text = if (it.text.length > MAX_MESSAGE_LENGTH) it.copy(text = it.text.take(MAX_MESSAGE_LENGTH)) else it
                         if (changed) onDraftChanged(text.text)
                     },
-                    placeholder = { Text("Сообщение") },
+                    placeholder = { Text(strings.messageHint) },
                     maxLines = 5,
                     shape = RoundedCornerShape(24.dp),
                     colors = TextFieldDefaults.colors(
@@ -1061,9 +1061,9 @@ private fun MessageInput(
                     modifier = Modifier.size(56.dp),
                 ) {
                     if (editing != null) {
-                        Icon(Icons.Filled.Check, contentDescription = "Сохранить")
+                        Icon(Icons.Filled.Check, contentDescription = strings.save)
                     } else {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Отправить")
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = strings.send)
                     }
                 }
             }

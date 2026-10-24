@@ -43,6 +43,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import io.github.valerait.ghostlink.app.AppGraph
+import io.github.valerait.ghostlink.app.strings
 import io.github.valerait.ghostlink.crypto.LinkCrypto
 import io.github.valerait.ghostlink.data.InvalidAccountKeyException
 import io.github.valerait.ghostlink.model.AccountKey
@@ -92,7 +93,7 @@ class OnboardingViewModel : ViewModel() {
                 users.saveProfile(account.id, name)
             } catch (e: Exception) {
                 logWarning("Onboarding", "Sign in failed", e)
-                _state.update { it.copy(busy = false, error = "Не удалось войти. Проверьте интернет и попробуйте ещё раз.") }
+                _state.update { it.copy(busy = false, error = strings.signInFailed) }
             }
         }
     }
@@ -117,7 +118,7 @@ fun OnboardingScreen(onLinkDevice: () -> Unit, onRecover: () -> Unit, viewModel:
         Text("GHOSTLINK", style = LogoTextStyle, color = MaterialTheme.colorScheme.onBackground)
         Spacer(Modifier.height(12.dp))
         Text(
-            "Мессенджер без номера и почты. Друзей добавляют только при встрече — по QR-коду.",
+            strings.tagline,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -126,8 +127,8 @@ fun OnboardingScreen(onLinkDevice: () -> Unit, onRecover: () -> Unit, viewModel:
         OutlinedTextField(
             value = state.name,
             onValueChange = viewModel::onNameChange,
-            label = { Text("Как вас зовут?") },
-            supportingText = { Text(state.error ?: "Это имя увидят ваши друзья") },
+            label = { Text(strings.nameLabel) },
+            supportingText = { Text(state.error ?: strings.nameHint) },
             isError = state.error != null,
             singleLine = true,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
@@ -135,16 +136,16 @@ fun OnboardingScreen(onLinkDevice: () -> Unit, onRecover: () -> Unit, viewModel:
         )
         Spacer(Modifier.height(12.dp))
         Button(onClick = viewModel::submit, enabled = state.canSubmit, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-            if (state.busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) else Text("Начать")
+            if (state.busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) else Text(strings.start)
         }
         Spacer(Modifier.height(24.dp))
-        Text("Уже пользуетесь Ghostlink?", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(strings.haveAccount, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onLinkDevice, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Filled.QrCode2, contentDescription = null)
-            Text("  Войти с другого устройства")
+            Text("  " + strings.linkDevice)
         }
-        TextButton(onClick = onRecover) { Text("Ввести ключ восстановления") }
+        TextButton(onClick = onRecover) { Text(strings.enterRecoveryKey) }
     }
 }
 
@@ -165,7 +166,7 @@ class RecoveryViewModel : ViewModel() {
         if (!current.canSubmit) return
         val key = AccountKey.parseRecoveryCode(current.code)
         if (key == null) {
-            _state.update { it.copy(error = "Похоже, в ключе опечатка: проверьте, что все 40 символов на месте.") }
+            _state.update { it.copy(error = strings.recoveryErrorFormat) }
             return
         }
         _state.update { it.copy(busy = true, error = null) }
@@ -173,10 +174,10 @@ class RecoveryViewModel : ViewModel() {
             try {
                 AppGraph.auth.signInWithKey(key)
             } catch (e: InvalidAccountKeyException) {
-                _state.update { it.copy(busy = false, error = "Ключ не подошёл. Возможно, его сменили через «Выйти на всех других устройствах».") }
+                _state.update { it.copy(busy = false, error = strings.recoveryErrorWrong) }
             } catch (e: Exception) {
                 logWarning("Recovery", "Sign in failed", e)
-                _state.update { it.copy(busy = false, error = "Не удалось войти. Проверьте интернет и попробуйте ещё раз.") }
+                _state.update { it.copy(busy = false, error = strings.signInFailed) }
             }
         }
     }
@@ -186,10 +187,10 @@ class RecoveryViewModel : ViewModel() {
 @Composable
 fun RecoveryScreen(onBack: () -> Unit, viewModel: RecoveryViewModel = viewModel { RecoveryViewModel() }) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    Scaffold(topBar = { TopAppBar(title = { Text("Ключ восстановления") }, navigationIcon = { BackButton(onBack) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(strings.recoveryTitle) }, navigationIcon = { BackButton(onBack) }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding().padding(24.dp)) {
             Text(
-                "Введите ключ из 40 символов. Его можно найти на любом своём устройстве: «Настройки» → «Ключ восстановления». Регистр и дефисы не важны.",
+                strings.recoveryBody,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -197,7 +198,7 @@ fun RecoveryScreen(onBack: () -> Unit, viewModel: RecoveryViewModel = viewModel 
             OutlinedTextField(
                 value = state.code,
                 onValueChange = viewModel::onCodeChange,
-                label = { Text("Ключ") },
+                label = { Text(strings.recoveryLabel) },
                 isError = state.error != null,
                 supportingText = state.error?.let { { Text(it) } },
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
@@ -205,7 +206,7 @@ fun RecoveryScreen(onBack: () -> Unit, viewModel: RecoveryViewModel = viewModel 
             )
             Spacer(Modifier.height(16.dp))
             Button(onClick = viewModel::submit, enabled = state.canSubmit, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                if (state.busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) else Text("Войти")
+                if (state.busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) else Text(strings.signIn)
             }
         }
     }
@@ -284,7 +285,7 @@ class LinkReceiveViewModel : ViewModel() {
 @Composable
 fun LinkReceiveScreen(onBack: () -> Unit, viewModel: LinkReceiveViewModel = viewModel { LinkReceiveViewModel() }) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    Scaffold(topBar = { TopAppBar(title = { Text("Вход с другого устройства") }, navigationIcon = { BackButton(onBack) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(strings.linkReceiveTitle) }, navigationIcon = { BackButton(onBack) }) }) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -294,16 +295,14 @@ fun LinkReceiveScreen(onBack: () -> Unit, viewModel: LinkReceiveViewModel = view
                 LinkReceiveState.Preparing, LinkReceiveState.SigningIn -> {
                     Spacer(Modifier.height(80.dp))
                     CircularProgressIndicator()
-                    if (s == LinkReceiveState.SigningIn) Text("Входим в аккаунт…")
+                    if (s == LinkReceiveState.SigningIn) Text(strings.signingIn)
                 }
                 is LinkReceiveState.ShowCode -> {
                     QrImage(s.link, Modifier.size(260.dp))
                     Countdown(s.expiresAt)
-                    Text("Как войти", style = MaterialTheme.typography.titleMedium)
+                    Text(strings.howToSignIn, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "1. Откройте Ghostlink на телефоне, где вы уже вошли.\n" +
-                            "2. «Настройки» → «Устройства» → «Привязать устройство».\n" +
-                            "3. Наведите камеру на этот код и подтвердите вход.",
+                        strings.linkReceiveSteps,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -311,11 +310,11 @@ fun LinkReceiveScreen(onBack: () -> Unit, viewModel: LinkReceiveViewModel = view
                 LinkReceiveState.Expired, LinkReceiveState.Failed -> {
                     Spacer(Modifier.height(80.dp))
                     Text(
-                        if (s == LinkReceiveState.Expired) "Код устарел" else "Не удалось войти. Проверьте интернет и попробуйте ещё раз.",
+                        if (s == LinkReceiveState.Expired) strings.codeExpired else strings.signInFailed,
                         style = MaterialTheme.typography.titleMedium,
                         textAlign = TextAlign.Center,
                     )
-                    Button(onClick = viewModel::restart) { Text("Показать новый код") }
+                    Button(onClick = viewModel::restart) { Text(strings.showNewCode) }
                 }
             }
         }
@@ -332,7 +331,7 @@ private fun Countdown(expiresAt: Long) {
     }
     val seconds = (left / 1000).coerceAtLeast(0)
     Text(
-        "Код действует ещё ${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}",
+        strings.codeValidFor("${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
@@ -342,6 +341,6 @@ private fun Countdown(expiresAt: Long) {
 fun QrImage(data: String, modifier: Modifier = Modifier) {
     val painter = rememberQrCodePainter(data)
     Box(modifier.background(Color.White).padding(14.dp)) {
-        androidx.compose.foundation.Image(painter, contentDescription = "QR-код", modifier = Modifier.fillMaxSize())
+        androidx.compose.foundation.Image(painter, contentDescription = strings.qrCode, modifier = Modifier.fillMaxSize())
     }
 }

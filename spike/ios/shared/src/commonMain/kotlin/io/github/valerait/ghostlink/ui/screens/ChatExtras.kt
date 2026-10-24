@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.valerait.ghostlink.app.strings
 import io.github.valerait.ghostlink.model.DisappearingTimer
 import io.github.valerait.ghostlink.model.TYPING_REFRESH_MS
 import io.github.valerait.ghostlink.ui.common.Avatar
@@ -63,15 +64,7 @@ class TypingNotifier(private val scope: CoroutineScope, private val setTyping: (
 }
 
 /** «3 участника», «5 участников». */
-fun membersLabel(count: Int): String {
-    val word = when {
-        count % 100 in 11..14 -> "участников"
-        count % 10 == 1 -> "участник"
-        count % 10 in 2..4 -> "участника"
-        else -> "участников"
-    }
-    return "$count $word"
-}
+fun membersLabel(count: Int): String = strings.members(count)
 
 /** Шапка чата: собеседник и его статус, или группа и число участников. Нажатие на группу открывает её карточку. */
 @Composable
@@ -85,8 +78,8 @@ fun ChatTitle(state: ChatUiState, now: Long, onGroupInfo: () -> Unit) {
         else -> return
     }
     val subtitle = when {
-        typing && state.typingName != null -> "${state.typingName} печатает…"
-        typing -> "печатает…"
+        typing && state.typingName != null -> strings.typingNamed(state.typingName)
+        typing -> strings.typing
         group != null -> membersLabel(state.memberCount)
         else -> presenceText(partner, now)
     }
@@ -111,10 +104,10 @@ fun ChatTitle(state: ChatUiState, now: Long, onGroupInfo: () -> Unit) {
 }
 
 fun disappearingLabel(timer: DisappearingTimer?): String = when (timer) {
-    null -> "Выключены"
-    DisappearingTimer.HOUR -> "Через 1 час"
-    DisappearingTimer.DAY -> "Через 1 день"
-    DisappearingTimer.WEEK -> "Через 1 неделю"
+    null -> strings.disappearingOff
+    DisappearingTimer.HOUR -> strings.disappearingHour
+    DisappearingTimer.DAY -> strings.disappearingDay
+    DisappearingTimer.WEEK -> strings.disappearingWeek
 }
 
 /** Кнопка таймера исчезающих сообщений в шапке чата; подсвечена, пока таймер включён. */
@@ -125,12 +118,12 @@ fun DisappearingMenu(current: DisappearingTimer?, onSelect: (DisappearingTimer?)
         IconButton(onClick = { open = true }) {
             Icon(
                 Icons.Outlined.Timer,
-                contentDescription = "Исчезающие сообщения",
+                contentDescription = strings.disappearingTitle,
                 tint = if (current != null) MaterialTheme.colorScheme.primary else LocalContentColor.current,
             )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text("Исчезающие сообщения", style = MaterialTheme.typography.labelLarge) }, onClick = {}, enabled = false)
+            DropdownMenuItem(text = { Text(strings.disappearingTitle, style = MaterialTheme.typography.labelLarge) }, onClick = {}, enabled = false)
             (listOf(null) + DisappearingTimer.entries).forEach { timer ->
                 DropdownMenuItem(
                     text = { Text(disappearingLabel(timer)) },

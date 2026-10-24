@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
+import io.github.valerait.ghostlink.app.strings
 import kotlinx.cinterop.readValue
 import platform.AVFoundation.AVAuthorizationStatusAuthorized
 import platform.AVFoundation.AVAuthorizationStatusNotDetermined
@@ -52,7 +53,7 @@ actual fun QrScanner(onScanned: (String) -> Unit, modifier: Modifier) {
 
     Box(modifier, contentAlignment = Alignment.Center) {
         if (denied) {
-            Text("Нет доступа к камере. Разрешите его в Настройках iOS → Ghostlink.", color = MaterialTheme.colorScheme.onSurface)
+            Text(strings.noCameraAccess, color = MaterialTheme.colorScheme.onSurface)
         } else {
             UIKitView(factory = { camera.view }, modifier = Modifier.matchParentSize())
         }

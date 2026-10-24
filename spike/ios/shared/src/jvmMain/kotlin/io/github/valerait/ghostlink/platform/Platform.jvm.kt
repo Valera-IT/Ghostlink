@@ -10,11 +10,14 @@ import com.google.firebase.firestore.Blob
 import dev.gitlive.firebase.firestore.DocumentReference
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.android
+import io.github.valerait.ghostlink.app.LanguageStore
+import io.github.valerait.ghostlink.app.strings
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.net.InetAddress
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
 import java.util.logging.Level
@@ -67,12 +70,16 @@ actual fun logWarning(tag: String, message: String, error: Throwable?) {
     Logger.getLogger(tag).log(Level.WARNING, message, error)
 }
 
-private fun format(pattern: String, millis: Long) = SimpleDateFormat(pattern).format(Date(millis))
+actual val systemLanguageCode: String = Locale.getDefault().language
+
+private fun locale(): Locale = if (LanguageStore.code == systemLanguageCode) Locale.getDefault() else Locale.forLanguageTag(LanguageStore.code)
+
+private fun format(pattern: String, millis: Long) = SimpleDateFormat(pattern, locale()).format(Date(millis))
 
 actual fun formatTime(millis: Long): String = format("HH:mm", millis)
 actual fun formatWeekday(millis: Long): String = format("EEE", millis)
 actual fun formatDate(millis: Long, withYear: Boolean): String =
-    if (withYear) DateFormat.getDateInstance(DateFormat.LONG).format(Date(millis)) else format("d MMMM", millis)
+    if (withYear) DateFormat.getDateInstance(DateFormat.LONG, locale()).format(Date(millis)) else format("d MMMM", millis)
 actual fun formatShortDate(millis: Long): String = format("dd.MM.yy", millis)
 
 actual fun localEpochDay(millis: Long): Long = (millis + TimeZone.getDefault().getOffset(millis)).floorDiv(86_400_000L)
@@ -94,5 +101,5 @@ actual fun DocumentSnapshot.payloadBytes(): ByteArray? = android.getBlob("payloa
 /** На десктопе камеры нет: вход только по QR, который показывает сам десктоп (этап 4.2). */
 @Composable
 actual fun QrScanner(onScanned: (String) -> Unit, modifier: Modifier) {
-    Box(modifier, contentAlignment = Alignment.Center) { Text("Камера недоступна на десктопе") }
+    Box(modifier, contentAlignment = Alignment.Center) { Text(strings.cameraUnavailable) }
 }

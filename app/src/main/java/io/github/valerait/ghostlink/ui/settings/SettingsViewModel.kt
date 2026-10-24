@@ -13,6 +13,8 @@ import io.github.valerait.ghostlink.core.domain.usecase.RenameProfileUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.SignOutUseCase
 import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.data.device.ThisDevice
+import io.github.valerait.ghostlink.data.settings.AppLanguage
+import io.github.valerait.ghostlink.data.settings.LanguagePreferences
 import io.github.valerait.ghostlink.di.AppConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,7 +41,10 @@ class SettingsViewModel(
     private val renameProfile: RenameProfileUseCase,
     private val getRecoveryCode: GetRecoveryCodeUseCase,
     private val signOutHere: SignOutUseCase,
+    private val languagePrefs: LanguagePreferences,
 ) : ViewModel() {
+    val language: StateFlow<AppLanguage> = languagePrefs.language
+
     private val me = auth.requireUserId()
     private val busy = MutableStateFlow(false)
     private val message = MutableStateFlow<Int?>(null)
@@ -61,6 +66,8 @@ class SettingsViewModel(
                 recoveryCode = recoveryCode,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsState(userId = me, demoMode = config.demoMode))
+
+    fun selectLanguage(language: AppLanguage) = languagePrefs.setLanguage(language)
 
     fun rename(name: String) = launchBusy { renameProfile(name) }
 

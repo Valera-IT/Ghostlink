@@ -50,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.valerait.ghostlink.app.AppGraph
+import io.github.valerait.ghostlink.app.strings
 import io.github.valerait.ghostlink.data.leaveGroup
 import io.github.valerait.ghostlink.data.requireUserId
 import io.github.valerait.ghostlink.model.Chat
@@ -149,7 +150,7 @@ fun PickMembersScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (state.addingToGroup) "Добавить участников" else "Новая группа") },
+                title = { Text(if (state.addingToGroup) strings.addMembers else strings.newGroup) },
                 navigationIcon = { BackButton(onBack) },
             )
         },
@@ -158,7 +159,7 @@ fun PickMembersScreen(
                 ExtendedFloatingActionButton(
                     onClick = { if (state.addingToGroup) viewModel.addSelected() else viewModel.create(name) },
                     icon = { Icon(Icons.Filled.Check, contentDescription = null) },
-                    text = { Text(if (state.addingToGroup) "Добавить" else "Создать") },
+                    text = { Text(if (state.addingToGroup) strings.add else strings.create) },
                 )
             }
         },
@@ -169,7 +170,7 @@ fun PickMembersScreen(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it.take(GroupInfo.NAME_MAX_LENGTH) },
-                        label = { Text("Название группы") },
+                        label = { Text(strings.groupName) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                     )
@@ -177,7 +178,7 @@ fun PickMembersScreen(
             }
             item {
                 Text(
-                    "Выберите друзей · можно ещё ${state.slotsLeft}",
+                    strings.pickFriends(state.slotsLeft),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -187,7 +188,7 @@ fun PickMembersScreen(
                 item {
                     Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                         Text(
-                            "Сначала добавьте друзей по QR-коду — в группу можно позвать только их.",
+                            strings.noFriendsForGroup,
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -284,7 +285,7 @@ fun GroupInfoScreen(
     val chat = state.chat
     val group = chat?.group ?: return
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Группа") }, navigationIcon = { BackButton(onBack) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(strings.group) }, navigationIcon = { BackButton(onBack) }) }) { padding ->
         LazyColumn(contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = 32.dp), modifier = Modifier.fillMaxSize()) {
             item {
                 Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -293,14 +294,14 @@ fun GroupInfoScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(group.name, style = MaterialTheme.typography.headlineSmall)
                         if (state.isOwner) {
-                            IconButton(onClick = { renaming = true }) { Icon(Icons.Outlined.Edit, contentDescription = "Изменить название") }
+                            IconButton(onClick = { renaming = true }) { Icon(Icons.Outlined.Edit, contentDescription = strings.renameGroup) }
                         }
                     }
                     Text(membersLabel(chat.members.size), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (state.isOwner && chat.members.size < GroupInfo.MAX_MEMBERS) {
-                item { ActionRow(Icons.Outlined.PersonAdd, "Добавить участников", onClick = onAddMembers) }
+                item { ActionRow(Icons.Outlined.PersonAdd, strings.addMembers, onClick = onAddMembers) }
             }
             items(state.members, key = { it.id }) { member ->
                 MemberRow(
@@ -312,7 +313,7 @@ fun GroupInfoScreen(
             }
             item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                ActionRow(Icons.AutoMirrored.Outlined.Logout, "Выйти из группы", color = MaterialTheme.colorScheme.error, onClick = { confirmLeave = true })
+                ActionRow(Icons.AutoMirrored.Outlined.Logout, strings.leaveGroup, color = MaterialTheme.colorScheme.error, onClick = { confirmLeave = true })
             }
         }
     }
@@ -326,8 +327,8 @@ fun GroupInfoScreen(
     removingId?.let { id ->
         val name = state.members.firstOrNull { it.id == id }?.name.orEmpty()
         ConfirmDialog(
-            title = "Удалить $name из группы?",
-            confirm = "Удалить из группы",
+            title = strings.removeMemberTitle(name),
+            confirm = strings.removeFromGroup,
             onConfirm = {
                 viewModel.remove(id)
                 removingId = null
@@ -337,9 +338,9 @@ fun GroupInfoScreen(
     }
     if (confirmLeave) {
         ConfirmDialog(
-            title = "Выйти из группы?",
-            body = "Вы перестанете получать сообщения «${group.name}». Вернуть вас сможет только админ группы.",
-            confirm = "Выйти из группы",
+            title = strings.leaveGroupTitle,
+            body = strings.leaveGroupBody(group.name),
+            confirm = strings.leaveGroup,
             onConfirm = {
                 confirmLeave = false
                 viewModel.leave()
@@ -355,11 +356,11 @@ private fun MemberRow(member: User, isMe: Boolean, isOwner: Boolean, onRemove: (
         Avatar(member.name, member.id, size = 44.dp)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(if (isMe) "${member.name} (вы)" else member.name, style = MaterialTheme.typography.titleMedium)
-            if (isOwner) Text("админ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            Text(if (isMe) strings.meSuffix(member.name) else member.name, style = MaterialTheme.typography.titleMedium)
+            if (isOwner) Text(strings.admin, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
         if (onRemove != null) {
-            IconButton(onClick = onRemove) { Icon(Icons.Outlined.PersonRemove, contentDescription = "Удалить из группы") }
+            IconButton(onClick = onRemove) { Icon(Icons.Outlined.PersonRemove, contentDescription = strings.removeFromGroup) }
         }
     }
 }
@@ -381,12 +382,12 @@ private fun RenameDialog(current: String, onConfirm: (String) -> Unit, onDismiss
     var name by rememberSaveable { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Изменить название") },
+        title = { Text(strings.renameGroup) },
         text = {
-            OutlinedTextField(value = name, onValueChange = { name = it.take(GroupInfo.NAME_MAX_LENGTH) }, singleLine = true, label = { Text("Название группы") })
+            OutlinedTextField(value = name, onValueChange = { name = it.take(GroupInfo.NAME_MAX_LENGTH) }, singleLine = true, label = { Text(strings.groupName) })
         },
-        confirmButton = { TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) { Text("Сохранить") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) { Text(strings.save) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } },
     )
 }
 
@@ -397,6 +398,6 @@ private fun ConfirmDialog(title: String, confirm: String, onConfirm: () -> Unit,
         title = { Text(title) },
         text = body?.let { { Text(it) } },
         confirmButton = { TextButton(onClick = onConfirm) { Text(confirm, color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } },
     )
 }

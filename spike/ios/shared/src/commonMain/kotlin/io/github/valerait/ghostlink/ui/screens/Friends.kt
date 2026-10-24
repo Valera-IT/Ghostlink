@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.valerait.ghostlink.app.AppGraph
+import io.github.valerait.ghostlink.app.strings
 import io.github.valerait.ghostlink.data.requireUserId
 import io.github.valerait.ghostlink.model.InviteLink
 import io.github.valerait.ghostlink.model.ScannedCode
@@ -72,7 +73,7 @@ fun MyCodeScreen(onBack: () -> Unit, onScan: () -> Unit) {
         }
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Мой код") }, navigationIcon = { BackButton(onBack) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(strings.myCode) }, navigationIcon = { BackButton(onBack) }) }) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -84,7 +85,7 @@ fun MyCodeScreen(onBack: () -> Unit, onScan: () -> Unit) {
             }
             QrImage(link, Modifier.size(260.dp))
             Text(
-                "Покажите этот код другу — он отсканирует его в своём Ghostlink, и у вас появится общий чат.",
+                strings.myCodeHint,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -92,10 +93,10 @@ fun MyCodeScreen(onBack: () -> Unit, onScan: () -> Unit) {
             OutlinedButton(onClick = {
                 clipboard.setText(AnnotatedString(link))
                 copied = true
-            }, modifier = Modifier.fillMaxWidth()) { Text(if (copied) "Скопировано" else "Скопировать ссылку-приглашение") }
+            }, modifier = Modifier.fillMaxWidth()) { Text(if (copied) strings.copied else strings.copyInvite) }
             Button(onClick = onScan, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Filled.QrCodeScanner, contentDescription = null)
-                Text("  Сканировать код друга")
+                Text("  " + strings.scanFriend)
             }
         }
     }
@@ -114,7 +115,7 @@ fun ScanScreen(onBack: () -> Unit, onScanned: (ScannedCode) -> Unit) {
             notOurs = false
         }
     }
-    Scaffold(topBar = { TopAppBar(title = { Text("Сканировать код") }, navigationIcon = { BackButton(onBack) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(strings.scanCode) }, navigationIcon = { BackButton(onBack) }) }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).background(Color.Black)) {
             QrScanner(
                 onScanned = { raw ->
@@ -130,7 +131,7 @@ fun ScanScreen(onBack: () -> Unit, onScanned: (ScannedCode) -> Unit) {
                 modifier = Modifier.fillMaxSize(),
             )
             Text(
-                if (notOurs) "Это не код Ghostlink" else "Наведите камеру на код друга или на код входа с другого устройства",
+                if (notOurs) strings.notGhostlink else strings.scanHint,
                 color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.Black.copy(alpha = 0.55f)).padding(20.dp),
@@ -178,7 +179,7 @@ class ConnectViewModel(private val friendId: String) : ViewModel() {
                 chatReady.value = AppGraph.chats.startChat(me, friendId)
             } catch (e: Exception) {
                 logWarning("Connect", "Failed to start chat", e)
-                _state.update { (it as? ConnectState.Found)?.copy(busy = false, error = "Что-то пошло не так. Попробуйте ещё раз.") ?: it }
+                _state.update { (it as? ConnectState.Found)?.copy(busy = false, error = strings.connectError) ?: it }
             }
         }
     }
@@ -191,7 +192,7 @@ fun ConnectScreen(userId: String, onBack: () -> Unit, onChatReady: (String) -> U
     val ready by viewModel.chatReady.collectAsStateWithLifecycle()
     LaunchedEffect(ready) { ready?.let(onChatReady) }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Новый друг") }, navigationIcon = { BackButton(onBack) }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(strings.newFriend) }, navigationIcon = { BackButton(onBack) }) }) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -199,21 +200,21 @@ fun ConnectScreen(userId: String, onBack: () -> Unit, onChatReady: (String) -> U
         ) {
             when (val s = state) {
                 ConnectState.Loading -> CircularProgressIndicator()
-                ConnectState.Self -> Message("Это ваш собственный код", "Покажите его другу — а сами отсканируйте его код.")
-                ConnectState.NotFound -> Message("Код не найден", "Похоже, этот пользователь удалил аккаунт или код устарел.")
+                ConnectState.Self -> Message(strings.selfCodeTitle, strings.selfCodeBody)
+                ConnectState.NotFound -> Message(strings.notFoundTitle, strings.notFoundBody)
                 is ConnectState.Found -> {
                     Avatar(s.user.name, s.user.id, size = 96.dp)
                     Spacer(Modifier.height(16.dp))
                     Text(s.user.name, style = MaterialTheme.typography.headlineSmall)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        s.error ?: "Добавить в друзья? Вы сразу сможете переписываться.",
+                        s.error ?: strings.connectBody,
                         textAlign = TextAlign.Center,
                         color = if (s.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(24.dp))
                     Button(onClick = viewModel::connect, enabled = !s.busy, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                        if (s.busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) else Text("Добавить и написать")
+                        if (s.busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) else Text(strings.connectAction)
                     }
                 }
             }
