@@ -80,7 +80,7 @@ fun MyCodeScreen(onBack: () -> Unit, onScan: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             user?.let {
-                Avatar(it.name, it.id, size = 64.dp)
+                Avatar(it.name, it.id, size = 64.dp, photoVersion = it.avatarVersion)
                 Text(it.name, style = MaterialTheme.typography.titleLarge)
             }
             QrImage(link, Modifier.size(260.dp))
@@ -203,7 +203,7 @@ fun ConnectScreen(userId: String, onBack: () -> Unit, onChatReady: (String) -> U
                 ConnectState.Self -> Message(strings.selfCodeTitle, strings.selfCodeBody)
                 ConnectState.NotFound -> Message(strings.notFoundTitle, strings.notFoundBody)
                 is ConnectState.Found -> {
-                    Avatar(s.user.name, s.user.id, size = 96.dp)
+                    Avatar(s.user.name, s.user.id, size = 96.dp, photoVersion = s.user.avatarVersion)
                     Spacer(Modifier.height(16.dp))
                     Text(s.user.name, style = MaterialTheme.typography.headlineSmall)
                     Spacer(Modifier.height(8.dp))

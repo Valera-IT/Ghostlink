@@ -50,12 +50,20 @@ data class User(
     val name: String,
     val online: Boolean = false,
     val lastSeen: Instant? = null,
+    /** Версия фото профиля из avatars/{uid}; null — фото нет, показываем инициалы. */
+    val avatarVersion: Long? = null,
 ) {
     fun isOnline(now: Instant): Boolean = online && (lastSeen == null || now - lastSeen < ONLINE_TIMEOUT)
 
     companion object {
         /** Совпадает с ограничением в firestore.rules. */
         const val NAME_MAX_LENGTH = 40
+
+        /** Сторона квадратного фото профиля. */
+        const val AVATAR_SIZE_PX = 256
+
+        /** Потолок JPEG фото профиля; совпадает с ограничением в firestore.rules. */
+        const val AVATAR_MAX_BYTES = 64 * 1024
 
         /** Имя профиля без пробелов по краям и не длиннее лимита; null — пустое. */
         fun normalizeName(raw: String): String? =

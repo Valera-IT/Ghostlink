@@ -136,7 +136,7 @@ fun PickMembersScreen(
                             .clickable(enabled = checked || state.slotsLeft > 0) { viewModel.onAction(PickMembersAction.Toggle(friend.id)) }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    Avatar(friend.name, friend.id.value, size = 44.dp)
+                    Avatar(friend.name, friend.id.value, size = 44.dp, photoVersion = friend.avatarVersion)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(friend.name, style = MaterialTheme.typography.titleMedium)

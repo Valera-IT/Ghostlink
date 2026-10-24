@@ -8,6 +8,7 @@ import dev.gitlive.firebase.firestore.FieldPath
 import dev.gitlive.firebase.firestore.FieldValue
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import dev.gitlive.firebase.firestore.ServerTimestampBehavior
+import dev.gitlive.firebase.firestore.Source
 import dev.gitlive.firebase.firestore.Timestamp
 import dev.gitlive.firebase.firestore.fromMilliseconds
 import dev.gitlive.firebase.firestore.toMilliseconds
@@ -28,9 +29,11 @@ import io.github.valerait.ghostlink.model.Message
 import io.github.valerait.ghostlink.model.ReplyTo
 import io.github.valerait.ghostlink.model.User
 import io.github.valerait.ghostlink.platform.approveWithPayload
+import io.github.valerait.ghostlink.platform.avatarData
 import io.github.valerait.ghostlink.platform.logWarning
 import io.github.valerait.ghostlink.platform.nowMillis
 import io.github.valerait.ghostlink.platform.payloadBytes
+import io.github.valerait.ghostlink.platform.setAvatar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -53,7 +56,12 @@ private fun <T> Flow<T>.logErrors(what: String): Flow<T> = catch { logWarning("F
 // ---------- users ----------
 
 @Serializable
-private class UserDto(val name: String = "", val online: Boolean = false, val lastSeen: Timestamp? = null)
+private class UserDto(
+    val name: String = "",
+    val online: Boolean = false,
+    val lastSeen: Timestamp? = null,
+    val avatarVersion: Long? = null,
+)
 
 @Serializable
 private class ProfileWrite(val name: String, val online: Boolean, val lastSeen: BaseTimestamp)
@@ -61,11 +69,19 @@ private class ProfileWrite(val name: String, val online: Boolean, val lastSeen: 
 private fun DocumentSnapshot.toUser(): User? {
     if (!exists) return null
     val dto = data<UserDto>(ESTIMATE)
-    return User(id = id, name = dto.name, online = dto.online, lastSeen = dto.lastSeen?.millis())
+    return User(
+        id = id,
+        name = dto.name,
+        online = dto.online,
+        lastSeen = dto.lastSeen?.millis(),
+        avatarVersion = dto.avatarVersion?.takeIf { it > 0 },
+    )
 }
 
 class FirestoreUserRepository(db: FirebaseFirestore) : UserRepository {
     private val users = db.collection("users")
+    // Фото отдельно от users/{uid}: тот меняется на каждый heartbeat, а 64 КБ качать с каждым «в сети» незачем.
+    private val avatars = db.collection("avatars")
 
     override fun observeUser(id: String): Flow<User?> =
         users.document(id).snapshots.map { it.toUser() }.logErrors("users/$id")
@@ -91,7 +107,30 @@ class FirestoreUserRepository(db: FirebaseFirestore) : UserRepository {
     override suspend fun setOnline(id: String, online: Boolean) {
         users.document(id).update("online" to online, "lastSeen" to FieldValue.serverTimestamp)
     }
+
+    override suspend fun getAvatar(id: String, version: Long): ByteArray? {
+        val ref = avatars.document(id)
+        // Кэш Firestore на диске и есть кэш фото: с сервера качаем, только если там другая версия.
+        val cached = runCatching { ref.get(Source.CACHE) }.getOrNull()
+        val snapshot = cached?.takeIf { it.exists && it.avatarVersion() == version } ?: ref.get(Source.SERVER)
+        return if (snapshot.exists && snapshot.avatarVersion() == version) snapshot.avatarData() else null
+    }
+
+    override suspend fun setAvatar(id: String, jpeg: ByteArray) {
+        require(jpeg.isNotEmpty() && jpeg.size <= User.AVATAR_MAX_BYTES) { "Avatar is ${jpeg.size} bytes" }
+        val version = nowMillis()
+        // Сначала фото, потом версия в профиле: увидевший новую версию уже может его скачать.
+        avatars.document(id).setAvatar(jpeg, version)
+        users.document(id).update("avatarVersion" to version)
+    }
+
+    override suspend fun removeAvatar(id: String) {
+        users.document(id).update("avatarVersion" to FieldValue.delete)
+        avatars.document(id).delete()
+    }
 }
+
+private fun DocumentSnapshot.avatarVersion(): Long? = runCatching { get<Long?>("version") }.getOrNull()
 
 // ---------- chats ----------
 

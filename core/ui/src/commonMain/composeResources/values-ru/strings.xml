@@ -128,6 +128,10 @@
     <string name="settings_title">Настройки</string>
     <string name="settings_rename">Изменить имя</string>
     <string name="settings_tap_to_rename">Нажмите, чтобы изменить имя</string>
+    <string name="settings_photo">Фото профиля</string>
+    <string name="settings_photo_pick">Выбрать фото</string>
+    <string name="settings_photo_remove">Удалить фото</string>
+    <string name="settings_photo_failed">Не удалось открыть это фото. Попробуйте другое.</string>
     <string name="settings_account">Аккаунт</string>
     <string name="settings_devices">Устройства</string>
     <string name="settings_devices_hint">Войти на компьютере или другом телефоне</string>

@@ -10,7 +10,8 @@ actual fun logWarning(
     message: String,
     error: Throwable?,
 ) {
-    NSLog("%@", "W/$tag: $message${error?.let { ": $it" }.orEmpty()}")
+    // Строки Kotlin в variadic-аргументах NSLog роняют приложение, поэтому текст идёт форматом, с экранированным %.
+    NSLog("W/$tag: $message${error?.let { ": $it" }.orEmpty()}".replace("%", "%%"))
 }
 
 @Composable
