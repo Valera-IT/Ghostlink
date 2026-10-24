@@ -18,7 +18,7 @@ android {
     defaultConfig {
         applicationId = "io.github.valerait.ghostlink"
         versionCode = 1
-        versionName = "0.3.0" // x-release-please-version
+        versionName = "0.4.0" // x-release-please-version
     }
 
     flavorDimensions += "env"
