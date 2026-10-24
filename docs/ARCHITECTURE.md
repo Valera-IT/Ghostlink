@@ -47,7 +47,7 @@ push-worker/               Cloudflare Worker (этап 6), TypeScript
 firebase/                  firestore.rules, firestore.indexes.json, тесты правил
 ```
 
-**Правила зависимостей** (проверяются в CI, задача `checkModuleGraph`):
+**Правила зависимостей** (для `feature/*` проверяет сама сборка: плагин `ghostlink.feature` падает на зависимости от другой фичи или `core:data`):
 
 ```
 apps/*      → feature/*, core/*
@@ -161,6 +161,10 @@ data class ChatUiState(            // всё, что нужно для отри�
 sealed interface ChatAction { data class InputChanged(val text: String); data object Send; ... }
 sealed interface ChatEffect { data object NavigateBack; data class ShowError(val error: GhostlinkError) }
 ```
+
+Экран шлёт действия в `viewModel.onAction(...)`, а эффекты забирает через `CollectEffects(viewModel.effects)` из `core:ui`.
+
+Навигацию каждая фича описывает сама: типобезопасные маршруты `@Serializable`, расширение `NavGraphBuilder.chatScreens(...)` и `NavController.navigateToChat(...)`. Переход в другую фичу — лямбда-параметр (`onOpenChat`, `onScan`), которую связывает корневой граф в приложении. Так фичи не видят друг друга.
 
 UI-модели (`ContactUi`, `MessageItem`, `ChatSummaryUi`) отличаются от domain-моделей: в них уже готовые строки (время, «был(а) в сети в 14:05») и группировка по дням.
 

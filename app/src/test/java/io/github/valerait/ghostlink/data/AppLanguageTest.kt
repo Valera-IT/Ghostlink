@@ -1,6 +1,7 @@
 package io.github.valerait.ghostlink.data
 
-import io.github.valerait.ghostlink.data.settings.AppLanguage
+import io.github.valerait.ghostlink.core.ui.AppLanguage
+import io.github.valerait.ghostlink.data.settings.overrideFor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

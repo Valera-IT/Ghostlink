@@ -113,6 +113,7 @@
     <string name="scan_hint">Наведите камеру на код друга или на код входа с другого устройства</string>
     <string name="scan_not_ghostlink">Это не код Ghostlink</string>
     <string name="scan_permission_denied">Чтобы сканировать коды друзей, Ghostlink нужен доступ к камере.</string>
+    <string name="scan_camera_unavailable">На этом устройстве сканировать коды пока нельзя.</string>
     <string name="scan_open_settings">Открыть настройки</string>
 
     <!-- Добавление друга -->

@@ -44,6 +44,10 @@ gradlePlugin {
             id = "ghostlink.kmp.android.library"
             implementationClass = "KmpAndroidLibraryConventionPlugin"
         }
+        register("feature") {
+            id = "ghostlink.feature"
+            implementationClass = "FeatureConventionPlugin"
+        }
         register("detekt") {
             id = "ghostlink.detekt"
             implementationClass = "DetektConventionPlugin"

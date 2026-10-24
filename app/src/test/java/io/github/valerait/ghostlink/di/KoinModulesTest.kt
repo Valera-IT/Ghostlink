@@ -16,6 +16,7 @@ import io.github.valerait.ghostlink.core.domain.usecase.ObserveChatListUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.SignOutUseCase
 import io.github.valerait.ghostlink.core.model.DeviceId
 import io.github.valerait.ghostlink.core.model.Platform
+import io.github.valerait.ghostlink.core.ui.AppConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -36,9 +37,9 @@ import org.koin.test.verify.verify
 class KoinModulesTest {
     // verify() смотрит на конструктор каждого типа в графе, даже если объект создаёт лямбда.
     // Context и SavedStateHandle даёт платформа (androidContext() и навигация),
-    // остальное — значения, которые лямбды вычисляют сами: AppConfig(demoMode), ThisDevice.from(context).
+    // остальное — значения, которые лямбды вычисляют сами: AppConfig(demoMode, versionName), androidThisDevice(context).
     private val extraTypes =
-        listOf(Context::class, SavedStateHandle::class, Boolean::class, DeviceId::class, Platform::class)
+        listOf(Context::class, SavedStateHandle::class, Boolean::class, String::class, DeviceId::class, Platform::class)
 
     @After
     fun tearDown() = stopKoin()

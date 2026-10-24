@@ -1,8 +1,8 @@
 package io.github.valerait.ghostlink
 
 import android.app.Application
-import io.github.valerait.ghostlink.di.AppConfig
 import io.github.valerait.ghostlink.di.appModules
+import io.github.valerait.ghostlink.di.detectAppConfig
 import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -12,7 +12,7 @@ class GhostlinkApp : Application() {
         super.onCreate()
         startKoin {
             androidContext(this@GhostlinkApp)
-            modules(appModules(AppConfig.detect(this@GhostlinkApp)))
+            modules(appModules(detectAppConfig(this@GhostlinkApp)))
         }
         get<PresenceTracker>().start()
         get<DeviceRegistry>().start()

@@ -76,6 +76,14 @@ kover {
             ":core:demo",
             ":core:designsystem",
             ":core:ui",
+            ":feature:onboarding",
+            ":feature:chats",
+            ":feature:chat",
+            ":feature:friends",
+            ":feature:devices",
+            ":feature:link",
+            ":feature:recovery",
+            ":feature:settings",
         )
     }
     currentProject {
@@ -104,6 +112,14 @@ dependencies {
     implementation(project(":core:demo"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:ui"))
+    implementation(project(":feature:onboarding"))
+    implementation(project(":feature:chats"))
+    implementation(project(":feature:chat"))
+    implementation(project(":feature:friends"))
+    implementation(project(":feature:devices"))
+    implementation(project(":feature:link"))
+    implementation(project(":feature:recovery"))
+    implementation(project(":feature:settings"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -124,14 +140,6 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
-
-    implementation(libs.camera.camera2)
-    implementation(libs.camera.lifecycle)
-    implementation(libs.camera.view)
-    implementation(libs.concurrent.futures.ktx)
-    implementation(libs.guava)
-    implementation(libs.mlkit.barcode.scanning)
-    implementation(libs.zxing.core)
 
     testImplementation(project(":core:testing"))
     testImplementation(libs.junit)

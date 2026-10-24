@@ -11,66 +11,30 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
-import io.github.valerait.ghostlink.core.model.ScannedCode
+import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.ui.chat.ChatScreen
-import io.github.valerait.ghostlink.ui.chats.ChatListScreen
-import io.github.valerait.ghostlink.ui.connect.ConnectScreen
-import io.github.valerait.ghostlink.ui.devices.DevicesScreen
-import io.github.valerait.ghostlink.ui.group.GroupInfoScreen
-import io.github.valerait.ghostlink.ui.group.PickMembersScreen
-import io.github.valerait.ghostlink.ui.link.LinkApproveScreen
-import io.github.valerait.ghostlink.ui.link.LinkReceiveScreen
-import io.github.valerait.ghostlink.ui.mycode.MyCodeScreen
-import io.github.valerait.ghostlink.ui.onboarding.OnboardingScreen
-import io.github.valerait.ghostlink.ui.recovery.RecoveryScreen
-import io.github.valerait.ghostlink.ui.scan.ScanScreen
-import io.github.valerait.ghostlink.ui.settings.SettingsScreen
-import io.github.valerait.ghostlink.ui.settings.ThemeScreen
-import kotlinx.serialization.Serializable
-
-@Serializable data object ChatsRoute
-
-@Serializable data class ChatRoute(
-    val chatId: String,
-)
-
-/** chatId == null — создать новую группу, иначе добавить участников в эту. */
-@Serializable data class PickMembersRoute(
-    val chatId: String? = null,
-)
-
-@Serializable data class GroupInfoRoute(
-    val chatId: String,
-)
-
-@Serializable data object MyCodeRoute
-
-@Serializable data object ScanRoute
-
-@Serializable data class ConnectRoute(
-    val userId: String,
-)
-
-@Serializable data object SettingsRoute
-
-@Serializable data object DevicesRoute
-
-@Serializable data object ThemeRoute
-
-/** code — отсканированная ссылка ghostlink://link/…; разбирает её LinkApproveViewModel. */
-@Serializable data class LinkApproveRoute(
-    val code: String,
-)
-
-@Serializable data object WelcomeRoute
-
-@Serializable data object LinkReceiveRoute
-
-@Serializable data object RecoveryRoute
+import io.github.valerait.ghostlink.feature.chat.chatScreens
+import io.github.valerait.ghostlink.feature.chat.navigateToChat
+import io.github.valerait.ghostlink.feature.chat.navigateToNewGroup
+import io.github.valerait.ghostlink.feature.chats.ChatsRoute
+import io.github.valerait.ghostlink.feature.chats.chatsScreen
+import io.github.valerait.ghostlink.feature.devices.devicesScreen
+import io.github.valerait.ghostlink.feature.devices.navigateToDevices
+import io.github.valerait.ghostlink.feature.friends.friendsScreens
+import io.github.valerait.ghostlink.feature.friends.navigateToConnect
+import io.github.valerait.ghostlink.feature.friends.navigateToMyCode
+import io.github.valerait.ghostlink.feature.friends.navigateToScan
+import io.github.valerait.ghostlink.feature.link.linkApproveScreen
+import io.github.valerait.ghostlink.feature.link.linkReceiveScreen
+import io.github.valerait.ghostlink.feature.link.navigateToLinkApprove
+import io.github.valerait.ghostlink.feature.link.navigateToLinkReceive
+import io.github.valerait.ghostlink.feature.onboarding.WelcomeRoute
+import io.github.valerait.ghostlink.feature.onboarding.onboardingScreen
+import io.github.valerait.ghostlink.feature.recovery.navigateToRecovery
+import io.github.valerait.ghostlink.feature.recovery.recoveryScreen
+import io.github.valerait.ghostlink.feature.settings.navigateToSettings
+import io.github.valerait.ghostlink.feature.settings.settingsScreens
 
 @Composable
 fun GhostlinkRoot(viewModel: RootViewModel) {
@@ -91,21 +55,13 @@ fun GhostlinkRoot(viewModel: RootViewModel) {
 private fun OnboardingNavHost() {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = WelcomeRoute) {
-        composable<WelcomeRoute> {
-            OnboardingScreen(
-                onLinkDevice = { nav.navigate(LinkReceiveRoute) },
-                onRecover = { nav.navigate(RecoveryRoute) },
-            )
-        }
-        composable<LinkReceiveRoute> {
-            LinkReceiveScreen(onBack = { nav.navigateUp() })
-        }
-        composable<RecoveryRoute> {
-            RecoveryScreen(onBack = { nav.navigateUp() })
-        }
+        onboardingScreen(onLinkDevice = nav::navigateToLinkReceive, onRecover = nav::navigateToRecovery)
+        linkReceiveScreen(nav)
+        recoveryScreen(nav)
     }
 }
 
+/** После входа. Фичи не знают друг о друге: переходы между ними связываются здесь. */
 @Composable
 private fun MainNavHost(
     pendingInvite: UserId?,
@@ -115,81 +71,30 @@ private fun MainNavHost(
 
     LaunchedEffect(pendingInvite) {
         if (pendingInvite != null) {
-            nav.navigate(ConnectRoute(pendingInvite.value))
+            nav.navigateToConnect(pendingInvite)
             onInviteHandled()
         }
     }
 
+    // Новый чат открываем поверх списка: «назад» из него ведёт к чатам, а не к экрану, который его создал.
+    val openChatFromList = { chatId: ChatId -> nav.navigateToChat(chatId) { popUpTo<ChatsRoute>() } }
+
     NavHost(navController = nav, startDestination = ChatsRoute) {
-        composable<ChatsRoute> {
-            ChatListScreen(
-                onOpenChat = { nav.navigate(ChatRoute(it.value)) },
-                onMyCode = { nav.navigate(MyCodeRoute) },
-                onNewGroup = { nav.navigate(PickMembersRoute()) },
-                onScan = { nav.navigate(ScanRoute) },
-                onSettings = { nav.navigate(SettingsRoute) },
-            )
-        }
-        composable<ChatRoute> { entry ->
-            val chatId = entry.toRoute<ChatRoute>().chatId
-            ChatScreen(onBack = { nav.navigateUp() }, onGroupInfo = { nav.navigate(GroupInfoRoute(chatId)) })
-        }
-        composable<PickMembersRoute> { entry ->
-            val adding = entry.toRoute<PickMembersRoute>().chatId != null
-            PickMembersScreen(
-                onBack = { nav.navigateUp() },
-                onDone = { chatId ->
-                    if (adding) nav.navigateUp() else nav.navigate(ChatRoute(chatId.value)) { popUpTo<ChatsRoute>() }
-                },
-            )
-        }
-        composable<GroupInfoRoute> { entry ->
-            val chatId = entry.toRoute<GroupInfoRoute>().chatId
-            GroupInfoScreen(
-                onBack = { nav.navigateUp() },
-                onAddMembers = { nav.navigate(PickMembersRoute(chatId)) },
-                onLeft = { nav.popBackStack<ChatsRoute>(inclusive = false) },
-            )
-        }
-        composable<MyCodeRoute> {
-            MyCodeScreen(onBack = { nav.navigateUp() }, onScan = { nav.navigate(ScanRoute) })
-        }
-        composable<ScanRoute> {
-            ScanScreen(
-                onBack = { nav.navigateUp() },
-                onScanned = { code ->
-                    val route: Any =
-                        when (code) {
-                            is ScannedCode.Invite -> ConnectRoute(code.userId.value)
-                            is ScannedCode.Link -> LinkApproveRoute(code.code.toUri())
-                        }
-                    nav.navigate(route) { popUpTo<ScanRoute> { inclusive = true } }
-                },
-            )
-        }
-        composable<ConnectRoute> {
-            ConnectScreen(
-                onBack = { nav.navigateUp() },
-                onChatReady = { chatId ->
-                    nav.navigate(ChatRoute(chatId.value)) { popUpTo<ChatsRoute>() }
-                },
-            )
-        }
-        composable<SettingsRoute> {
-            SettingsScreen(
-                onBack = { nav.navigateUp() },
-                onDevices = { nav.navigate(DevicesRoute) },
-                onTheme = { nav.navigate(ThemeRoute) },
-            )
-        }
-        composable<ThemeRoute> {
-            ThemeScreen(onBack = { nav.navigateUp() })
-        }
-        composable<DevicesRoute> {
-            DevicesScreen(onBack = { nav.navigateUp() }, onScan = { nav.navigate(ScanRoute) })
-        }
-        composable<LinkApproveRoute> {
-            LinkApproveScreen(onClose = { nav.navigateUp() })
-        }
+        chatsScreen(
+            onOpenChat = { nav.navigateToChat(it) },
+            onMyCode = nav::navigateToMyCode,
+            onNewGroup = nav::navigateToNewGroup,
+            onScan = nav::navigateToScan,
+            onSettings = nav::navigateToSettings,
+        )
+        chatScreens(
+            navController = nav,
+            onGroupCreated = openChatFromList,
+            onLeftGroup = { nav.popBackStack<ChatsRoute>(inclusive = false) },
+        )
+        friendsScreens(navController = nav, onChatReady = openChatFromList, onLinkCode = nav::navigateToLinkApprove)
+        settingsScreens(navController = nav, onDevices = nav::navigateToDevices)
+        devicesScreen(navController = nav, onScan = nav::navigateToScan)
+        linkApproveScreen(nav)
     }
 }
