@@ -46,7 +46,7 @@ class RepositoriesEmulatorTest {
     @Suppress("LongMethod") // сценарий целиком: каждый шаг опирается на предыдущий
     @Test
     fun newDeviceLinksToAccountAndChatsInRealTime() =
-        runBlocking<Unit> {
+        emulatorTest {
             val phone = client()
             val friend = client()
             val laptop = client()
@@ -127,7 +127,7 @@ class RepositoriesEmulatorTest {
 
     @Test
     fun errorsArriveAsGhostlinkErrors() =
-        runBlocking<Unit> {
+        emulatorTest {
             val phone = client()
             phone.auth.createAccount()
 
@@ -155,7 +155,7 @@ class RepositoriesEmulatorTest {
     @Suppress("LongMethod") // сценарий целиком: каждый шаг опирается на предыдущий
     @Test
     fun groupWithTypingAndDisappearingMessages() =
-        runBlocking<Unit> {
+        emulatorTest {
             val admin = client()
             val anna = client()
             val boris = client()
@@ -258,7 +258,7 @@ class RepositoriesEmulatorTest {
     /** Меню чата: закрепить, выключить уведомления, удалить и вернуть чат новым сообщением. */
     @Test
     fun pinMuteAndRemoveChat() =
-        runBlocking<Unit> {
+        emulatorTest {
             val me = client()
             val friend = client()
             val meId =
@@ -320,7 +320,14 @@ class RepositoriesEmulatorTest {
             withTimeout(TIMEOUT) { me.chats.observeChatPrefs(meId).first { it[chatId]?.hidden == false } }
         }
 
+    /**
+     * Сценарий целиком под общим таймаутом: если запись или вход так и не дождутся сервера,
+     * тест упадёт с местом зависания, а не повесит всю задачу до таймаута Gradle.
+     */
+    private fun emulatorTest(block: suspend CoroutineScope.() -> Unit) = runBlocking<Unit> { withTimeout(SCENARIO_TIMEOUT, block) }
+
     private companion object {
         val TIMEOUT = 15.seconds
+        val SCENARIO_TIMEOUT = 60.seconds
     }
 }

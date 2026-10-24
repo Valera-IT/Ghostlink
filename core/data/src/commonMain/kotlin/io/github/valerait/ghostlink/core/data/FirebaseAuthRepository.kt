@@ -45,7 +45,7 @@ class FirebaseAuthRepository(
             val key = AccountKey.generate()
             val user = checkNotNull(auth.createUserWithEmailAndPassword(key.email, key.password).user)
             keys.put(user.uid, key)
-            checkNotNull(refresh(user))
+            signedIn(user)
         }
 
     override suspend fun signInWithKey(key: AccountKey): Account =
@@ -63,10 +63,10 @@ class FirebaseAuthRepository(
                     throw GhostlinkError.InvalidAccountKey(e)
                 }
             keys.put(user.uid, key)
-            checkNotNull(refresh(user))
+            signedIn(user)
         }
 
-    override suspend fun signInAnonymously(): Account = firebaseCall { checkNotNull(refresh(checkNotNull(auth.signInAnonymously().user))) }
+    override suspend fun signInAnonymously(): Account = firebaseCall { signedIn(checkNotNull(auth.signInAnonymously().user)) }
 
     override suspend fun ensureAccountKey(): AccountKey =
         keyMutex.withLock {
@@ -109,10 +109,16 @@ class FirebaseAuthRepository(
     override suspend fun signOut() {
         keys.clear()
         firebaseCall { auth.signOut() }
+        awaitAuthPropagation()
         refresh(null)
     }
 
     private fun requireUser(): FirebaseUser = checkNotNull(auth.currentUser) { "Not signed in" }
+
+    private suspend fun signedIn(user: FirebaseUser): Account {
+        awaitAuthPropagation()
+        return checkNotNull(refresh(user))
+    }
 
     private fun refresh(user: FirebaseUser?): Account? {
         _account.value = user?.toAccount()
