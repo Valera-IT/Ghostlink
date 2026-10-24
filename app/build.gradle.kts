@@ -76,6 +76,7 @@ kover {
             ":core:demo",
             ":core:designsystem",
             ":core:ui",
+            ":core:platform",
             ":feature:onboarding",
             ":feature:chats",
             ":feature:chat",
@@ -112,6 +113,7 @@ dependencies {
     implementation(project(":core:demo"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:ui"))
+    implementation(project(":core:platform"))
     implementation(project(":feature:onboarding"))
     implementation(project(":feature:chats"))
     implementation(project(":feature:chat"))
@@ -125,7 +127,6 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
 

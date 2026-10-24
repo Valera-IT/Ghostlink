@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.valerait.ghostlink.core.domain.usecase.CreateAccountUseCase
 import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.core.platform.logWarning
 import io.github.valerait.ghostlink.core.ui.AppConfig
-import io.github.valerait.ghostlink.core.ui.logWarning
 import io.github.valerait.ghostlink.core.ui.resources.Res
 import io.github.valerait.ghostlink.core.ui.resources.error_sign_in
 import kotlinx.coroutines.flow.MutableStateFlow

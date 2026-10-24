@@ -12,7 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.core.designsystem.GhostlinkTheme
-import io.github.valerait.ghostlink.core.model.InviteLink
+import io.github.valerait.ghostlink.core.platform.DeepLinks
 import io.github.valerait.ghostlink.data.settings.LanguagePreferences
 import io.github.valerait.ghostlink.data.settings.ThemePreferences
 import io.github.valerait.ghostlink.ui.navigation.GhostlinkRoot
@@ -24,6 +24,7 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 class MainActivity : ComponentActivity() {
     private val rootViewModel: RootViewModel by viewModel()
     private val themePreferences: ThemePreferences by inject()
+    private val deepLinks: DeepLinks by inject()
 
     // Koin уже поднят в GhostlinkApp.onCreate — он идёт раньше создания Activity.
     override fun attachBaseContext(newBase: Context) {
@@ -58,6 +59,6 @@ class MainActivity : ComponentActivity() {
 
     /** ghostlink://add/<id>, открытая из другого приложения (например, присланная ссылка). */
     private fun handleInvite(intent: Intent?) {
-        InviteLink.parse(intent?.dataString)?.let(rootViewModel::onInvite)
+        deepLinks.open(intent?.dataString)
     }
 }

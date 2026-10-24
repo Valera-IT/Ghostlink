@@ -29,8 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.valerait.ghostlink.core.platform.rememberShareText
 import io.github.valerait.ghostlink.core.ui.QrCard
-import io.github.valerait.ghostlink.core.ui.rememberShareText
 import io.github.valerait.ghostlink.core.ui.resources.Res
 import io.github.valerait.ghostlink.core.ui.resources.action_back
 import io.github.valerait.ghostlink.core.ui.resources.action_scan_friend

@@ -14,6 +14,7 @@ kotlin {
         commonMain.dependencies {
             api(project(":core:designsystem"))
             api(project(":core:model"))
+            implementation(project(":core:platform"))
             // api: строки (Res.string.*) нужны экранам приложения, а StringResource — их состоянию.
             api(libs.cmp.components.resources)
             implementation(libs.kotlinx.coroutines.core)

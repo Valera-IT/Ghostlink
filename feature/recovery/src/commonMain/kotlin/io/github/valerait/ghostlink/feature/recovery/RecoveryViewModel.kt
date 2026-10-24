@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.valerait.ghostlink.core.domain.usecase.RestoreWithRecoveryCodeUseCase
 import io.github.valerait.ghostlink.core.model.GhostlinkError
-import io.github.valerait.ghostlink.core.ui.logWarning
+import io.github.valerait.ghostlink.core.platform.logWarning
 import io.github.valerait.ghostlink.core.ui.resources.Res
 import io.github.valerait.ghostlink.core.ui.resources.error_sign_in
 import io.github.valerait.ghostlink.core.ui.resources.recovery_error_format

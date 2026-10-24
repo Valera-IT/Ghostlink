@@ -1,6 +1,8 @@
 package io.github.valerait.ghostlink
 
 import android.app.Application
+import io.github.valerait.ghostlink.core.data.DeviceRegistry
+import io.github.valerait.ghostlink.core.data.PresenceTracker
 import io.github.valerait.ghostlink.di.appModules
 import io.github.valerait.ghostlink.di.detectAppConfig
 import org.koin.android.ext.android.get

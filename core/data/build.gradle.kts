@@ -10,8 +10,10 @@ kotlin {
         commonMain.dependencies {
             api(project(":core:domain"))
             implementation(project(":core:firebase"))
+            implementation(project(":core:platform"))
         }
         commonTest.dependencies {
+            implementation(project(":core:testing"))
             implementation(libs.kotlinx.coroutines.test)
         }
         jvmTest.dependencies {

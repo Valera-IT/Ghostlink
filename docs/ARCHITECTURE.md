@@ -25,7 +25,7 @@ core/
   crypto                   LinkCrypto: шифрование привязки устройства на cryptography-kotlin
   data                     реализации репозиториев, мапперы DTO ↔ domain
   firebase                 обёртки GitLive, DTO Firestore, конфиг окружений
-  platform                 expect/actual: SecureStore, DeviceInfo, AppLifecycle, DeepLinks, Clock
+  platform                 платформенный слой: SecureStore, ThisDevice, AppLifecycle, DeepLinks, QrScanner
   designsystem             тема, цвета, типографика, базовые компоненты
   ui                       общие экранные куски: Avatar, форматирование времени, QR-картинка
   testing                  фейки репозиториев (FakeBackend, бывший InMemoryBackend), FakeLinkCipher, TestClock
@@ -51,7 +51,7 @@ firebase/                  firestore.rules, firestore.indexes.json, тесты �
 
 ```
 apps/*      → feature/*, core/*
-feature/*   → core:domain, core:model, core:designsystem, core:ui   (не feature/*, не core:data)
+feature/*   → core:domain, core:model, core:platform, core:designsystem, core:ui   (не feature/*, не core:data)
 core:data   → core:domain, core:model, core:firebase, core:crypto, core:platform
 core:domain → core:model
 core:firebase → только GitLive (android, jvm, ios)
@@ -170,14 +170,18 @@ UI-модели (`ContactUi`, `MessageItem`, `ChatSummaryUi`) отличаютс
 
 ## Платформенный слой (`core:platform`)
 
-| `expect` | Android | iOS | Desktop (JVM) |
+Выше этого модуля код платформенных API не видит. Сервисы — интерфейсы в `commonMain` (их легко подменить в тестах), реализации лежат в `androidMain`/`iosMain`/`jvmMain` и собираются в `expect val platformModule` для Koin. Composable-части (`QrScanner`, буфер обмена, «Поделиться») — `expect fun`.
+
+| | Android | iOS | Desktop (JVM) |
 |---|---|---|---|
-| `SecureStore` — ключ аккаунта | Keystore + EncryptedFile | Keychain | macOS Keychain / Windows Credential Manager (`java-keyring`) |
-| `DeviceInfo` — имя, платформа | `Build.MODEL` | `UIDevice` | `hostname`, `os.name` |
-| `AppLifecycle` — foreground для присутствия | `ProcessLifecycleOwner` | `UIApplication` notifications | фокус окна |
-| `QrScanner` | CameraX + ML Kit | AVFoundation | нет (только показ QR) |
-| `DeepLinks` | intent-filter | URL scheme | регистрация схемы в ОС |
-| `Clock` | `kotlin.time.Clock.System` (в тестах фейк) | ← | ← |
+| `SecureStore` — ключ аккаунта | Keystore (AES-GCM) + SharedPreferences | Keychain (4.2), пока в памяти | `java-keyring` (5.3), пока в памяти |
+| `ThisDevice` — id, имя, платформа | `Settings.Global.DEVICE_NAME` / `Build.MODEL` | `UIDevice` | `hostname`, `os.name` |
+| `AppLifecycle` — foreground для присутствия | `ProcessLifecycleOwner` | `UIApplication` notifications | фокус окна (этап 5), пока всегда на экране |
+| `QrScanner` | CameraX + ML Kit | AVFoundation (4.2) | нет (только показ QR) |
+| `DeepLinks` — приглашения `ghostlink://` | intent-filter → `open()` | URL scheme (4.3) | регистрация схемы в ОС (5.4) |
+| `logWarning`, буфер обмена, «Поделиться» | Logcat, `ClipboardManager`, `ACTION_SEND` | NSLog, `UIPasteboard` | `java.util.logging`, AWT |
+
+Время — `kotlin.time.Clock` (в тестах `TestClock`). Статус «в сети» (`PresenceTracker`) и реестр устройств (`DeviceRegistry`) — общий код в `core:data` поверх `AppLifecycle`.
 
 ## Окружения и конфигурация
 

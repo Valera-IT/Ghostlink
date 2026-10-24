@@ -9,7 +9,7 @@ import io.github.valerait.ghostlink.core.domain.usecase.SignOutEverywhereUseCase
 import io.github.valerait.ghostlink.core.model.Device
 import io.github.valerait.ghostlink.core.model.DeviceId
 import io.github.valerait.ghostlink.core.model.ThisDevice
-import io.github.valerait.ghostlink.core.ui.logWarning
+import io.github.valerait.ghostlink.core.platform.logWarning
 import io.github.valerait.ghostlink.core.ui.resources.Res
 import io.github.valerait.ghostlink.core.ui.resources.devices_removed
 import io.github.valerait.ghostlink.core.ui.resources.error_generic

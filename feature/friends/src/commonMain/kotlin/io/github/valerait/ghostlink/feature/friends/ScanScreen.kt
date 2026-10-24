@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.valerait.ghostlink.core.model.ScannedCode
+import io.github.valerait.ghostlink.core.platform.QrScanner
 import io.github.valerait.ghostlink.core.ui.resources.Res
 import io.github.valerait.ghostlink.core.ui.resources.action_back
 import io.github.valerait.ghostlink.core.ui.resources.scan_camera_unavailable
@@ -65,7 +66,7 @@ fun ScanScreen(
     var foreignCodeAt by remember { mutableLongStateOf(0L) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        QrCamera(
+        QrScanner(
             onBarcode = { raw ->
                 if (!done) {
                     val code = ScannedCode.parse(raw)
@@ -92,18 +93,6 @@ fun ScanScreen(
         }
     }
 }
-
-/**
- * Камера на весь экран с распознаванием QR. Сама просит разрешение: пока оно есть, поверх камеры
- * рисуется [overlay]; если отказали — [denied] с действием «открыть настройки»; где камеры нет — [unavailable].
- */
-@Composable
-internal expect fun QrCamera(
-    onBarcode: (String) -> Unit,
-    denied: @Composable (openSettings: () -> Unit) -> Unit,
-    unavailable: @Composable () -> Unit,
-    overlay: @Composable () -> Unit,
-)
 
 /** Подсказка внизу; пару секунд после чужого QR — «это не код Ghostlink». */
 @Composable

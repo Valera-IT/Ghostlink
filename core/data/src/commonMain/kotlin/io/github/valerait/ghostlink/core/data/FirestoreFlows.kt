@@ -1,6 +1,7 @@
 package io.github.valerait.ghostlink.core.data
 
 import dev.gitlive.firebase.firestore.ServerTimestampBehavior
+import io.github.valerait.ghostlink.core.platform.logWarning
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow

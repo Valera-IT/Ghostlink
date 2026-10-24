@@ -4,13 +4,14 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /**
- * Репозитории на Firebase. Платформа даёт [AccountKeyStore] и CoroutineScope процесса
- * и до старта Koin инициализирует FirebaseApp.
+ * Репозитории на Firebase. Нужны platformModule из core:platform и CoroutineScope процесса;
+ * FirebaseApp платформа инициализирует до старта Koin.
  *
  * @param emulatorHost адрес локального Firebase Emulator; null — настоящий проект.
  */
 fun dataModule(emulatorHost: String? = null): Module =
     module {
+        single<AccountKeyStore> { SecureAccountKeyStore(get()) }
         single { FirebaseBackend(keys = get(), scope = get(), emulatorHost = emulatorHost) }
         single { get<FirebaseBackend>().auth }
         single { get<FirebaseBackend>().users }

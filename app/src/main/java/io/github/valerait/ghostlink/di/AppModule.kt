@@ -1,18 +1,16 @@
 package io.github.valerait.ghostlink.di
 
 import io.github.valerait.ghostlink.BuildConfig
-import io.github.valerait.ghostlink.DeviceRegistry
-import io.github.valerait.ghostlink.PresenceTracker
 import io.github.valerait.ghostlink.core.crypto.cryptoModule
-import io.github.valerait.ghostlink.core.data.AccountKeyStore
+import io.github.valerait.ghostlink.core.data.DeviceRegistry
+import io.github.valerait.ghostlink.core.data.PresenceTracker
 import io.github.valerait.ghostlink.core.data.dataModule
 import io.github.valerait.ghostlink.core.demo.demoModule
 import io.github.valerait.ghostlink.core.domain.domainModule
+import io.github.valerait.ghostlink.core.platform.platformModule
 import io.github.valerait.ghostlink.core.ui.AppConfig
 import io.github.valerait.ghostlink.core.ui.LanguageSettings
 import io.github.valerait.ghostlink.core.ui.ThemeSettings
-import io.github.valerait.ghostlink.data.device.AndroidAccountKeyStore
-import io.github.valerait.ghostlink.data.device.androidThisDevice
 import io.github.valerait.ghostlink.data.settings.LanguagePreferences
 import io.github.valerait.ghostlink.data.settings.ThemePreferences
 import io.github.valerait.ghostlink.feature.chat.chatModule
@@ -27,7 +25,6 @@ import io.github.valerait.ghostlink.ui.navigation.RootViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
@@ -38,6 +35,7 @@ import org.koin.dsl.module
 fun appModules(config: AppConfig): List<Module> =
     listOf(
         appModule(config),
+        platformModule,
         domainModule,
         cryptoModule,
         if (config.demoMode) demoModule else dataModule(BuildConfig.FIREBASE_EMULATOR_HOST),
@@ -51,8 +49,6 @@ private fun appModule(config: AppConfig) =
         single { config }
         // Записи без ожидания (отправка, «прочитано», присутствие, ответы бота) живут дольше экрана — до конца процесса.
         single { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
-        single<AccountKeyStore> { AndroidAccountKeyStore(androidContext()) }
-        single { androidThisDevice(androidContext()) }
         singleOf(::ThemePreferences) { bind<ThemeSettings>() }
         singleOf(::LanguagePreferences) { bind<LanguageSettings>() }
         singleOf(::PresenceTracker)
