@@ -34,6 +34,14 @@ actual suspend fun DocumentReference.setAvatar(data: ByteArray, version: Long): 
         }
     }
 
+actual suspend fun DocumentReference.setAvatarVersion(version: Long): Unit =
+    suspendCancellableCoroutine { cont ->
+        android.update(mapOf<String, Any>("avatarVersion" to version)).addOnCompleteListener { task ->
+            val error = task.exception
+            if (error == null) cont.resume(Unit) else cont.resumeWithException(error)
+        }
+    }
+
 actual fun DocumentSnapshot.avatarData(): ByteArray? = android.getBlob("data")?.toBytes()
 
 actual fun decodeImage(bytes: ByteArray): ImageBitmap? =

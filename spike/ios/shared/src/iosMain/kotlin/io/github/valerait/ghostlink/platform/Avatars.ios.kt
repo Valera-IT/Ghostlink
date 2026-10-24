@@ -16,6 +16,8 @@ import org.jetbrains.skia.Image
 import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSizeMake
 import platform.Foundation.NSData
+import platform.Foundation.NSNumber
+import platform.Foundation.numberWithLongLong
 import platform.PhotosUI.PHPickerConfiguration
 import platform.PhotosUI.PHPickerFilter
 import platform.PhotosUI.PHPickerResult
@@ -40,6 +42,13 @@ import kotlin.coroutines.resumeWithException
 actual suspend fun DocumentReference.setAvatar(data: ByteArray, version: Long): Unit =
     suspendCancellableCoroutine { cont ->
         ios.setData(mapOf<Any?, Any?>("data" to data.toNSData(), "version" to version)) { error ->
+            if (error == null) cont.resume(Unit) else cont.resumeWithException(Exception(error.localizedDescription))
+        }
+    }
+
+actual suspend fun DocumentReference.setAvatarVersion(version: Long): Unit =
+    suspendCancellableCoroutine { cont ->
+        ios.updateData(mapOf<Any?, Any?>("avatarVersion" to NSNumber.numberWithLongLong(version))) { error ->
             if (error == null) cont.resume(Unit) else cont.resumeWithException(Exception(error.localizedDescription))
         }
     }

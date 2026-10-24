@@ -12,3 +12,9 @@ expect suspend fun DocumentReference.setAvatar(
 )
 
 expect fun DocumentSnapshot.avatarData(): ByteArray?
+
+/**
+ * Версия фото в users/{uid}. Через нативный SDK: GitLive на iOS пишет Long не целым числом,
+ * и правило `avatarVersion is int` запись отклоняет.
+ */
+expect suspend fun DocumentReference.setAvatarVersion(version: Long)

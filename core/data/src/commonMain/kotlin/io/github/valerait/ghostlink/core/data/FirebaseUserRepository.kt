@@ -12,6 +12,7 @@ import io.github.valerait.ghostlink.core.firebase.ProfileWrite
 import io.github.valerait.ghostlink.core.firebase.UserDto
 import io.github.valerait.ghostlink.core.firebase.avatarData
 import io.github.valerait.ghostlink.core.firebase.setAvatar
+import io.github.valerait.ghostlink.core.firebase.setAvatarVersion
 import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.core.platform.logWarning
@@ -98,7 +99,7 @@ class FirebaseUserRepository(
         // Сначала фото, потом версия в профиле: увидевший новую версию уже может его скачать.
         firebaseCall {
             avatars.document(id.value).setAvatar(jpeg, version)
-            users.document(id.value).updateFields { "avatarVersion" to version }
+            users.document(id.value).setAvatarVersion(version)
         }
     }
 

@@ -34,6 +34,7 @@ import io.github.valerait.ghostlink.platform.logWarning
 import io.github.valerait.ghostlink.platform.nowMillis
 import io.github.valerait.ghostlink.platform.payloadBytes
 import io.github.valerait.ghostlink.platform.setAvatar
+import io.github.valerait.ghostlink.platform.setAvatarVersion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -121,7 +122,7 @@ class FirestoreUserRepository(db: FirebaseFirestore) : UserRepository {
         val version = nowMillis()
         // Сначала фото, потом версия в профиле: увидевший новую версию уже может его скачать.
         avatars.document(id).setAvatar(jpeg, version)
-        users.document(id).update("avatarVersion" to version)
+        users.document(id).setAvatarVersion(version)
     }
 
     override suspend fun removeAvatar(id: String) {
