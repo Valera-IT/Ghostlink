@@ -74,3 +74,39 @@ jobs:
           key: firebase-emulators-${{ hashFiles('firebase/package-lock.json') }}
       - run: npm ci
       - run: npm test
+
+  data-emulator:
+    name: Репозитории против эмулятора
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # Java 21 нужна эмулятору Firestore; Gradle и Kotlin на ней тоже работают.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase/package-lock.json
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('firebase/package-lock.json') }}
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - run: npm ci
+        working-directory: firebase
+      # core:data на JVM (GitLive поверх firebase-java-sdk) с боевыми firestore.rules.
+      - run: >-
+          firebase/node_modules/.bin/firebase emulators:exec --config firebase.json --only auth,firestore --project demo-ghostlink
+          "./gradlew :core:data:jvmEmulatorTest --stacktrace"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-emulator-reports
+          path: core/data/build/reports/tests/
+          retention-days: 7

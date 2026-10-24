@@ -5,41 +5,13 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import android.util.Log
+import io.github.valerait.ghostlink.core.data.AccountKeyStore
 import io.github.valerait.ghostlink.core.model.AccountKey
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
-
-/** Где устройство хранит ключ своего аккаунта. */
-interface AccountKeyStore {
-    fun get(userId: String): AccountKey?
-
-    fun put(
-        userId: String,
-        key: AccountKey,
-    )
-
-    fun clear()
-}
-
-class InMemoryAccountKeyStore : AccountKeyStore {
-    private var stored: Pair<String, AccountKey>? = null
-
-    override fun get(userId: String): AccountKey? = stored?.takeIf { it.first == userId }?.second
-
-    override fun put(
-        userId: String,
-        key: AccountKey,
-    ) {
-        stored = userId to key
-    }
-
-    override fun clear() {
-        stored = null
-    }
-}
 
 /**
  * Ключ аккаунта шифруется ключом AES из Android Keystore: сам AES-ключ не покидает

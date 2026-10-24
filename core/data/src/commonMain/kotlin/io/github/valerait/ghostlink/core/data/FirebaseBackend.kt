@@ -1,0 +1,46 @@
+package io.github.valerait.ghostlink.core.data
+
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.auth.auth
+import dev.gitlive.firebase.firestore.firestore
+import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
+import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
+import io.github.valerait.ghostlink.core.domain.repository.DeviceRepository
+import io.github.valerait.ghostlink.core.domain.repository.LinkRepository
+import io.github.valerait.ghostlink.core.domain.repository.UserRepository
+import kotlinx.coroutines.CoroutineScope
+
+/**
+ * Все репозитории поверх Firebase-приложения по умолчанию. Приложение видит только интерфейсы core:domain,
+ * типы GitLive наружу не выходят. FirebaseApp к этому моменту уже инициализирован платформой.
+ *
+ * @param scope живёт до конца процесса: в нём идут записи без ожидания (отправка, «прочитано», присутствие).
+ * @param emulatorHost адрес локального Firebase Emulator; null — настоящий проект.
+ */
+class FirebaseBackend(
+    keys: AccountKeyStore,
+    scope: CoroutineScope,
+    emulatorHost: String? = null,
+) {
+    private val firebaseAuth = Firebase.auth
+    private val db = Firebase.firestore
+
+    init {
+        if (emulatorHost != null) {
+            firebaseAuth.useEmulator(emulatorHost, AUTH_EMULATOR_PORT)
+            db.useEmulator(emulatorHost, FIRESTORE_EMULATOR_PORT)
+        }
+    }
+
+    val auth: AuthRepository = FirebaseAuthRepository(firebaseAuth, keys, scope)
+    val users: UserRepository = FirebaseUserRepository(db, scope)
+    val chats: ChatRepository = FirebaseChatRepository(db, scope)
+    val devices: DeviceRepository = FirebaseDeviceRepository(db)
+    val links: LinkRepository = FirebaseLinkRepository(db, firebaseAuth)
+
+    private companion object {
+        // Порты из firebase.json.
+        const val AUTH_EMULATOR_PORT = 9099
+        const val FIRESTORE_EMULATOR_PORT = 8080
+    }
+}

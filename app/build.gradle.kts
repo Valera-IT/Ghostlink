@@ -68,7 +68,7 @@ android {
 // Покрытие считаем на demo-варианте: на нём идут unit-тесты в CI.
 kover {
     merge {
-        projects(":core:model", ":core:domain", ":core:crypto", ":core:testing", ":core:demo")
+        projects(":core:model", ":core:domain", ":core:crypto", ":core:firebase", ":core:data", ":core:testing", ":core:demo")
     }
     currentProject {
         createVariant("ci") {
@@ -97,6 +97,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:domain"))
     implementation(project(":core:crypto"))
+    implementation(project(":core:data"))
     implementation(project(":core:demo"))
 
     implementation(libs.androidx.core.ktx)
@@ -115,10 +116,10 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.lifecycle.viewmodel.compose)
 
+    // Firebase приходит из core:data через GitLive; BOM держит версии Android SDK актуальными.
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
-    implementation(libs.kotlinx.coroutines.play.services)
 
     implementation(libs.camera.camera2)
     implementation(libs.camera.lifecycle)

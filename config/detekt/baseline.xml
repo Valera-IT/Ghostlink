@@ -8,13 +8,11 @@
     <ID>MagicNumber:AccountKey.kt$Base32$4</ID>
     <ID>MagicNumber:AccountKey.kt$Base32$5</ID>
     <ID>MagicNumber:AccountKey.kt$Base32$8</ID>
-    <ID>MagicNumber:AccountKeyStore.kt$AndroidAccountKeyStore$128</ID>
-    <ID>MagicNumber:AccountKeyStore.kt$AndroidAccountKeyStore$256</ID>
+    <ID>MagicNumber:AndroidAccountKeyStore.kt$AndroidAccountKeyStore$128</ID>
+    <ID>MagicNumber:AndroidAccountKeyStore.kt$AndroidAccountKeyStore$256</ID>
     <ID>MagicNumber:BackendModule.kt$BackendModule$8080</ID>
     <ID>MagicNumber:BackendModule.kt$BackendModule$9099</ID>
     <ID>MagicNumber:ChatViewModel.kt$ChatViewModel$8</ID>
-    <ID>MagicNumber:FirebaseLinkRepository.kt$FirebaseLinkRepository$60</ID>
-    <ID>MagicNumber:FirebaseUserRepository.kt$FirebaseUserRepository$30</ID>
     <ID>MagicNumber:Formatting.kt$6</ID>
     <ID>MagicNumber:LinkCode.kt$LinkCode.Companion$65</ID>
     <ID>MagicNumber:LinkReceiveScreen.kt$1000</ID>
@@ -32,17 +30,15 @@
     <ID>MagicNumber:Theme.kt$NeonPalette$0xFFF1F0F7</ID>
     <ID>MatchingDeclarationName:ThemeScreen.kt$ThemeViewModel : ViewModel</ID>
     <ID>ReturnCount:AccountKey.kt$AccountKey.Companion$private fun emailToLogin(email: String): ByteArray?</ID>
-    <ID>ReturnCount:AccountKeyStore.kt$AndroidAccountKeyStore$override fun get(userId: String): AccountKey?</ID>
+    <ID>ReturnCount:AndroidAccountKeyStore.kt$AndroidAccountKeyStore$override fun get(userId: String): AccountKey?</ID>
     <ID>ReturnCount:BackendModule.kt$BackendModule$@SuppressLint("DiscouragedApi") // ресурс генерирует google-services, и его может не быть @Provides @Singleton fun provideAppConfig( @ApplicationContext context: Context, ): AppConfig</ID>
-    <ID>ReturnCount:FirebaseChatRepository.kt$private fun DocumentSnapshot.toChat(): Chat?</ID>
     <ID>ReturnCount:LinkApproveViewModel.kt$LinkApproveViewModel$fun approve()</ID>
     <ID>ReturnCount:LinkCode.kt$LinkCode.Companion$fun parse(raw: String?): LinkCode?</ID>
-    <ID>SwallowedException:FirebaseAuthRepository.kt$FirebaseAuthRepository$e: FirebaseAuthUserCollisionException</ID>
     <ID>SwallowedException:GoogleSignIn.kt$e: GetCredentialCancellationException</ID>
     <ID>SwallowedException:RecoveryViewModel.kt$RecoveryViewModel$e: GhostlinkError.InvalidAccountKey</ID>
     <ID>SwallowedException:RecoveryViewModel.kt$RecoveryViewModel$e: GhostlinkError.MalformedRecoveryCode</ID>
     <ID>SwallowedException:SettingsViewModel.kt$SettingsViewModel$e: AccountAlreadyLinkedException</ID>
-    <ID>TooGenericExceptionCaught:AccountKeyStore.kt$AndroidAccountKeyStore$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AndroidAccountKeyStore.kt$AndroidAccountKeyStore$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ConnectViewModel.kt$ConnectViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:DeviceRegistry.kt$DeviceRegistry$e: Exception</ID>
     <ID>TooGenericExceptionCaught:DevicesViewModel.kt$DevicesViewModel$e: Exception</ID>

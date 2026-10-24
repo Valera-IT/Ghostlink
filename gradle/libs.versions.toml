@@ -28,6 +28,8 @@ ktlint = "1.8.0"
 detekt = "1.23.8"
 kover = "0.9.11"
 cryptography = "0.6.0"
+# Собран против Firebase Android BOM 34 и iOS SDK 11 — тот же мажор iOS SDK подключается в Xcode.
+gitlive = "2.7.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -67,6 +69,9 @@ guava = { module = "com.google.guava:guava", version.ref = "guava" }
 mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkitBarcode" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
+gitlive-firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "gitlive" }
+gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitlive" }
+
 junit = { module = "junit:junit", version.ref = "junit" }
 
 # Плагины Gradle как библиотеки — для build-logic
@@ -78,6 +83,7 @@ spotless-gradlePlugin = { module = "com.diffplug.spotless:spotless-plugin-gradle
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
@@ -92,5 +98,6 @@ kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 ghostlink-android-app = { id = "ghostlink.android.app" }
 ghostlink-android-compose = { id = "ghostlink.android.compose" }
 ghostlink-kmp-library = { id = "ghostlink.kmp.library" }
+ghostlink-kmp-android-library = { id = "ghostlink.kmp.android.library" }
 ghostlink-detekt = { id = "ghostlink.detekt" }
 ghostlink-spotless = { id = "ghostlink.spotless" }
