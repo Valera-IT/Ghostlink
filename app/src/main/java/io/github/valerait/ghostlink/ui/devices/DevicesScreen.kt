@@ -39,20 +39,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.model.Device
 import io.github.valerait.ghostlink.ui.common.formatChatListTime
 import io.github.valerait.ghostlink.ui.common.rememberNow
 import io.github.valerait.ghostlink.ui.recovery.RecoveryCodeDialog
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DevicesScreen(
     onBack: () -> Unit,
     onScan: () -> Unit,
-    viewModel: DevicesViewModel = hiltViewModel(),
+    viewModel: DevicesViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val now by rememberNow()

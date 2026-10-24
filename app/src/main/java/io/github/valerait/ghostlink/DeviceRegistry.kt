@@ -21,8 +21,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Держит это устройство в реестре users/{uid}/devices:
@@ -33,62 +31,59 @@ import javax.inject.Singleton
  * Работает только для аккаунтов с профилем: временный аккаунт нового устройства в реестр не попадает.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-@Singleton
-class DeviceRegistry
-    @Inject
-    constructor(
-        private val auth: AuthRepository,
-        private val users: UserRepository,
-        private val devices: DeviceRepository,
-        private val thisDevice: ThisDevice,
-    ) : DefaultLifecycleObserver {
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        private var userId: UserId? = null
+class DeviceRegistry(
+    private val auth: AuthRepository,
+    private val users: UserRepository,
+    private val devices: DeviceRepository,
+    private val thisDevice: ThisDevice,
+) : DefaultLifecycleObserver {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var userId: UserId? = null
 
-        fun start() {
-            ProcessLifecycleOwner.get().lifecycle.addObserver(this)
-            scope.launch {
-                auth.account
-                    .map { it?.id }
-                    .distinctUntilChanged()
-                    .flatMapLatest { id ->
-                        if (id == null) flowOf(null) else users.observeUser(id).map { profile -> id.takeIf { profile != null } }
-                    }.distinctUntilChanged()
-                    .collectLatest { id ->
-                        userId = id
-                        if (id != null) maintain(id)
-                    }
-            }
-        }
-
-        override fun onStart(owner: LifecycleOwner) {
-            val id = userId ?: return
-            scope.launch { register(id) }
-        }
-
-        private suspend fun maintain(id: UserId) {
-            try {
-                auth.ensureAccountKey()
-            } catch (e: Exception) {
-                // Без ключа приложение работает, просто нельзя войти на другом устройстве; повторим при следующем запуске.
-                Log.w(TAG, "Failed to issue account key", e)
-            }
-            if (!register(id)) return
-            devices.observeDevice(id, thisDevice.id).first { it == null }
-            Log.i(TAG, "This device was removed from the account, signing out")
-            auth.signOut()
-        }
-
-        private suspend fun register(id: UserId): Boolean =
-            try {
-                devices.registerDevice(id, Device(thisDevice.id, thisDevice.name, thisDevice.platform))
-                true
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to register device", e)
-                false
-            }
-
-        private companion object {
-            const val TAG = "DeviceRegistry"
+    fun start() {
+        ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+        scope.launch {
+            auth.account
+                .map { it?.id }
+                .distinctUntilChanged()
+                .flatMapLatest { id ->
+                    if (id == null) flowOf(null) else users.observeUser(id).map { profile -> id.takeIf { profile != null } }
+                }.distinctUntilChanged()
+                .collectLatest { id ->
+                    userId = id
+                    if (id != null) maintain(id)
+                }
         }
     }
+
+    override fun onStart(owner: LifecycleOwner) {
+        val id = userId ?: return
+        scope.launch { register(id) }
+    }
+
+    private suspend fun maintain(id: UserId) {
+        try {
+            auth.ensureAccountKey()
+        } catch (e: Exception) {
+            // Без ключа приложение работает, просто нельзя войти на другом устройстве; повторим при следующем запуске.
+            Log.w(TAG, "Failed to issue account key", e)
+        }
+        if (!register(id)) return
+        devices.observeDevice(id, thisDevice.id).first { it == null }
+        Log.i(TAG, "This device was removed from the account, signing out")
+        auth.signOut()
+    }
+
+    private suspend fun register(id: UserId): Boolean =
+        try {
+            devices.registerDevice(id, Device(thisDevice.id, thisDevice.name, thisDevice.platform))
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to register device", e)
+            false
+        }
+
+    private companion object {
+        const val TAG = "DeviceRegistry"
+    }
+}

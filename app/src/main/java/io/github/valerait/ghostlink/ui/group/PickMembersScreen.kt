@@ -37,12 +37,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.GroupInfo
 import io.github.valerait.ghostlink.ui.common.Avatar
+import org.koin.compose.viewmodel.koinViewModel
 
 /** Создание группы (название + друзья) или добавление друзей в существующую группу. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +50,7 @@ import io.github.valerait.ghostlink.ui.common.Avatar
 fun PickMembersScreen(
     onBack: () -> Unit,
     onDone: (chatId: ChatId) -> Unit,
-    viewModel: PickMembersViewModel = hiltViewModel(),
+    viewModel: PickMembersViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var name by rememberSaveable { mutableStateOf("") }

@@ -6,8 +6,8 @@
   "labels": ["dependencies"],
   "packageRules": [
     {
-      "description": "Kotlin, KSP и Compose-компилятор обновляются вместе",
-      "matchPackageNames": ["org.jetbrains.kotlin{/,}**", "com.google.devtools.ksp{/,}**"],
+      "description": "Kotlin и Compose-компилятор обновляются вместе",
+      "matchPackageNames": ["org.jetbrains.kotlin{/,}**"],
       "groupName": "kotlin"
     },
     {

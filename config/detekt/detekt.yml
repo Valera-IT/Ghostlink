@@ -8,8 +8,9 @@ naming:
 
 complexity:
   LongParameterList:
-    # Конструкторы для DI: зависимости ViewModel перечислены явно, это не запах.
-    ignoreAnnotated: ['Composable', 'Inject']
+    # Конструкторы ViewModel собирает Koin: зависимости перечислены явно, это не запах.
+    constructorThreshold: 9
+    ignoreAnnotated: ['Composable']
   LongMethod:
     ignoreAnnotated: ['Composable']
   TooManyFunctions:

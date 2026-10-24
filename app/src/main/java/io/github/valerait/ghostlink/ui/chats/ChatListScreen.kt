@@ -57,7 +57,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.domain.usecase.ChatSummary
@@ -69,6 +68,7 @@ import io.github.valerait.ghostlink.ui.common.formatChatListTime
 import io.github.valerait.ghostlink.ui.common.rememberIsTyping
 import io.github.valerait.ghostlink.ui.common.rememberNow
 import io.github.valerait.ghostlink.ui.theme.LogoTextStyle
+import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,7 +79,7 @@ fun ChatListScreen(
     onNewGroup: () -> Unit,
     onScan: () -> Unit,
     onSettings: () -> Unit,
-    viewModel: ChatListViewModel = hiltViewModel(),
+    viewModel: ChatListViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val now by rememberNow()

@@ -2,8 +2,6 @@ plugins {
     alias(libs.plugins.ghostlink.android.app)
     alias(libs.plugins.ghostlink.android.compose)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ksp)
-    alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
     alias(libs.plugins.kover)
 }
@@ -81,11 +79,6 @@ kover {
                 classes(
                     "*.BuildConfig",
                     "*.ComposableSingletons*",
-                    "*_Factory*",
-                    "*_HiltModules*",
-                    "*Hilt_*",
-                    "hilt_aggregated_deps.*",
-                    "dagger.hilt.*",
                 )
                 annotatedBy("androidx.compose.runtime.Composable", "androidx.compose.ui.tooling.preview.Preview")
             }
@@ -112,9 +105,8 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
 
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
-    implementation(libs.hilt.lifecycle.viewmodel.compose)
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
 
     // Firebase приходит из core:data через GitLive; BOM держит версии Android SDK актуальными.
     implementation(platform(libs.firebase.bom))
@@ -132,4 +124,6 @@ dependencies {
     testImplementation(project(":core:testing"))
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.koin.test)
+    testImplementation(libs.koin.test.junit4)
 }

@@ -18,7 +18,7 @@
 
 ## Стек
 
-Kotlin · Jetpack Compose · Material 3 · MVVM (ViewModel + StateFlow) · Hilt · Coroutines/Flow · Navigation Compose (типобезопасные маршруты) · Firebase Auth + Firestore (GitLive firebase-kotlin-sdk) · CameraX · ML Kit Barcode · ZXing · JUnit + kotlinx-coroutines-test
+Kotlin · Jetpack Compose · Material 3 · MVVM (ViewModel + StateFlow) · Koin · Coroutines/Flow · Navigation Compose (типобезопасные маршруты) · Firebase Auth + Firestore (GitLive firebase-kotlin-sdk) · CameraX · ML Kit Barcode · ZXing · JUnit + kotlinx-coroutines-test
 
 ## Архитектура
 
@@ -32,7 +32,7 @@ core/testing   FakeBackend — все репозитории в памяти, ф
 core/demo      DemoBackend — демо-режим со стартовыми чатами и ботом (KMP)
 app/ui         Compose-экраны + ViewModel на каждый экран (UDF: state вниз, события вверх)
 app/data       Android Keystore для ключа аккаунта, настройки темы
-app/di         Hilt: выбирает Firebase или демо в зависимости от наличия конфига
+app/di         Koin: собирает модули core:* и выбирает Firebase или демо в зависимости от наличия конфига
 ```
 
 Целевая модульная архитектура (KMP, Clean Architecture, модели по слоям) описана в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), план — в [docs/ROADMAP.md](docs/ROADMAP.md).
