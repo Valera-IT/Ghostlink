@@ -27,14 +27,19 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.recovery_body
+import io.github.valerait.ghostlink.core.ui.resources.recovery_label
+import io.github.valerait.ghostlink.core.ui.resources.recovery_submit
+import io.github.valerait.ghostlink.core.ui.resources.recovery_title
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,10 +53,10 @@ fun RecoveryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.recovery_title)) },
+                title = { Text(stringResource(Res.string.recovery_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -66,7 +71,7 @@ fun RecoveryScreen(
                 .padding(24.dp),
         ) {
             Text(
-                text = stringResource(R.string.recovery_body),
+                text = stringResource(Res.string.recovery_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -74,7 +79,7 @@ fun RecoveryScreen(
             OutlinedTextField(
                 value = state.code,
                 onValueChange = viewModel::onCodeChange,
-                label = { Text(stringResource(R.string.recovery_label)) },
+                label = { Text(stringResource(Res.string.recovery_label)) },
                 placeholder = { Text("XXXXX-XXXXX-…", fontFamily = FontFamily.Monospace) },
                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
                 isError = state.error != null,
@@ -100,7 +105,7 @@ fun RecoveryScreen(
                 if (state.busy) {
                     CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 } else {
-                    Text(stringResource(R.string.recovery_submit))
+                    Text(stringResource(Res.string.recovery_submit))
                 }
             }
         }

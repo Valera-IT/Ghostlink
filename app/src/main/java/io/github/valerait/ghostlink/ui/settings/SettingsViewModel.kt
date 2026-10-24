@@ -1,10 +1,8 @@
 package io.github.valerait.ghostlink.ui.settings
 
 import android.util.Log
-import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
 import io.github.valerait.ghostlink.core.domain.repository.UserRepository
 import io.github.valerait.ghostlink.core.domain.repository.requireUserId
@@ -12,6 +10,8 @@ import io.github.valerait.ghostlink.core.domain.usecase.GetRecoveryCodeUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.RenameProfileUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.SignOutUseCase
 import io.github.valerait.ghostlink.core.model.UserId
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.error_generic
 import io.github.valerait.ghostlink.data.device.ThisDevice
 import io.github.valerait.ghostlink.data.settings.AppLanguage
 import io.github.valerait.ghostlink.data.settings.LanguagePreferences
@@ -22,13 +22,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
 
 data class SettingsState(
     val userId: UserId = UserId(""),
     val name: String = "",
     val demoMode: Boolean = false,
     val busy: Boolean = false,
-    @StringRes val message: Int? = null,
+    val message: StringResource? = null,
     /** Ключ восстановления, пока открыт диалог с ним. */
     val recoveryCode: String? = null,
 )
@@ -47,7 +48,7 @@ class SettingsViewModel(
 
     private val me = auth.requireUserId()
     private val busy = MutableStateFlow(false)
-    private val message = MutableStateFlow<Int?>(null)
+    private val message = MutableStateFlow<StringResource?>(null)
     private val recoveryCode = MutableStateFlow<String?>(null)
 
     val state: StateFlow<SettingsState> =
@@ -94,7 +95,7 @@ class SettingsViewModel(
                 block()
             } catch (e: Exception) {
                 Log.w("Settings", "Action failed", e)
-                message.value = R.string.error_generic
+                message.value = Res.string.error_generic
             } finally {
                 busy.value = false
             }

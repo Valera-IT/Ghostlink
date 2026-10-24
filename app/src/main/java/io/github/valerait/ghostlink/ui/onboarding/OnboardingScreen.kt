@@ -30,16 +30,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.valerait.ghostlink.R
-import io.github.valerait.ghostlink.ui.common.DemoModeBanner
-import io.github.valerait.ghostlink.ui.common.GhostLogo
-import io.github.valerait.ghostlink.ui.theme.LogoTextStyle
+import io.github.valerait.ghostlink.core.designsystem.GhostLogo
+import io.github.valerait.ghostlink.core.designsystem.LogoTextStyle
+import io.github.valerait.ghostlink.core.ui.DemoModeBanner
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.onboarding_feature_no_phone
+import io.github.valerait.ghostlink.core.ui.resources.onboarding_feature_qr
+import io.github.valerait.ghostlink.core.ui.resources.onboarding_feature_realtime
+import io.github.valerait.ghostlink.core.ui.resources.onboarding_have_account
+import io.github.valerait.ghostlink.core.ui.resources.onboarding_link_device
+import io.github.valerait.ghostlink.core.ui.resources.onboarding_name_hint
+import io.github.valerait.ghostlink.core.ui.resources.onboarding_name_label
+import io.github.valerait.ghostlink.core.ui.resources.onboarding_recovery_key
+import io.github.valerait.ghostlink.core.ui.resources.onboarding_start
+import io.github.valerait.ghostlink.core.ui.resources.onboarding_tagline
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -67,7 +77,7 @@ fun OnboardingScreen(
             Text("GHOSTLINK", style = LogoTextStyle, color = MaterialTheme.colorScheme.onBackground)
             Spacer(Modifier.height(12.dp))
             Text(
-                text = stringResource(R.string.onboarding_tagline),
+                text = stringResource(Res.string.onboarding_tagline),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -76,8 +86,8 @@ fun OnboardingScreen(
             OutlinedTextField(
                 value = state.name,
                 onValueChange = viewModel::onNameChange,
-                label = { Text(stringResource(R.string.onboarding_name_label)) },
-                supportingText = { Text(stringResource(R.string.onboarding_name_hint)) },
+                label = { Text(stringResource(Res.string.onboarding_name_label)) },
+                supportingText = { Text(stringResource(Res.string.onboarding_name_hint)) },
                 singleLine = true,
                 enabled = !state.busy,
                 keyboardOptions =
@@ -105,12 +115,12 @@ fun OnboardingScreen(
                 if (state.busy) {
                     CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 } else {
-                    Text(stringResource(R.string.onboarding_start))
+                    Text(stringResource(Res.string.onboarding_start))
                 }
             }
             Spacer(Modifier.height(20.dp))
             Text(
-                text = stringResource(R.string.onboarding_have_account),
+                text = stringResource(Res.string.onboarding_have_account),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -118,16 +128,16 @@ fun OnboardingScreen(
             OutlinedButton(onClick = onLinkDevice, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Outlined.QrCode2, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.onboarding_link_device))
+                Text(stringResource(Res.string.onboarding_link_device))
             }
             TextButton(onClick = onRecover, enabled = !state.busy) {
-                Text(stringResource(R.string.onboarding_recovery_key))
+                Text(stringResource(Res.string.onboarding_recovery_key))
             }
             Spacer(Modifier.height(24.dp))
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Feature(stringResource(R.string.onboarding_feature_no_phone))
-                Feature(stringResource(R.string.onboarding_feature_qr))
-                Feature(stringResource(R.string.onboarding_feature_realtime))
+                Feature(stringResource(Res.string.onboarding_feature_no_phone))
+                Feature(stringResource(Res.string.onboarding_feature_qr))
+                Feature(stringResource(Res.string.onboarding_feature_realtime))
             }
         }
     }

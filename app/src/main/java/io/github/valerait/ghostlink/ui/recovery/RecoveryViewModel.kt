@@ -1,22 +1,25 @@
 package io.github.valerait.ghostlink.ui.recovery
 
 import android.util.Log
-import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.domain.usecase.RestoreWithRecoveryCodeUseCase
 import io.github.valerait.ghostlink.core.model.GhostlinkError
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.error_sign_in
+import io.github.valerait.ghostlink.core.ui.resources.recovery_error_format
+import io.github.valerait.ghostlink.core.ui.resources.recovery_error_wrong
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
 
 data class RecoveryState(
     val code: String = "",
     val busy: Boolean = false,
-    @StringRes val error: Int? = null,
+    val error: StringResource? = null,
 ) {
     val canSubmit: Boolean get() = code.isNotBlank() && !busy
 }
@@ -41,12 +44,12 @@ class RecoveryViewModel(
                 restore(current.code)
                 // Дальше корень сам переключится на чаты.
             } catch (e: GhostlinkError.MalformedRecoveryCode) {
-                _state.update { it.copy(busy = false, error = R.string.recovery_error_format) }
+                _state.update { it.copy(busy = false, error = Res.string.recovery_error_format) }
             } catch (e: GhostlinkError.InvalidAccountKey) {
-                _state.update { it.copy(busy = false, error = R.string.recovery_error_wrong) }
+                _state.update { it.copy(busy = false, error = Res.string.recovery_error_wrong) }
             } catch (e: Exception) {
                 Log.w("Recovery", "Sign in failed", e)
-                _state.update { it.copy(busy = false, error = R.string.error_sign_in) }
+                _state.update { it.copy(busy = false, error = Res.string.error_sign_in) }
             }
         }
     }

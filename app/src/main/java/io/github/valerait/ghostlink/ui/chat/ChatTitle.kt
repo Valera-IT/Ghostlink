@@ -10,14 +10,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.valerait.ghostlink.R
-import io.github.valerait.ghostlink.ui.common.Avatar
-import io.github.valerait.ghostlink.ui.common.presenceText
-import io.github.valerait.ghostlink.ui.common.rememberIsTyping
+import io.github.valerait.ghostlink.core.ui.Avatar
+import io.github.valerait.ghostlink.core.ui.presenceText
+import io.github.valerait.ghostlink.core.ui.rememberIsTyping
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.chat_typing
+import io.github.valerait.ghostlink.core.ui.resources.chat_typing_named
+import io.github.valerait.ghostlink.core.ui.resources.group_members
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
 
 /** Шапка чата: собеседник и его статус, или группа и число участников. Нажатие на группу открывает её карточку. */
@@ -38,9 +41,9 @@ fun ChatTitle(
         }
     val subtitle =
         when {
-            typing && state.typingName != null -> stringResource(R.string.chat_typing_named, state.typingName)
-            typing -> stringResource(R.string.chat_typing)
-            group != null -> pluralStringResource(R.plurals.group_members, state.memberCount, state.memberCount)
+            typing && state.typingName != null -> stringResource(Res.string.chat_typing_named, state.typingName)
+            typing -> stringResource(Res.string.chat_typing)
+            group != null -> pluralStringResource(Res.plurals.group_members, state.memberCount, state.memberCount)
             else -> presenceText(partner!!, now)
         }
     val highlighted = typing || (group == null && partner?.isOnline(now) == true)

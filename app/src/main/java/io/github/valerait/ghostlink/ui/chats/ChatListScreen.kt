@@ -51,23 +51,47 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.designsystem.GhostLogo
+import io.github.valerait.ghostlink.core.designsystem.LogoTextStyle
 import io.github.valerait.ghostlink.core.domain.usecase.ChatSummary
 import io.github.valerait.ghostlink.core.model.ChatId
-import io.github.valerait.ghostlink.ui.common.Avatar
-import io.github.valerait.ghostlink.ui.common.DemoModeBanner
-import io.github.valerait.ghostlink.ui.common.GhostLogo
-import io.github.valerait.ghostlink.ui.common.formatChatListTime
-import io.github.valerait.ghostlink.ui.common.rememberIsTyping
-import io.github.valerait.ghostlink.ui.common.rememberNow
-import io.github.valerait.ghostlink.ui.theme.LogoTextStyle
+import io.github.valerait.ghostlink.core.ui.Avatar
+import io.github.valerait.ghostlink.core.ui.DemoModeBanner
+import io.github.valerait.ghostlink.core.ui.formatChatListTime
+import io.github.valerait.ghostlink.core.ui.rememberIsTyping
+import io.github.valerait.ghostlink.core.ui.rememberNow
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_cancel
+import io.github.valerait.ghostlink.core.ui.resources.action_my_code
+import io.github.valerait.ghostlink.core.ui.resources.action_scan
+import io.github.valerait.ghostlink.core.ui.resources.action_settings
+import io.github.valerait.ghostlink.core.ui.resources.chat_typing
+import io.github.valerait.ghostlink.core.ui.resources.chat_typing_named
+import io.github.valerait.ghostlink.core.ui.resources.chats_empty_body
+import io.github.valerait.ghostlink.core.ui.resources.chats_empty_title
+import io.github.valerait.ghostlink.core.ui.resources.chats_mute
+import io.github.valerait.ghostlink.core.ui.resources.chats_muted
+import io.github.valerait.ghostlink.core.ui.resources.chats_no_messages
+import io.github.valerait.ghostlink.core.ui.resources.chats_pin
+import io.github.valerait.ghostlink.core.ui.resources.chats_pinned
+import io.github.valerait.ghostlink.core.ui.resources.chats_remove
+import io.github.valerait.ghostlink.core.ui.resources.chats_remove_body
+import io.github.valerait.ghostlink.core.ui.resources.chats_remove_title
+import io.github.valerait.ghostlink.core.ui.resources.chats_sender_prefix
+import io.github.valerait.ghostlink.core.ui.resources.chats_unmute
+import io.github.valerait.ghostlink.core.ui.resources.chats_unpin
+import io.github.valerait.ghostlink.core.ui.resources.chats_you_prefix
+import io.github.valerait.ghostlink.core.ui.resources.group_leave
+import io.github.valerait.ghostlink.core.ui.resources.group_leave_body
+import io.github.valerait.ghostlink.core.ui.resources.group_leave_title
+import io.github.valerait.ghostlink.core.ui.resources.group_new
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Instant
 
@@ -97,13 +121,13 @@ fun ChatListScreen(
                 },
                 actions = {
                     IconButton(onClick = onNewGroup) {
-                        Icon(Icons.Outlined.GroupAdd, contentDescription = stringResource(R.string.group_new))
+                        Icon(Icons.Outlined.GroupAdd, contentDescription = stringResource(Res.string.group_new))
                     }
                     IconButton(onClick = onScan) {
-                        Icon(Icons.Filled.QrCodeScanner, contentDescription = stringResource(R.string.action_scan))
+                        Icon(Icons.Filled.QrCodeScanner, contentDescription = stringResource(Res.string.action_scan))
                     }
                     IconButton(onClick = onSettings) {
-                        Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.action_settings))
+                        Icon(Icons.Outlined.Settings, contentDescription = stringResource(Res.string.action_settings))
                     }
                 },
             )
@@ -113,7 +137,7 @@ fun ChatListScreen(
                 ExtendedFloatingActionButton(
                     onClick = onMyCode,
                     icon = { Icon(Icons.Filled.QrCode2, contentDescription = null) },
-                    text = { Text(stringResource(R.string.action_my_code)) },
+                    text = { Text(stringResource(Res.string.action_my_code)) },
                 )
             }
         },
@@ -223,7 +247,7 @@ private fun ChatRow(
                             Spacer(Modifier.width(4.dp))
                             Icon(
                                 Icons.Outlined.NotificationsOff,
-                                contentDescription = stringResource(R.string.chats_muted),
+                                contentDescription = stringResource(Res.string.chats_muted),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp),
                             )
@@ -258,7 +282,7 @@ private fun ChatRow(
                         Spacer(Modifier.width(8.dp))
                         Icon(
                             Icons.Outlined.PushPin,
-                            contentDescription = stringResource(R.string.chats_pinned),
+                            contentDescription = stringResource(Res.string.chats_pinned),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp),
                         )
@@ -282,7 +306,7 @@ private fun ChatMenu(
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
-            text = { Text(stringResource(if (item.pinned) R.string.chats_unpin else R.string.chats_pin)) },
+            text = { Text(stringResource(if (item.pinned) Res.string.chats_unpin else Res.string.chats_pin)) },
             leadingIcon = { Icon(Icons.Outlined.PushPin, contentDescription = null) },
             onClick = {
                 onDismiss()
@@ -290,7 +314,7 @@ private fun ChatMenu(
             },
         )
         DropdownMenuItem(
-            text = { Text(stringResource(if (item.muted) R.string.chats_unmute else R.string.chats_mute)) },
+            text = { Text(stringResource(if (item.muted) Res.string.chats_unmute else Res.string.chats_mute)) },
             leadingIcon = {
                 Icon(if (item.muted) Icons.Outlined.Notifications else Icons.Outlined.NotificationsOff, contentDescription = null)
             },
@@ -302,7 +326,7 @@ private fun ChatMenu(
         DropdownMenuItem(
             text = {
                 Text(
-                    stringResource(if (item.chat.isGroup) R.string.group_leave else R.string.chats_remove),
+                    stringResource(if (item.chat.isGroup) Res.string.group_leave else Res.string.chats_remove),
                     color = MaterialTheme.colorScheme.error,
                 )
             },
@@ -324,15 +348,18 @@ private fun RemoveChatDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (isGroup) R.string.group_leave_title else R.string.chats_remove_title)) },
-        text = { Text(stringResource(if (isGroup) R.string.group_leave_body else R.string.chats_remove_body, name)) },
+        title = { Text(stringResource(if (isGroup) Res.string.group_leave_title else Res.string.chats_remove_title)) },
+        text = { Text(stringResource(if (isGroup) Res.string.group_leave_body else Res.string.chats_remove_body, name)) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(stringResource(if (isGroup) R.string.group_leave else R.string.chats_remove), color = MaterialTheme.colorScheme.error)
+                Text(
+                    stringResource(if (isGroup) Res.string.group_leave else Res.string.chats_remove),
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }
@@ -350,10 +377,10 @@ private fun EmptyState(
     ) {
         GhostLogo(size = 88.dp, tint = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(20.dp))
-        Text(stringResource(R.string.chats_empty_title), style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(Res.string.chats_empty_title), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.chats_empty_body),
+            text = stringResource(Res.string.chats_empty_body),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -362,29 +389,29 @@ private fun EmptyState(
         Button(onClick = onMyCode, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Filled.QrCode2, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.action_my_code))
+            Text(stringResource(Res.string.action_my_code))
         }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onScan, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Filled.QrCodeScanner, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.action_scan))
+            Text(stringResource(Res.string.action_scan))
         }
     }
 }
 
 @Composable
 private fun typingText(name: String?): String =
-    if (name != null) stringResource(R.string.chat_typing_named, name) else stringResource(R.string.chat_typing)
+    if (name != null) stringResource(Res.string.chat_typing_named, name) else stringResource(Res.string.chat_typing)
 
 @Composable
 private fun previewText(item: ChatSummary): String {
     val last = item.lastMessage
     val sender = item.lastSenderName
     return when {
-        last == null -> stringResource(R.string.chats_no_messages)
-        item.lastMessageIsMine -> stringResource(R.string.chats_you_prefix, last.text)
-        sender != null -> stringResource(R.string.chats_sender_prefix, sender, last.text)
+        last == null -> stringResource(Res.string.chats_no_messages)
+        item.lastMessageIsMine -> stringResource(Res.string.chats_you_prefix, last.text)
+        sender != null -> stringResource(Res.string.chats_sender_prefix, sender, last.text)
         else -> last.text
     }
 }

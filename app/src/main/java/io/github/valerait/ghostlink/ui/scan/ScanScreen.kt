@@ -57,7 +57,6 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -68,9 +67,15 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.model.ScannedCode
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.scan_hint
+import io.github.valerait.ghostlink.core.ui.resources.scan_not_ghostlink
+import io.github.valerait.ghostlink.core.ui.resources.scan_open_settings
+import io.github.valerait.ghostlink.core.ui.resources.scan_permission_denied
 import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.stringResource
 import java.util.concurrent.Executors
 
 @Composable
@@ -109,7 +114,7 @@ fun ScanScreen(
             colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White),
             modifier = Modifier.statusBarsPadding().padding(4.dp),
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
         }
     }
 }
@@ -147,7 +152,7 @@ private fun Scanner(onScanned: (ScannedCode) -> Unit) {
     ) {
         Surface(color = Color.Black.copy(alpha = 0.6f), contentColor = Color.White, shape = RoundedCornerShape(16.dp)) {
             Text(
-                text = stringResource(if (showForeignHint) R.string.scan_not_ghostlink else R.string.scan_hint),
+                text = stringResource(if (showForeignHint) Res.string.scan_not_ghostlink else Res.string.scan_hint),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -233,12 +238,12 @@ private fun PermissionDenied(onOpenSettings: () -> Unit) {
     ) {
         Icon(Icons.Outlined.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.padding(8.dp))
         Text(
-            text = stringResource(R.string.scan_permission_denied),
+            text = stringResource(Res.string.scan_permission_denied),
             color = Color.White,
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyLarge,
         )
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onOpenSettings) { Text(stringResource(R.string.scan_open_settings)) }
+        Button(onClick = onOpenSettings) { Text(stringResource(Res.string.scan_open_settings)) }
     }
 }

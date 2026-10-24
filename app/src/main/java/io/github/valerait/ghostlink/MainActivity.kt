@@ -11,12 +11,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.valerait.ghostlink.core.designsystem.GhostlinkTheme
 import io.github.valerait.ghostlink.core.model.InviteLink
 import io.github.valerait.ghostlink.data.settings.LanguagePreferences
 import io.github.valerait.ghostlink.data.settings.ThemePreferences
 import io.github.valerait.ghostlink.ui.navigation.GhostlinkRoot
 import io.github.valerait.ghostlink.ui.navigation.RootViewModel
-import io.github.valerait.ghostlink.ui.theme.GhostlinkTheme
 import org.koin.android.ext.android.get
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel

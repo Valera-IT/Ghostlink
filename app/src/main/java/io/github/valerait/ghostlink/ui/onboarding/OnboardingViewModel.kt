@@ -1,23 +1,24 @@
 package io.github.valerait.ghostlink.ui.onboarding
 
 import android.util.Log
-import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.domain.usecase.CreateAccountUseCase
 import io.github.valerait.ghostlink.core.model.User
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.error_sign_in
 import io.github.valerait.ghostlink.di.AppConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
 
 data class OnboardingState(
     val name: String = "",
     val busy: Boolean = false,
-    @StringRes val error: Int? = null,
+    val error: StringResource? = null,
     val demoMode: Boolean = false,
 ) {
     val canSubmit: Boolean get() = name.isNotBlank() && !busy
@@ -49,7 +50,7 @@ class OnboardingViewModel(
                 block()
             } catch (e: Exception) {
                 Log.w("Onboarding", "Sign in failed", e)
-                _state.update { it.copy(busy = false, error = R.string.error_sign_in) }
+                _state.update { it.copy(busy = false, error = Res.string.error_sign_in) }
             }
         }
     }

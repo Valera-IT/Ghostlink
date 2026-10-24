@@ -13,8 +13,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
-import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_cancel
+import io.github.valerait.ghostlink.core.ui.resources.chat_copy
+import io.github.valerait.ghostlink.core.ui.resources.chat_delete
+import io.github.valerait.ghostlink.core.ui.resources.chat_delete_body
+import io.github.valerait.ghostlink.core.ui.resources.chat_delete_title
+import io.github.valerait.ghostlink.core.ui.resources.chat_edit
+import io.github.valerait.ghostlink.core.ui.resources.chat_reply
+import org.jetbrains.compose.resources.stringResource
 
 /** Действия из меню сообщения (долгое нажатие), как в Telegram. */
 internal data class MessageActions(
@@ -36,7 +43,7 @@ internal fun MessageMenu(
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         if (sent) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.chat_reply)) },
+                text = { Text(stringResource(Res.string.chat_reply)) },
                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = null) },
                 onClick = {
                     onDismiss()
@@ -45,7 +52,7 @@ internal fun MessageMenu(
             )
         }
         DropdownMenuItem(
-            text = { Text(stringResource(R.string.chat_copy)) },
+            text = { Text(stringResource(Res.string.chat_copy)) },
             leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
             onClick = {
                 onDismiss()
@@ -54,7 +61,7 @@ internal fun MessageMenu(
         )
         if (mine && sent) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.chat_edit)) },
+                text = { Text(stringResource(Res.string.chat_edit)) },
                 leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
                 onClick = {
                     onDismiss()
@@ -62,7 +69,7 @@ internal fun MessageMenu(
                 },
             )
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.chat_delete), color = MaterialTheme.colorScheme.error) },
+                text = { Text(stringResource(Res.string.chat_delete), color = MaterialTheme.colorScheme.error) },
                 leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                 onClick = {
                     onDismiss()
@@ -80,15 +87,15 @@ internal fun DeleteMessageDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.chat_delete_title)) },
-        text = { Text(stringResource(R.string.chat_delete_body)) },
+        title = { Text(stringResource(Res.string.chat_delete_title)) },
+        text = { Text(stringResource(Res.string.chat_delete_body)) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.chat_delete), color = MaterialTheme.colorScheme.error)
+                Text(stringResource(Res.string.chat_delete), color = MaterialTheme.colorScheme.error)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

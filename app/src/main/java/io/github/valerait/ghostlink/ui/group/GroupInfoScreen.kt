@@ -39,15 +39,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.model.GroupInfo
 import io.github.valerait.ghostlink.core.model.User
 import io.github.valerait.ghostlink.core.model.UserId
-import io.github.valerait.ghostlink.ui.common.Avatar
+import io.github.valerait.ghostlink.core.ui.Avatar
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.action_cancel
+import io.github.valerait.ghostlink.core.ui.resources.action_save
+import io.github.valerait.ghostlink.core.ui.resources.group_add_members
+import io.github.valerait.ghostlink.core.ui.resources.group_admin
+import io.github.valerait.ghostlink.core.ui.resources.group_info
+import io.github.valerait.ghostlink.core.ui.resources.group_leave
+import io.github.valerait.ghostlink.core.ui.resources.group_leave_body
+import io.github.valerait.ghostlink.core.ui.resources.group_leave_title
+import io.github.valerait.ghostlink.core.ui.resources.group_members
+import io.github.valerait.ghostlink.core.ui.resources.group_name
+import io.github.valerait.ghostlink.core.ui.resources.group_remove
+import io.github.valerait.ghostlink.core.ui.resources.group_remove_title
+import io.github.valerait.ghostlink.core.ui.resources.group_rename
+import io.github.valerait.ghostlink.core.ui.resources.group_you
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 /** Карточка группы: участники, название; админ добавляет и удаляет участников, любой может выйти. */
@@ -73,10 +88,10 @@ fun GroupInfoScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.group_info)) },
+                title = { Text(stringResource(Res.string.group_info)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -91,18 +106,18 @@ fun GroupInfoScreen(
                         Text(group.name, style = MaterialTheme.typography.headlineSmall)
                         if (state.isOwner) {
                             IconButton(onClick = { renaming = true }) {
-                                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.group_rename))
+                                Icon(Icons.Outlined.Edit, contentDescription = stringResource(Res.string.group_rename))
                             }
                         }
                     }
                     Text(
-                        pluralStringResource(R.plurals.group_members, chat.members.size, chat.members.size),
+                        pluralStringResource(Res.plurals.group_members, chat.members.size, chat.members.size),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             if (state.isOwner && chat.members.size < GroupInfo.MAX_MEMBERS) {
-                item { ActionRow(Icons.Outlined.PersonAdd, stringResource(R.string.group_add_members), onClick = onAddMembers) }
+                item { ActionRow(Icons.Outlined.PersonAdd, stringResource(Res.string.group_add_members), onClick = onAddMembers) }
             }
             items(state.members, key = { it.id.value }) { member ->
                 MemberRow(
@@ -116,7 +131,7 @@ fun GroupInfoScreen(
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 ActionRow(
                     Icons.AutoMirrored.Outlined.Logout,
-                    stringResource(R.string.group_leave),
+                    stringResource(Res.string.group_leave),
                     color = MaterialTheme.colorScheme.error,
                     onClick = { confirmLeave = true },
                 )
@@ -137,8 +152,8 @@ fun GroupInfoScreen(
                 ?.name
                 .orEmpty()
         ConfirmDialog(
-            title = stringResource(R.string.group_remove_title, name),
-            confirm = stringResource(R.string.group_remove),
+            title = stringResource(Res.string.group_remove_title, name),
+            confirm = stringResource(Res.string.group_remove),
             onConfirm = {
                 viewModel.remove(id)
                 removingId = null
@@ -148,9 +163,9 @@ fun GroupInfoScreen(
     }
     if (confirmLeave) {
         ConfirmDialog(
-            title = stringResource(R.string.group_leave_title),
-            body = stringResource(R.string.group_leave_body, group.name),
-            confirm = stringResource(R.string.group_leave),
+            title = stringResource(Res.string.group_leave_title),
+            body = stringResource(Res.string.group_leave_body, group.name),
+            confirm = stringResource(Res.string.group_leave),
             onConfirm = {
                 confirmLeave = false
                 viewModel.leave()
@@ -174,10 +189,10 @@ private fun MemberRow(
         Avatar(member.name, member.id.value, size = 44.dp)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(if (isMe) stringResource(R.string.group_you, member.name) else member.name, style = MaterialTheme.typography.titleMedium)
+            Text(if (isMe) stringResource(Res.string.group_you, member.name) else member.name, style = MaterialTheme.typography.titleMedium)
             if (isOwner) {
                 Text(
-                    stringResource(R.string.group_admin),
+                    stringResource(Res.string.group_admin),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -185,7 +200,7 @@ private fun MemberRow(
         }
         if (onRemove != null) {
             IconButton(onClick = onRemove) {
-                Icon(Icons.Outlined.PersonRemove, contentDescription = stringResource(R.string.group_remove))
+                Icon(Icons.Outlined.PersonRemove, contentDescription = stringResource(Res.string.group_remove))
             }
         }
     }
@@ -217,22 +232,22 @@ private fun RenameDialog(
     var name by rememberSaveable { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.group_rename)) },
+        title = { Text(stringResource(Res.string.group_rename)) },
         text = {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it.take(GroupInfo.NAME_MAX_LENGTH) },
                 singleLine = true,
-                label = { Text(stringResource(R.string.group_name)) },
+                label = { Text(stringResource(Res.string.group_name)) },
             )
         },
         confirmButton = {
             TextButton(
                 onClick = { onConfirm(name) },
                 enabled = name.isNotBlank(),
-            ) { Text(stringResource(R.string.action_save)) }
+            ) { Text(stringResource(Res.string.action_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) } },
     )
 }
 
@@ -249,6 +264,6 @@ private fun ConfirmDialog(
         title = { Text(title) },
         text = body?.let { { Text(it) } },
         confirmButton = { TextButton(onClick = onConfirm) { Text(confirm, color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) } },
     )
 }

@@ -1,16 +1,17 @@
 package io.github.valerait.ghostlink.ui.devices
 
 import android.util.Log
-import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.valerait.ghostlink.R
 import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
 import io.github.valerait.ghostlink.core.domain.repository.DeviceRepository
 import io.github.valerait.ghostlink.core.domain.repository.requireUserId
 import io.github.valerait.ghostlink.core.domain.usecase.SignOutEverywhereUseCase
 import io.github.valerait.ghostlink.core.model.Device
 import io.github.valerait.ghostlink.core.model.DeviceId
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.devices_removed
+import io.github.valerait.ghostlink.core.ui.resources.error_generic
 import io.github.valerait.ghostlink.data.device.ThisDevice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,12 +19,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
 
 data class DevicesState(
     val thisDevice: Device? = null,
     val others: List<Device> = emptyList(),
     val busy: Boolean = false,
-    @StringRes val message: Int? = null,
+    val message: StringResource? = null,
     /** Новый ключ восстановления после «Выйти на всех других устройствах» — старый больше не работает. */
     val newRecoveryCode: String? = null,
 )
@@ -36,7 +38,7 @@ class DevicesViewModel(
 ) : ViewModel() {
     private val me = auth.requireUserId()
     private val busy = MutableStateFlow(false)
-    private val message = MutableStateFlow<Int?>(null)
+    private val message = MutableStateFlow<StringResource?>(null)
     private val newRecoveryCode = MutableStateFlow<String?>(null)
 
     val state: StateFlow<DevicesState> =
@@ -56,7 +58,7 @@ class DevicesViewModel(
     fun remove(deviceId: DeviceId) =
         launchBusy {
             devices.removeDevice(me, deviceId)
-            message.value = R.string.devices_removed
+            message.value = Res.string.devices_removed
         }
 
     /** Жёсткая мера: новый секрет ключа (см. [SignOutEverywhereUseCase]). */
@@ -81,7 +83,7 @@ class DevicesViewModel(
                 block()
             } catch (e: Exception) {
                 Log.w("Devices", "Action failed", e)
-                message.value = R.string.error_generic
+                message.value = Res.string.error_generic
             } finally {
                 busy.value = false
             }

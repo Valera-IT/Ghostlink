@@ -24,14 +24,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.designsystem.GhostLogo
 import io.github.valerait.ghostlink.core.model.ChatId
-import io.github.valerait.ghostlink.ui.common.Avatar
-import io.github.valerait.ghostlink.ui.common.GhostLogo
+import io.github.valerait.ghostlink.core.ui.Avatar
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.connect_action
+import io.github.valerait.ghostlink.core.ui.resources.connect_body
+import io.github.valerait.ghostlink.core.ui.resources.connect_not_found_body
+import io.github.valerait.ghostlink.core.ui.resources.connect_not_found_title
+import io.github.valerait.ghostlink.core.ui.resources.connect_self_body
+import io.github.valerait.ghostlink.core.ui.resources.connect_self_title
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,7 +60,7 @@ fun ConnectScreen(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -70,13 +77,13 @@ fun ConnectScreen(
                 }
 
                 ConnectState.Self -> {
-                    Message(stringResource(R.string.connect_self_title), stringResource(R.string.connect_self_body))
+                    Message(stringResource(Res.string.connect_self_title), stringResource(Res.string.connect_self_body))
                 }
 
                 ConnectState.NotFound -> {
                     Message(
-                        stringResource(R.string.connect_not_found_title),
-                        stringResource(R.string.connect_not_found_body),
+                        stringResource(Res.string.connect_not_found_title),
+                        stringResource(Res.string.connect_not_found_body),
                     )
                 }
 
@@ -86,7 +93,7 @@ fun ConnectScreen(
                     Text(s.user.name, style = MaterialTheme.typography.headlineMedium)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = stringResource(R.string.connect_body),
+                        text = stringResource(Res.string.connect_body),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -104,7 +111,7 @@ fun ConnectScreen(
                         if (s.busy) {
                             CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
-                            Text(stringResource(R.string.connect_action))
+                            Text(stringResource(Res.string.connect_action))
                         }
                     }
                 }

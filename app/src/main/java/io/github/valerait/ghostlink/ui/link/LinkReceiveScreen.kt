@@ -25,13 +25,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.valerait.ghostlink.R
+import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_back
+import io.github.valerait.ghostlink.core.ui.resources.link_receive_countdown
+import io.github.valerait.ghostlink.core.ui.resources.link_receive_expired
+import io.github.valerait.ghostlink.core.ui.resources.link_receive_failed
+import io.github.valerait.ghostlink.core.ui.resources.link_receive_new_code
+import io.github.valerait.ghostlink.core.ui.resources.link_receive_qr_description
+import io.github.valerait.ghostlink.core.ui.resources.link_receive_signing_in
+import io.github.valerait.ghostlink.core.ui.resources.link_receive_step_1
+import io.github.valerait.ghostlink.core.ui.resources.link_receive_step_2
+import io.github.valerait.ghostlink.core.ui.resources.link_receive_step_3
+import io.github.valerait.ghostlink.core.ui.resources.link_receive_steps_title
+import io.github.valerait.ghostlink.core.ui.resources.link_receive_title
 import io.github.valerait.ghostlink.ui.mycode.QrCard
 import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
@@ -48,10 +60,10 @@ fun LinkReceiveScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.link_receive_title)) },
+                title = { Text(stringResource(Res.string.link_receive_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
             )
@@ -71,13 +83,13 @@ fun LinkReceiveScreen(
                     Spacer(Modifier.height(96.dp))
                     CircularProgressIndicator()
                     Spacer(Modifier.height(16.dp))
-                    if (current == LinkReceiveState.SigningIn) Hint(stringResource(R.string.link_receive_signing_in))
+                    if (current == LinkReceiveState.SigningIn) Hint(stringResource(Res.string.link_receive_signing_in))
                 }
 
                 is LinkReceiveState.ShowCode -> {
                     QrCard(
                         content = current.link,
-                        contentDescription = stringResource(R.string.link_receive_qr_description),
+                        contentDescription = stringResource(Res.string.link_receive_qr_description),
                         modifier = Modifier.widthIn(max = 360.dp),
                     )
                     Spacer(Modifier.height(16.dp))
@@ -91,13 +103,19 @@ fun LinkReceiveScreen(
                     Text(
                         text =
                             stringResource(
-                                if (current == LinkReceiveState.Expired) R.string.link_receive_expired else R.string.link_receive_failed,
+                                if (current ==
+                                    LinkReceiveState.Expired
+                                ) {
+                                    Res.string.link_receive_expired
+                                } else {
+                                    Res.string.link_receive_failed
+                                },
                             ),
                         style = MaterialTheme.typography.titleMedium,
                         textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.height(16.dp))
-                    Button(onClick = viewModel::restart) { Text(stringResource(R.string.link_receive_new_code)) }
+                    Button(onClick = viewModel::restart) { Text(stringResource(Res.string.link_receive_new_code)) }
                 }
             }
         }
@@ -113,7 +131,7 @@ private fun Countdown(expiresAt: Instant) {
         }
     }
     Text(
-        text = stringResource(R.string.link_receive_countdown, secondsLeft / 60, secondsLeft % 60),
+        text = stringResource(Res.string.link_receive_countdown, secondsLeft / 60, (secondsLeft % 60).toString().padStart(2, '0')),
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -124,11 +142,11 @@ private fun secondsUntil(at: Instant): Int = (at - Clock.System.now()).inWholeSe
 @Composable
 private fun Steps() {
     Column(Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.link_receive_steps_title), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(Res.string.link_receive_steps_title), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
-        Hint(stringResource(R.string.link_receive_step_1), TextAlign.Start)
-        Hint(stringResource(R.string.link_receive_step_2), TextAlign.Start)
-        Hint(stringResource(R.string.link_receive_step_3), TextAlign.Start)
+        Hint(stringResource(Res.string.link_receive_step_1), TextAlign.Start)
+        Hint(stringResource(Res.string.link_receive_step_2), TextAlign.Start)
+        Hint(stringResource(Res.string.link_receive_step_3), TextAlign.Start)
     }
 }
 
