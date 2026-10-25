@@ -12,10 +12,14 @@ import org.koin.dsl.module
 fun dataModule(emulatorHost: String? = null): Module =
     module {
         single<AccountKeyStore> { SecureAccountKeyStore(get()) }
-        single { FirebaseBackend(keys = get(), scope = get(), emulatorHost = emulatorHost) }
+        single { FirebaseBackend(keys = get(), scope = get(), cacheDirectory = get(), emulatorHost = emulatorHost) }
         single { get<FirebaseBackend>().auth }
         single { get<FirebaseBackend>().users }
         single { get<FirebaseBackend>().chats }
         single { get<FirebaseBackend>().devices }
         single { get<FirebaseBackend>().links }
+        single { get<FirebaseBackend>().media }
     }
+
+/** Адрес Worker из worker/README.md, раздел «Развёртывание»; пока Worker не развёрнут — null, и фото в чатах не работают. */
+internal val MEDIA_WORKER_URL: String? = null

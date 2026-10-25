@@ -46,3 +46,11 @@ value class LinkRequestId(
 ) {
     override fun toString(): String = value
 }
+
+/** Файл чата в хранилище медиа: `{проект}/{chatId}/{uid автора}/{время}-{случайное}.jpg`, его выдаёт хранилище. */
+@JvmInline
+value class MediaKey(
+    val value: String,
+) {
+    override fun toString(): String = value
+}

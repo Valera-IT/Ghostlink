@@ -36,6 +36,8 @@ kover = "0.9.11"
 cryptography = "0.6.0"
 # Собран против Firebase Android BOM 34 и iOS SDK 11 — тот же мажор iOS SDK подключается в Xcode.
 gitlive = "2.7.0"
+ktor = "3.6.0"
+kotlinxIo = "0.9.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -91,6 +93,14 @@ gitlive-firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "g
 gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitlive" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
+
+# HTTP к Worker и в B2. Движки без OkHttp: на JVM он уже есть в старой версии внутри firebase-java-sdk.
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+ktor-client-java = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinxIo" }
 
 # Плагины Gradle как библиотеки — для build-logic
 android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }

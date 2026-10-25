@@ -10,4 +10,5 @@ actual val platformModule =
         single<AppLifecycle> { AndroidAppLifecycle() }
         single { androidThisDevice(androidContext()) }
         singleOf(::DeepLinks)
+        single { CacheDirectory(androidContext().cacheDir.absolutePath) }
     }

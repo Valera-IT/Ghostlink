@@ -7,8 +7,12 @@ import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
 import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
 import io.github.valerait.ghostlink.core.domain.repository.DeviceRepository
 import io.github.valerait.ghostlink.core.domain.repository.LinkRepository
+import io.github.valerait.ghostlink.core.domain.repository.MediaStore
 import io.github.valerait.ghostlink.core.domain.repository.UserRepository
+import io.github.valerait.ghostlink.core.platform.CacheDirectory
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.io.files.Path
 
 /**
  * Все репозитории поверх Firebase-приложения по умолчанию. Приложение видит только интерфейсы core:domain,
@@ -16,11 +20,14 @@ import kotlinx.coroutines.CoroutineScope
  *
  * @param scope живёт до конца процесса: в нём идут записи без ожидания (отправка, «прочитано», присутствие).
  * @param emulatorHost адрес локального Firebase Emulator; null — настоящий проект.
+ * @param mediaWorkerUrl адрес Worker с доступом к фото чатов; null — фото не работают.
  */
 class FirebaseBackend(
     keys: AccountKeyStore,
     scope: CoroutineScope,
+    cacheDirectory: CacheDirectory,
     emulatorHost: String? = null,
+    mediaWorkerUrl: String? = MEDIA_WORKER_URL,
 ) {
     private val firebaseAuth = Firebase.auth
     private val db = Firebase.firestore
@@ -37,6 +44,13 @@ class FirebaseBackend(
     val chats: ChatRepository = FirebaseChatRepository(db, scope)
     val devices: DeviceRepository = FirebaseDeviceRepository(db)
     val links: LinkRepository = FirebaseLinkRepository(db, firebaseAuth)
+    val media: MediaStore =
+        WorkerMediaStore(
+            workerUrl = mediaWorkerUrl,
+            idToken = { firebaseAuth.currentUser?.getIdToken(false) },
+            http = HttpClient(),
+            cache = MediaCache(Path(cacheDirectory.path, "media")),
+        )
 
     private companion object {
         // Порты из firebase.json.
