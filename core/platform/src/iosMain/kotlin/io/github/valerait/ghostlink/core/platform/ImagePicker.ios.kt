@@ -7,12 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.useContents
-import kotlinx.cinterop.usePinned
 import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSizeMake
-import platform.Foundation.NSData
 import platform.PhotosUI.PHPickerConfiguration
 import platform.PhotosUI.PHPickerFilter
 import platform.PhotosUI.PHPickerResult
@@ -31,7 +28,6 @@ import platform.UIKit.UIWindowScene
 import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
-import platform.posix.memcpy
 
 @Composable
 actual fun rememberImagePicker(
@@ -110,12 +106,6 @@ private fun UIImage.render(
 }
 
 private fun UIImage.toJpeg(quality: Int): ByteArray? = UIImageJPEGRepresentation(this, quality / MAX_JPEG_QUALITY.toDouble())?.toByteArray()
-
-private fun NSData.toByteArray(): ByteArray {
-    val size = length.toInt()
-    if (size == 0) return ByteArray(0)
-    return ByteArray(size).apply { usePinned { memcpy(it.addressOf(0), bytes, length) } }
-}
 
 /** Верхний экран, поверх которого показать выбор фото. keyWindow в приложении со сценами бывает null — ищем окно сцены. */
 private fun topViewController(): UIViewController? {
