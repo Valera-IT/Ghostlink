@@ -1,0 +1,25 @@
+# Worker Ghostlink на бесплатном тарифе Cloudflare: подписанные ссылки на фото чатов в Backblaze B2.
+# Развёртывание и секреты — в worker/README.md.
+name = "ghostlink"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+send_metrics = false
+
+[vars]
+# Чьи ID-токены принимаем: prod и dev. Файлы проектов лежат в одном бакете под разными префиксами.
+FIREBASE_PROJECTS = "ghostlink-7ffc8,ghostlink-dev"
+B2_BUCKET = "ghostlink-media-test-7k2q"
+B2_REGION = "eu-central-003"
+B2_ENDPOINT = "s3.eu-central-003.backblazeb2.com"
+# Секреты (wrangler secret put): B2_KEY_ID и B2_APP_KEY — ключ приложения B2 с доступом только к этому бакету.
+
+# Лимит частоты на пользователя. namespace_id — любое число, уникальное в аккаунте Cloudflare.
+[[ratelimits]]
+name = "UPLOAD_LIMITER"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
+
+[[ratelimits]]
+name = "DOWNLOAD_LIMITER"
+namespace_id = "1002"
+simple = { limit = 120, period = 60 }

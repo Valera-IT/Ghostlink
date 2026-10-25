@@ -156,6 +156,20 @@ jobs:
       - run: npm ci
       - run: npm test
 
+  worker:
+    name: Тесты Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+
   data-emulator:
     name: Репозитории против эмулятора
     runs-on: ubuntu-latest

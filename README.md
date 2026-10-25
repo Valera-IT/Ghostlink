@@ -40,6 +40,7 @@ apps/android/ui  корневой граф навигации: соединяе�
 apps/android/data  выбранные тема и язык
 apps/android/di  Koin: собирает модули core:* и feature:*, выбирает Firebase или демо в зависимости от наличия конфига
 apps/ios        то же для iPhone: фреймворк GhostlinkKit (корневой граф, Koin, тема и язык) и Xcode-проект на SwiftUI
+worker          Cloudflare Worker: подписанные ссылки на фото чатов в Backblaze B2 (см. worker/README.md)
 ```
 
 Целевая модульная архитектура (KMP, Clean Architecture, модели по слоям) описана в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), план — в [docs/ROADMAP.md](docs/ROADMAP.md).

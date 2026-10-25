@@ -1,0 +1,13 @@
+{
+  "name": "ghostlink-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test 'test/*.test.js'",
+    "dev": "npx wrangler@4.149.0 dev",
+    "deploy": "npx wrangler@4.149.0 deploy"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
