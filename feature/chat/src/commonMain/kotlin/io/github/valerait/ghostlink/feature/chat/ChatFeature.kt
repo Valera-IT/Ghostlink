@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import io.github.valerait.ghostlink.core.model.ChatId
 import kotlinx.serialization.Serializable
+import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
@@ -65,6 +66,7 @@ fun NavController.navigateToNewGroup() = navigate(PickMembersRoute())
 val chatModule =
     module {
         viewModelOf(::ChatViewModel)
+        singleOf(::ChatPhotos)
         viewModelOf(::PickMembersViewModel)
         viewModelOf(::GroupInfoViewModel)
     }

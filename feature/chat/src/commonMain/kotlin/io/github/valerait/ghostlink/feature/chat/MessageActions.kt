@@ -31,7 +31,10 @@ internal data class MessageActions(
     val onCopy: () -> Unit = {},
 )
 
-/** Пока сообщение не дошло до сервера, его можно только скопировать. Править и удалять можно только свои. */
+/**
+ * Пока сообщение не дошло до сервера, его можно только скопировать. Править и удалять можно только свои.
+ * [canCopy] — есть текст: у фото без подписи копировать нечего.
+ */
 @Composable
 internal fun MessageMenu(
     expanded: Boolean,
@@ -39,6 +42,7 @@ internal fun MessageMenu(
     sent: Boolean,
     onDismiss: () -> Unit,
     actions: MessageActions,
+    canCopy: Boolean = true,
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         if (sent) {
@@ -51,14 +55,16 @@ internal fun MessageMenu(
                 },
             )
         }
-        DropdownMenuItem(
-            text = { Text(stringResource(Res.string.chat_copy)) },
-            leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
-            onClick = {
-                onDismiss()
-                actions.onCopy()
-            },
-        )
+        if (canCopy) {
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.chat_copy)) },
+                leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
+                onClick = {
+                    onDismiss()
+                    actions.onCopy()
+                },
+            )
+        }
         if (mine && sent) {
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.chat_edit)) },

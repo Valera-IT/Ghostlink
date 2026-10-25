@@ -7,6 +7,7 @@ import io.github.valerait.ghostlink.core.domain.repository.LinkRepository
 import io.github.valerait.ghostlink.core.domain.repository.UserRepository
 import io.github.valerait.ghostlink.core.model.Account
 import io.github.valerait.ghostlink.core.model.AccountKey
+import io.github.valerait.ghostlink.core.model.Attachment
 import io.github.valerait.ghostlink.core.model.Chat
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.ChatPrefs
@@ -195,8 +196,9 @@ open class FakeBackend(
         text: String,
         replyTo: ReplyTo?,
         ttl: Duration?,
+        attachment: Attachment?,
     ) {
-        post(chatId, senderId, text, clock.now()) { it.copy(replyTo = replyTo, ttl = ttl) }
+        post(chatId, senderId, text, clock.now()) { it.copy(replyTo = replyTo, ttl = ttl, attachment = attachment) }
     }
 
     override fun editMessage(
@@ -229,14 +231,18 @@ open class FakeBackend(
                 (
                     chatId to
                         list.map {
-                            if (it.id == messageId) it.copy(text = "", replyTo = null, editedAt = null, deletedAt = clock.now()) else it
+                            if (it.id == messageId) {
+                                it.copy(text = "", replyTo = null, editedAt = null, attachment = null, deletedAt = clock.now())
+                            } else {
+                                it
+                            }
                         }
                 )
         }
         if (isLatest) {
             chats.update { all ->
                 val chat = all[chatId] ?: return@update all
-                all + (chatId to chat.copy(lastMessage = previous?.let { LastMessage(it.text, it.senderId, it.sentAt, it.ttl) }))
+                all + (chatId to chat.copy(lastMessage = previous?.let(::lastMessageOf)))
             }
         }
     }
@@ -469,13 +475,15 @@ open class FakeBackend(
         extra: (Message) -> Message = { it },
     ) {
         val message = extra(Message(MessageId(nextId("m")), senderId, text, at))
-        val ttl = message.ttl
         messages.update { it + (chatId to it[chatId].orEmpty() + message) }
         chats.update { all ->
             val chat = all[chatId] ?: return@update all
-            all + (chatId to chat.copy(lastMessage = LastMessage(text, senderId, at, ttl), updatedAt = at, typing = chat.typing - senderId))
+            all + (chatId to chat.copy(lastMessage = lastMessageOf(message), updatedAt = at, typing = chat.typing - senderId))
         }
     }
+
+    private fun lastMessageOf(message: Message) =
+        LastMessage(message.text, message.senderId, message.sentAt, message.ttl, photo = message.attachment != null)
 
     // endregion
 

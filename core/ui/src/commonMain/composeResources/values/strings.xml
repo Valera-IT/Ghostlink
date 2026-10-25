@@ -42,6 +42,8 @@
     <string name="chats_muted">Muted</string>
     <string name="chats_remove">Delete</string>
     <string name="chats_sender_prefix">%1$s: %2$s</string>
+    <string name="chats_photo">📷 Photo</string>
+    <string name="chats_photo_caption">📷 %1$s</string>
     <string name="group_new">New group</string>
     <string name="group_create">Create</string>
     <string name="group_add">Add</string>
@@ -77,6 +79,16 @@
     <string name="chat_delete_title">Delete message?</string>
     <string name="chat_delete_body">The message will disappear for you and the other person, leaving a “Message deleted” note in its place.</string>
     <string name="chat_deleted">Message deleted</string>
+    <string name="chat_photo">Photo</string>
+    <string name="chat_photo_attach">Attach a photo</string>
+    <string name="chat_photo_remove">Remove the photo</string>
+    <string name="chat_photo_failed">Couldn't open this photo. Try another one.</string>
+    <string name="chat_photo_not_sent">Not sent</string>
+    <string name="chat_photo_retry">Retry</string>
+    <string name="chat_photo_discard">Remove</string>
+    <string name="chat_photo_unavailable">Photo unavailable</string>
+    <string name="chat_photo_close">Close</string>
+    <string name="chat_photo_open">Open the photo</string>
     <string name="status_sending">Sending</string>
     <string name="status_sent">Sent</string>
     <string name="status_read">Read</string>

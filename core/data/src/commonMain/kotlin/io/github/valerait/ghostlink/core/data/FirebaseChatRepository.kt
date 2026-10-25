@@ -14,6 +14,7 @@ import io.github.valerait.ghostlink.core.firebase.Collections
 import io.github.valerait.ghostlink.core.firebase.GroupCreate
 import io.github.valerait.ghostlink.core.firebase.MessageDto
 import io.github.valerait.ghostlink.core.firebase.MessageWrite
+import io.github.valerait.ghostlink.core.model.Attachment
 import io.github.valerait.ghostlink.core.model.Chat
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.ChatPrefs
@@ -82,17 +83,13 @@ class FirebaseChatRepository(
         text: String,
         replyTo: ReplyTo?,
         ttl: Duration?,
+        attachment: Attachment?,
     ) {
         val chatRef = chats.document(chatId.value)
         val messageRef = messages(chatId).document
-        val message = MessageWrite(senderId.value, text, Timestamp.ServerTimestamp, replyTo?.toDto(), ttl?.inWholeSeconds)
-        val last =
-            buildMap<String, Any> {
-                put("text", text)
-                put("senderId", senderId.value)
-                put("sentAt", FieldValue.serverTimestamp)
-                ttl?.let { put("ttl", it.inWholeSeconds) }
-            }
+        val message =
+            MessageWrite(senderId.value, text, Timestamp.ServerTimestamp, replyTo?.toDto(), ttl?.inWholeSeconds, attachment?.toDto())
+        val last = lastMessageFields(text, senderId, FieldValue.serverTimestamp, ttl, photo = attachment != null)
         write("Send") {
             db
                 .batch()
@@ -135,17 +132,19 @@ class FirebaseChatRepository(
                 "text" to FieldValue.delete
                 "replyTo" to FieldValue.delete
                 "editedAt" to FieldValue.delete
+                "attachment" to FieldValue.delete
                 "deletedAt" to FieldValue.serverTimestamp
             }
         if (isLatest) {
             val last: Any =
                 previous?.let {
-                    buildMap<String, Any> {
-                        put("text", it.text)
-                        put("senderId", it.senderId.value)
-                        put("sentAt", it.sentAt?.toTimestamp() ?: FieldValue.serverTimestamp)
-                        it.ttl?.let { ttl -> put("ttl", ttl.inWholeSeconds) }
-                    }
+                    lastMessageFields(
+                        it.text,
+                        it.senderId,
+                        it.sentAt?.toTimestamp() ?: FieldValue.serverTimestamp,
+                        it.ttl,
+                        photo = it.attachment != null,
+                    )
                 } ?: FieldValue.delete
             batch.updateFields(chats.document(chatId.value)) { "lastMessage" to last }
         }
@@ -274,6 +273,22 @@ class FirebaseChatRepository(
         const val BATCH_LIMIT = 500
     }
 }
+
+/** Превью чата в списке: lastMessage пишется словарём, чтобы sentAt мог быть серверным временем. */
+private fun lastMessageFields(
+    text: String,
+    senderId: UserId,
+    sentAt: Any,
+    ttl: Duration?,
+    photo: Boolean,
+): Map<String, Any> =
+    buildMap {
+        put("text", text)
+        put("senderId", senderId.value)
+        put("sentAt", sentAt)
+        ttl?.let { put("ttl", it.inWholeSeconds) }
+        if (photo) put("photo", true)
+    }
 
 private fun DocumentSnapshot.toChat(): Chat? = if (exists) data<ChatDto>(ESTIMATE).toChat(id) else null
 

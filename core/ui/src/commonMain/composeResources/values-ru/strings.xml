@@ -41,6 +41,8 @@
     <string name="chats_muted">Уведомления выключены</string>
     <string name="chats_remove">Удалить</string>
     <string name="chats_sender_prefix">%1$s: %2$s</string>
+    <string name="chats_photo">📷 Фото</string>
+    <string name="chats_photo_caption">📷 %1$s</string>
     <string name="group_new">Новая группа</string>
     <string name="group_create">Создать</string>
     <string name="group_add">Добавить</string>
@@ -76,6 +78,16 @@
     <string name="chat_delete_title">Удалить сообщение?</string>
     <string name="chat_delete_body">Сообщение исчезнет у вас и у собеседника, на его месте останется отметка «Сообщение удалено».</string>
     <string name="chat_deleted">Сообщение удалено</string>
+    <string name="chat_photo">Фото</string>
+    <string name="chat_photo_attach">Прикрепить фото</string>
+    <string name="chat_photo_remove">Убрать фото</string>
+    <string name="chat_photo_failed">Не удалось открыть это фото. Попробуйте другое.</string>
+    <string name="chat_photo_not_sent">Не отправлено</string>
+    <string name="chat_photo_retry">Повторить</string>
+    <string name="chat_photo_discard">Убрать</string>
+    <string name="chat_photo_unavailable">Фото недоступно</string>
+    <string name="chat_photo_close">Закрыть</string>
+    <string name="chat_photo_open">Открыть фото</string>
     <string name="status_sending">Отправляется</string>
     <string name="status_sent">Отправлено</string>
     <string name="status_read">Прочитано</string>

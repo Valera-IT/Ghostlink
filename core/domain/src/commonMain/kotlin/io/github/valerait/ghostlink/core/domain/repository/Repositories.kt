@@ -2,6 +2,7 @@ package io.github.valerait.ghostlink.core.domain.repository
 
 import io.github.valerait.ghostlink.core.model.Account
 import io.github.valerait.ghostlink.core.model.AccountKey
+import io.github.valerait.ghostlink.core.model.Attachment
 import io.github.valerait.ghostlink.core.model.Chat
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.ChatPrefs
@@ -168,13 +169,16 @@ interface ChatRepository :
     /**
      * Не ждёт сервера: сообщение сразу появляется локально со статусом SENDING.
      * [ttl] — срок жизни исчезающего сообщения (таймер чата в момент отправки).
+     * [attachment] — уже загруженное фото; тогда [text] — подпись и может быть пустым.
      */
+    @Suppress("LongParameterList") // по параметру на поле сообщения
     fun sendMessage(
         chatId: ChatId,
         senderId: UserId,
         text: String,
         replyTo: ReplyTo? = null,
         ttl: Duration? = null,
+        attachment: Attachment? = null,
     )
 
     /**

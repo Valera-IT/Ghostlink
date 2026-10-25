@@ -4,6 +4,7 @@ import io.github.valerait.ghostlink.core.domain.repository.MediaStore
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.GhostlinkError
 import io.github.valerait.ghostlink.core.model.MediaKey
+import io.github.valerait.ghostlink.core.platform.logWarning
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -100,12 +101,15 @@ internal class WorkerMediaStore(
             block()
         } catch (e: CancellationException) {
             throw e
-        } catch (e: GhostlinkError) {
-            throw e
-        } catch (e: IOException) {
-            throw GhostlinkError.Offline(e)
         } catch (e: Exception) {
-            throw GhostlinkError.Unexpected(e)
+            val error =
+                when (e) {
+                    is GhostlinkError -> e
+                    is IOException -> GhostlinkError.Offline(e)
+                    else -> GhostlinkError.Unexpected(e)
+                }
+            if (error !is GhostlinkError.Offline) logWarning(TAG, "Media request failed", e)
+            throw error
         }
 
     @Serializable
@@ -138,6 +142,7 @@ internal class WorkerMediaStore(
     )
 
     private companion object {
+        const val TAG = "Media"
         val JSON = Json { ignoreUnknownKeys = true }
         const val ERROR_BODY_LIMIT = 200
     }

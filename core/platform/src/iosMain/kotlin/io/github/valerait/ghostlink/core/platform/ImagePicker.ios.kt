@@ -31,16 +31,16 @@ import platform.darwin.dispatch_get_main_queue
 
 @Composable
 actual fun rememberImagePicker(
-    request: ImageRequest,
-    onPicked: (ByteArray) -> Unit,
+    requests: List<ImageRequest>,
+    onPicked: (List<PickedImage>) -> Unit,
     onFailed: () -> Unit,
 ): () -> Unit {
     val picked by rememberUpdatedState(onPicked)
     val failed by rememberUpdatedState(onFailed)
     // PHPicker держит делегата слабой ссылкой: живёт, пока жив экран.
     val delegate =
-        remember(request) {
-            ImagePickerDelegate(request, onPicked = { picked(it) }, onFailed = { failed() })
+        remember(requests) {
+            ImagePickerDelegate(requests, onPicked = { picked(it) }, onFailed = { failed() })
         }
     return remember(delegate) {
         {
@@ -59,8 +59,8 @@ actual fun rememberImagePicker(
 private const val IMAGE_TYPE = "public.image"
 
 private class ImagePickerDelegate(
-    private val request: ImageRequest,
-    private val onPicked: (ByteArray) -> Unit,
+    private val requests: List<ImageRequest>,
+    private val onPicked: (List<PickedImage>) -> Unit,
     private val onFailed: () -> Unit,
 ) : NSObject(),
     PHPickerViewControllerDelegateProtocol {
@@ -75,9 +75,17 @@ private class ImagePickerDelegate(
         // Обработчик приходит не на главном потоке: там и сжимаем, а результат отдаём на главный.
         provider.loadDataRepresentationForTypeIdentifier(IMAGE_TYPE) { data, error ->
             val image = data?.let { UIImage(data = it) }
-            val jpeg = image?.let { fitJpeg(request) { side, quality -> it.render(side, request.square).toJpeg(quality) } }
-            if (jpeg == null) logWarning("ImagePicker", "Can't read picked image: ${error?.localizedDescription}")
-            dispatch_async(dispatch_get_main_queue()) { if (jpeg != null) onPicked(jpeg) else onFailed() }
+            val images =
+                image?.let {
+                    val (width, height) = it.pixelSize()
+                    fitJpegs(
+                        requests,
+                        encode = { request, side, quality -> it.render(side, request.square).toJpeg(quality) },
+                        sizeOf = { request, side -> fitSize(width, height, side, request.square) },
+                    )
+                }
+            if (images == null) logWarning("ImagePicker", "Can't read picked image: ${error?.localizedDescription}")
+            dispatch_async(dispatch_get_main_queue()) { if (images != null) onPicked(images) else onFailed() }
         }
     }
 }
@@ -104,6 +112,9 @@ private fun UIImage.render(
         drawInRect(CGRectMake((targetWidth - drawWidth) / 2, (targetHeight - drawHeight) / 2, drawWidth, drawHeight))
     }
 }
+
+/** Размер в пикселях с учётом поворота из EXIF: size у UIImage уже повёрнут. */
+private fun UIImage.pixelSize(): Pair<Int, Int> = size.useContents { (width * scale).toInt() to (height * scale).toInt() }
 
 private fun UIImage.toJpeg(quality: Int): ByteArray? = UIImageJPEGRepresentation(this, quality / MAX_JPEG_QUALITY.toDouble())?.toByteArray()
 

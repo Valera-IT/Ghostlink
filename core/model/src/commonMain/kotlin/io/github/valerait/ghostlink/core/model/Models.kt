@@ -76,11 +76,14 @@ data class User(
 }
 
 data class LastMessage(
+    /** Текст или подпись к фото; у фото без подписи пустой. */
     val text: String,
     val senderId: UserId,
     val sentAt: Instant?,
     /** Срок жизни исчезающего сообщения; null — сообщение не исчезает. */
     val ttl: Duration? = null,
+    /** Последнее сообщение — фото: в списке чатов показываем «📷 Фото». */
+    val photo: Boolean = false,
 ) {
     fun isExpired(now: Instant): Boolean = expiresAt(sentAt, ttl)?.let { now >= it } == true
 }
@@ -191,6 +194,7 @@ data class ChatPrefs(
 data class Message(
     val id: MessageId,
     val senderId: UserId,
+    /** Текст или подпись к фото ([attachment]); у фото без подписи пустой. */
     val text: String,
     val sentAt: Instant?,
     /** Сообщение записано только локально и ещё не подтверждено сервером. */
@@ -202,6 +206,8 @@ data class Message(
     val deletedAt: Instant? = null,
     /** Срок жизни исчезающего сообщения; null — сообщение не исчезает. */
     val ttl: Duration? = null,
+    /** Фото в сообщении; у удалённого сообщения пропадает вместе с текстом. */
+    val attachment: Attachment? = null,
 ) {
     val deleted: Boolean get() = deletedAt != null
 
@@ -233,6 +239,32 @@ data class Message(
 /** Текст сообщения без пробелов по краям и не длиннее лимита; null — отправлять нечего. */
 fun normalizeMessageText(raw: String): String? = raw.trim().take(Message.TEXT_MAX_LENGTH).takeIf { it.isNotEmpty() }
 
+/**
+ * Фото в сообщении. Сами файлы — полный размер [key] и превью [thumbKey] — лежат в хранилище медиа (MediaStore),
+ * в сообщении только их ключи и размеры: по [width] и [height] лента резервирует место до загрузки превью.
+ */
+data class Attachment(
+    val key: MediaKey,
+    val thumbKey: MediaKey,
+    val width: Int,
+    val height: Int,
+    /** Размер полного фото в байтах. */
+    val size: Int,
+) {
+    companion object {
+        /** Полное фото: длинная сторона и потолок JPEG. Потолок ниже лимита Worker с запасом. */
+        const val PHOTO_SIDE_PX = 1280
+        const val PHOTO_MAX_BYTES = 512 * 1024
+
+        /** Превью для ленты: качается вместо полного фото, пока его не откроют. */
+        const val THUMB_SIDE_PX = 320
+        const val THUMB_MAX_BYTES = 48 * 1024
+
+        /** Совпадает с ограничением в firestore.rules. */
+        const val MAX_SIDE_PX = 4096
+    }
+}
+
 /** READ — прочитал хоть один (две галочки), READ_ALL — в группе прочитали все (три галочки). */
 enum class MessageStatus { SENDING, SENT, READ, READ_ALL }
 
@@ -243,13 +275,17 @@ enum class MessageStatus { SENDING, SENT, READ, READ_ALL }
 data class ReplyTo(
     val id: MessageId,
     val senderId: UserId,
+    /** Начало текста или подписи; у фото без подписи пустое. */
     val preview: String,
+    /** Отвечают на фото: перед превью показываем «📷 Фото». */
+    val photo: Boolean = false,
 ) {
     companion object {
         /** Совпадает с ограничением в firestore.rules. */
         const val PREVIEW_MAX_LENGTH = 100
 
-        fun of(message: Message): ReplyTo = ReplyTo(message.id, message.senderId, previewOf(message.text))
+        fun of(message: Message): ReplyTo =
+            ReplyTo(message.id, message.senderId, previewOf(message.text), photo = message.attachment != null)
 
         /** Одна строка без лишних пробелов, не длиннее [PREVIEW_MAX_LENGTH] вместе с многоточием. */
         fun previewOf(text: String): String {

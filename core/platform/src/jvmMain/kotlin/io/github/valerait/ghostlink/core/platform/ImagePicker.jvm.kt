@@ -21,14 +21,14 @@ import javax.imageio.ImageWriteParam
 
 @Composable
 actual fun rememberImagePicker(
-    request: ImageRequest,
-    onPicked: (ByteArray) -> Unit,
+    requests: List<ImageRequest>,
+    onPicked: (List<PickedImage>) -> Unit,
     onFailed: () -> Unit,
 ): () -> Unit {
     val scope = rememberCoroutineScope()
     val picked by rememberUpdatedState(onPicked)
     val failed by rememberUpdatedState(onFailed)
-    return remember(request) {
+    return remember(requests) {
         {
             val dialog =
                 FileDialog(null as Frame?).apply {
@@ -41,13 +41,13 @@ actual fun rememberImagePicker(
             val file = dialog.files.firstOrNull()
             if (file != null) {
                 scope.launch {
-                    val jpeg =
+                    val images =
                         withContext(Dispatchers.IO) {
-                            runCatching { readJpeg(file, request) }
+                            runCatching { readJpegs(file, requests) }
                                 .onFailure { logWarning("ImagePicker", "Can't read $file", it) }
                                 .getOrNull()
                         }
-                    if (jpeg != null) picked(jpeg) else failed()
+                    if (images != null) picked(images) else failed()
                 }
             }
         }
@@ -56,12 +56,16 @@ actual fun rememberImagePicker(
 
 private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "bmp")
 
-private fun readJpeg(
+private fun readJpegs(
     file: File,
-    request: ImageRequest,
-): ByteArray? {
+    requests: List<ImageRequest>,
+): List<PickedImage>? {
     val image = checkNotNull(ImageIO.read(file)) { "Not an image: $file" }
-    return fitJpeg(request) { side, quality -> image.render(side, request.square).toJpeg(quality) }
+    return fitJpegs(
+        requests,
+        encode = { request, side, quality -> image.render(side, request.square).toJpeg(quality) },
+        sizeOf = { request, side -> fitSize(image.width, image.height, side, request.square) },
+    )
 }
 
 private fun BufferedImage.render(

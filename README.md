@@ -53,7 +53,7 @@ UI зависит только от интерфейсов репозитори�
 users/{uid}                  name, online, lastSeen
 users/{uid}/devices/{id}     name, platform, lastActiveAt
 chats/{uidA_uidB}            members, lastMessage, updatedAt, lastRead.{uid}
-chats/{uidA_uidB}/messages   senderId, text, sentAt
+chats/{uidA_uidB}/messages   senderId, text, sentAt, attachment? (ключи фото и превью в B2)
 linkRequests/{id}            owner, deviceName, platform, createdAt, expiresAt, payload, approvedBy
 ```
 
@@ -172,5 +172,4 @@ maestro test .maestro
 ## Дальше
 
 - Push-уведомления (FCM + Cloud Function).
-- Фото в сообщениях (Firebase Storage).
 - Индикатор «печатает…».
