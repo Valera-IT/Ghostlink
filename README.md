@@ -27,7 +27,7 @@ core/model     чистые модели и логика: статусы соо�
 core/domain    интерфейсы репозиториев и use case (KMP)
 core/crypto    шифрование ключа для нового устройства на cryptography-kotlin (KMP)
 core/firebase  DTO документов Firestore и поля bytes через нативный SDK (KMP: Android, JVM, iOS)
-core/data      репозитории на Firebase (GitLive), мапперы DTO → domain, ошибки → GhostlinkError (KMP)
+core/data      репозитории на Firebase (GitLive), фото чатов через Worker и B2 (Ktor, кэш на диске), мапперы DTO → domain, ошибки → GhostlinkError (KMP)
 core/testing   FakeBackend — все репозитории в памяти, фейк для тестов (KMP)
 core/demo      DemoBackend — демо-режим со стартовыми чатами и ботом (KMP)
 core/platform  защищённое хранилище, это устройство, жизненный цикл, диплинки, сканер QR, буфер обмена (KMP)

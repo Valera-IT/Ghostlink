@@ -3,6 +3,7 @@ import java.time.Duration
 // Реализации репозиториев core:domain на Firebase (GitLive): мапперы DTO ↔ domain и перевод ошибок в GhostlinkError.
 plugins {
     alias(libs.plugins.ghostlink.kmp.android.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -11,10 +12,23 @@ kotlin {
             api(project(":core:domain"))
             implementation(project(":core:firebase"))
             implementation(project(":core:platform"))
+            implementation(libs.ktor.client.core)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.io.core)
+        }
+        androidMain.dependencies {
+            implementation(libs.ktor.client.android)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
+        }
+        jvmMain.dependencies {
+            implementation(libs.ktor.client.java)
         }
         commonTest.dependencies {
             implementation(project(":core:testing"))
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
         }
         jvmTest.dependencies {
             implementation(project(":core:crypto"))

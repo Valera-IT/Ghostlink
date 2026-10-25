@@ -17,4 +17,5 @@ actual val platformModule =
         }
         single { jvmThisDevice() }
         singleOf(::DeepLinks)
+        single { CacheDirectory(jvmCacheDirectory()) }
     }

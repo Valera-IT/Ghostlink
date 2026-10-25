@@ -9,4 +9,5 @@ actual val platformModule =
         single<AppLifecycle> { IosAppLifecycle() }
         single { iosThisDevice() }
         singleOf(::DeepLinks)
+        single { CacheDirectory(iosCachesDirectory()) }
     }

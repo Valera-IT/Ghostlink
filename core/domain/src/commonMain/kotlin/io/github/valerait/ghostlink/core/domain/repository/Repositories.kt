@@ -11,6 +11,7 @@ import io.github.valerait.ghostlink.core.model.DisappearingTimer
 import io.github.valerait.ghostlink.core.model.GhostlinkError
 import io.github.valerait.ghostlink.core.model.LinkRequest
 import io.github.valerait.ghostlink.core.model.LinkRequestId
+import io.github.valerait.ghostlink.core.model.MediaKey
 import io.github.valerait.ghostlink.core.model.Message
 import io.github.valerait.ghostlink.core.model.MessageId
 import io.github.valerait.ghostlink.core.model.Platform
@@ -257,4 +258,29 @@ interface LinkRepository {
     )
 
     suspend fun deleteLinkRequest(id: LinkRequestId)
+}
+
+/**
+ * Файлы чатов: фото и их превью. Экраны и сообщения не знают, где они лежат (сейчас — приватный бакет B2,
+ * доступ через Worker): переезд на другое хранилище меняет только реализацию.
+ * Ошибки — [GhostlinkError]: нет сети — Offline, не участник чата — PermissionDenied.
+ */
+interface MediaStore {
+    /** Загружает JPEG-файлы (не больше [MAX_FILE_BYTES] каждый, не больше [MAX_FILES] за раз) и возвращает их ключи в том же порядке. */
+    suspend fun upload(
+        chatId: ChatId,
+        files: List<ByteArray>,
+    ): List<MediaKey>
+
+    /** Файл чата. Однажды скачанный или загруженный с этого устройства берётся из кэша на диске. */
+    suspend fun download(
+        chatId: ChatId,
+        key: MediaKey,
+    ): ByteArray
+
+    companion object {
+        /** Совпадают с ограничениями Worker (worker/src/index.js). */
+        const val MAX_FILE_BYTES = 1024 * 1024
+        const val MAX_FILES = 2
+    }
 }
