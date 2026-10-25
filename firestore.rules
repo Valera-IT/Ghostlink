@@ -1,7 +1,8 @@
 rules_version = '2';
 
 // Правила для Ghostlink. Модель данных:
-//   users/{uid}                    name, online, lastSeen
+//   users/{uid}                    name, online, lastSeen, avatarVersion?
+//   avatars/{uid}                  data (bytes, JPEG ≤ 64 КБ), version — фото профиля
 //   users/{uid}/devices/{id}       name, platform, lastActiveAt — реестр устройств аккаунта
 //   users/{uid}/chatPrefs/{a_b}    pinnedAt?, muted?, clearedAt?, hidden? — личные настройки чата
 //   linkRequests/{id}              owner, deviceName, platform, createdAt, expiresAt, payload, approvedBy
@@ -27,6 +28,10 @@ service cloud.firestore {
       return request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
 
+    function validAvatarVersion(version) {
+      return version is int && version > 0;
+    }
+
     // Профили видны любому вошедшему: иначе нельзя показать имя по отсканированному коду.
     // Менять можно только свой.
     match /users/{uid} {
@@ -34,7 +39,8 @@ service cloud.firestore {
       allow create, update: if signedIn()
         && request.auth.uid == uid
         && validName(request.resource.data.name)
-        && request.resource.data.keys().hasOnly(['name', 'online', 'lastSeen']);
+        && request.resource.data.keys().hasOnly(['name', 'online', 'lastSeen', 'avatarVersion'])
+        && (!('avatarVersion' in request.resource.data) || validAvatarVersion(request.resource.data.avatarVersion));
 
       // Реестр устройств видит и меняет только сам аккаунт.
       match /devices/{deviceId} {
@@ -46,6 +52,21 @@ service cloud.firestore {
           && shortString(request.resource.data.platform, 20)
           && request.resource.data.lastActiveAt == request.time;
       }
+    }
+
+    // Фото профиля лежит отдельно от users/{uid}: тот меняется на каждый heartbeat присутствия,
+    // и 64 КБ картинки скачивались бы заново с каждым «в сети». Версия в users/{uid} говорит, когда перекачать.
+    // Видно любому вошедшему, как и имя; менять и удалять можно только своё.
+    match /avatars/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['data', 'version'])
+        && request.resource.data.data is bytes
+        && request.resource.data.data.size() > 0
+        && request.resource.data.data.size() <= 65536
+        && validAvatarVersion(request.resource.data.version);
+      allow delete: if signedIn() && request.auth.uid == uid;
     }
 
     // Личные настройки чатов (закреплён, без звука, удалён из списка) видит и меняет только владелец:

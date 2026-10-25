@@ -84,7 +84,15 @@ jobs:
           # Экран как у настоящего телефона: по умолчанию эмулятор 320×640, и часть кнопок уходит за край.
           profile: pixel_6
           disable-animations: true
+          cores: 4
+          ram-size: 4096M
           script: |
+            # Свежий эмулятор долго приходит в себя, и диалог «Pixel Launcher isn't responding»
+            # закрывает приложение. Прячем системные диалоги об ошибках и даём системе успокоиться.
+            adb shell settings put global hide_error_dialogs 1
+            adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
+            sleep 30
+            adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
             adb install apps/android/build/outputs/apk/demo/debug/android-demo-debug.apk
             maestro test .maestro --format junit --output build/maestro-report.xml
       - if: always()

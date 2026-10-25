@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, getDoc, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { Bytes, deleteDoc, deleteField, doc, getDoc, serverTimestamp, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { account, guest, seed } from './setup.js';
 
 describe('users/{uid}', () => {
@@ -34,9 +34,57 @@ describe('users/{uid}', () => {
     await assertFails(setDoc(doc(account('alice'), 'users/alice'), { name: 'Alice', admin: true }));
   });
 
+  test('версия фото профиля — положительное целое, её можно убрать', async () => {
+    const ref = doc(account('alice'), 'users/alice');
+    await assertSucceeds(setDoc(ref, { name: 'Alice', avatarVersion: 1761300000000 }));
+    await assertFails(updateDoc(ref, { avatarVersion: 0 }));
+    await assertFails(updateDoc(ref, { avatarVersion: 'v2' }));
+    await assertFails(updateDoc(ref, { avatarVersion: 1.5 }));
+    await assertSucceeds(updateDoc(ref, { avatarVersion: deleteField() }));
+  });
+
   test('профиль не удаляется', async () => {
     await seed((db) => setDoc(doc(db, 'users/alice'), { name: 'Alice' }));
     await assertFails(deleteDoc(doc(account('alice'), 'users/alice')));
+  });
+});
+
+describe('avatars/{uid}', () => {
+  const photo = (size = 1000) => ({ data: Bytes.fromUint8Array(new Uint8Array(size).fill(7)), version: 1 });
+
+  test('своё фото ставится, меняется и удаляется', async () => {
+    const ref = doc(account('alice'), 'avatars/alice');
+    await assertSucceeds(setDoc(ref, photo()));
+    await assertSucceeds(setDoc(ref, { ...photo(2000), version: 2 }));
+    await assertSucceeds(deleteDoc(ref));
+  });
+
+  test('фото видно любому вошедшему, гостю — нет', async () => {
+    await seed((db) => setDoc(doc(db, 'avatars/alice'), photo()));
+    await assertSucceeds(getDoc(doc(account('bob'), 'avatars/alice')));
+    await assertFails(getDoc(doc(guest(), 'avatars/alice')));
+  });
+
+  test('чужое фото не меняется и не удаляется', async () => {
+    await seed((db) => setDoc(doc(db, 'avatars/alice'), photo()));
+    const ref = doc(account('bob'), 'avatars/alice');
+    await assertFails(setDoc(ref, photo()));
+    await assertFails(deleteDoc(ref));
+  });
+
+  test('не больше 64 КБ и только bytes', async () => {
+    const ref = doc(account('alice'), 'avatars/alice');
+    await assertSucceeds(setDoc(ref, photo(65536)));
+    await assertFails(setDoc(ref, photo(65537)));
+    await assertFails(setDoc(ref, photo(0)));
+    await assertFails(setDoc(ref, { data: 'base64…', version: 1 }));
+  });
+
+  test('версия обязательна, лишние поля запрещены', async () => {
+    const ref = doc(account('alice'), 'avatars/alice');
+    await assertFails(setDoc(ref, { data: photo().data }));
+    await assertFails(setDoc(ref, { ...photo(), version: 0 }));
+    await assertFails(setDoc(ref, { ...photo(), url: 'https://example.com/a.jpg' }));
   });
 });
 

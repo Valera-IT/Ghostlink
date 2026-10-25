@@ -367,7 +367,7 @@ private fun ChatRowItem(item: ChatListItem, now: Long, onClick: () -> Unit, onPi
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box {
-            Avatar(name, item.partnerId, size = 52.dp)
+            Avatar(name, item.partnerId, size = 52.dp, photoVersion = item.partner?.avatarVersion)
             if (item.partner?.isOnline(now) == true) {
                 Box(
                     Modifier.align(Alignment.BottomEnd).size(14.dp)

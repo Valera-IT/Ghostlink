@@ -137,7 +137,9 @@ actual val systemLanguageCode: String
     get() = (NSLocale.preferredLanguages.firstOrNull() as? String)?.substringBefore('-') ?: "en"
 
 actual fun logWarning(tag: String, message: String, error: Throwable?) {
-    NSLog("[%@] %@ %@", tag, message, error?.toString() ?: "")
+    // Строки Kotlin в variadic-аргументах NSLog роняли приложение (EXC_BAD_ACCESS при логе ошибки Firestore),
+    // поэтому текст собираем сами и передаём форматом, экранировав %.
+    NSLog("[$tag] $message ${error?.toString().orEmpty()}".replace("%", "%%"))
 }
 
 private fun date(millis: Long) = NSDate.dateWithTimeIntervalSince1970(millis / 1000.0)

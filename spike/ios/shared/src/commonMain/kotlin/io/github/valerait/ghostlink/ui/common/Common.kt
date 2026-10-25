@@ -1,5 +1,6 @@
 package io.github.valerait.ghostlink.ui.common
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -12,11 +13,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -25,15 +29,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.valerait.ghostlink.app.AppGraph
 import io.github.valerait.ghostlink.app.strings
 import io.github.valerait.ghostlink.model.User
+import io.github.valerait.ghostlink.platform.decodeImage
 import io.github.valerait.ghostlink.platform.formatDate
 import io.github.valerait.ghostlink.platform.formatShortDate
 import io.github.valerait.ghostlink.platform.formatTime
 import io.github.valerait.ghostlink.platform.formatWeekday
 import io.github.valerait.ghostlink.platform.localEpochDay
+import io.github.valerait.ghostlink.platform.logWarning
 import io.github.valerait.ghostlink.platform.nowMillis
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlin.math.absoluteValue
 
 private val AvatarColors = listOf(
@@ -41,9 +51,20 @@ private val AvatarColors = listOf(
     Color(0xFFE59A4B), Color(0xFF5DB85F), Color(0xFFB46CD9), Color(0xFF3AA6C9),
 )
 
-/** Аватар из инициалов; цвет стабилен для пользователя и зависит от его id. */
+/**
+ * Фото профиля, а пока его нет или оно грузится — инициалы; цвет стабилен для пользователя и зависит от его id.
+ * [photoVersion] — [User.avatarVersion]; null — фото нет (и у групп).
+ */
 @Composable
-fun Avatar(name: String, id: String, modifier: Modifier = Modifier, size: Dp = 48.dp) {
+fun Avatar(name: String, id: String, modifier: Modifier = Modifier, size: Dp = 48.dp, photoVersion: Long? = null) {
+    // Пока грузится новая версия, видна прежняя: produceState не сбрасывает значение при смене ключей.
+    val photo by produceState(photoVersion?.let { AvatarPhotos.cached(id, it) }, id, photoVersion) {
+        value = photoVersion?.let { AvatarPhotos.photo(id, it) }
+    }
+    photo?.let {
+        Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = modifier.size(size).clip(CircleShape))
+        return
+    }
     val color = AvatarColors[id.hashCode().absoluteValue % AvatarColors.size]
     Box(modifier.size(size).clip(CircleShape).background(color), contentAlignment = Alignment.Center) {
         Text(
@@ -53,6 +74,32 @@ fun Avatar(name: String, id: String, modifier: Modifier = Modifier, size: Dp = 4
             fontSize = (size.value * 0.38f).sp,
             style = MaterialTheme.typography.titleMedium,
         )
+    }
+}
+
+/**
+ * Фото профилей: готовые картинки в памяти до конца процесса, JPEG на диске кэширует сам Firestore.
+ * Вызывается из композиции, то есть на главном потоке, поэтому кэш без блокировок.
+ */
+private object AvatarPhotos {
+    private const val MAX_IMAGES = 200
+    private val images = LinkedHashMap<String, ImageBitmap>()
+
+    fun cached(id: String, version: Long): ImageBitmap? = images["$id@$version"]
+
+    suspend fun photo(id: String, version: Long): ImageBitmap? {
+        cached(id, version)?.let { return it }
+        val image = try {
+            AppGraph.users.getAvatar(id, version)?.let { withContext(Dispatchers.Default) { decodeImage(it) } }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logWarning("Avatars", "Can't load avatar of $id", e)
+            null
+        } ?: return null
+        images["$id@$version"] = image
+        while (images.size > MAX_IMAGES) images.remove(images.keys.first())
+        return image
     }
 }
 

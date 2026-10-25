@@ -60,6 +60,7 @@ open class FakeBackend(
     private val devices = MutableStateFlow<Map<UserId, Map<DeviceId, Device>>>(emptyMap())
     private val linkRequests = MutableStateFlow<Map<LinkRequestId, LinkRequest>>(emptyMap())
     private val users = MutableStateFlow<Map<UserId, User>>(emptyMap())
+    private val avatars = MutableStateFlow<Map<UserId, Pair<Long, ByteArray>>>(emptyMap())
     private val chats = MutableStateFlow<Map<ChatId, Chat>>(emptyMap())
     private val messages = MutableStateFlow<Map<ChatId, List<Message>>>(emptyMap())
     private val chatPrefs = MutableStateFlow<Map<UserId, Map<ChatId, ChatPrefs>>>(emptyMap())
@@ -151,6 +152,27 @@ open class FakeBackend(
             val user = all[id] ?: return@update all
             all + (id to user.copy(online = online, lastSeen = clock.now()))
         }
+    }
+
+    override suspend fun getAvatar(
+        id: UserId,
+        version: Long,
+    ): ByteArray? = avatars.value[id]?.takeIf { it.first == version }?.second
+
+    override suspend fun setAvatar(
+        id: UserId,
+        jpeg: ByteArray,
+    ) {
+        require(jpeg.isNotEmpty() && jpeg.size <= User.AVATAR_MAX_BYTES) { "Avatar is ${jpeg.size} bytes" }
+        // Версия растёт, даже если два фото поставили в одну миллисекунду.
+        val version = maxOf(clock.now().toEpochMilliseconds(), (avatars.value[id]?.first ?: 0) + 1)
+        avatars.update { it + (id to (version to jpeg)) }
+        users.update { all -> all[id]?.let { all + (id to it.copy(avatarVersion = version)) } ?: all }
+    }
+
+    override suspend fun removeAvatar(id: UserId) {
+        users.update { all -> all[id]?.let { all + (id to it.copy(avatarVersion = null)) } ?: all }
+        avatars.update { it - id }
     }
 
     // endregion

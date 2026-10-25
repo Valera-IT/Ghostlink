@@ -90,7 +90,7 @@ fun ConnectScreen(
                 }
 
                 is ConnectUiState.Found -> {
-                    Avatar(s.user.name, s.user.id.value, size = 112.dp)
+                    Avatar(s.user.name, s.user.id.value, size = 112.dp, photoVersion = s.user.avatarVersion)
                     Spacer(Modifier.height(20.dp))
                     Text(s.user.name, style = MaterialTheme.typography.headlineMedium)
                     Spacer(Modifier.height(8.dp))

@@ -48,6 +48,8 @@ class MappersTest {
         assertEquals("Аня", user.name)
         assertTrue(user.online)
         assertEquals(at, user.lastSeen)
+        assertNull(user.avatarVersion)
+        assertEquals(7L, UserDto(name = "Аня", avatarVersion = 7).toUser("u1").avatarVersion)
 
         val device = DeviceDto(name = "Pixel", platform = "android").toDevice("d1")
         assertEquals(Platform.Android, device.platform)

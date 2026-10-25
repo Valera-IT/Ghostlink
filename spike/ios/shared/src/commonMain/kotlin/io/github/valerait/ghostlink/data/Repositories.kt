@@ -38,6 +38,13 @@ interface UserRepository {
     suspend fun getUser(id: String): User?
     suspend fun saveProfile(id: String, name: String)
     suspend fun setOnline(id: String, online: Boolean)
+
+    /** JPEG фото профиля версии [version]; null — фото нет или его уже сменили. */
+    suspend fun getAvatar(id: String, version: Long): ByteArray?
+
+    /** Ставит фото профиля: квадратный JPEG не больше [User.AVATAR_MAX_BYTES]. */
+    suspend fun setAvatar(id: String, jpeg: ByteArray)
+    suspend fun removeAvatar(id: String)
 }
 
 interface ChatRepository {
