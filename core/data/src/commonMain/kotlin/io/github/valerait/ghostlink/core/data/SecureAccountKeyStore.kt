@@ -26,7 +26,7 @@ internal class SecureAccountKeyStore(
     }
 
     private companion object {
-        // Эти же имена знает перенос ключа из старого хранилища в AndroidSecureStore.
+        // Эти же имена знает перенос ключа из старых хранилищ: в AndroidSecureStore и KeychainSecureStore.
         const val USER = "account_key.user"
         const val VALUE = "account_key.value"
     }
