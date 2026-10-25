@@ -80,6 +80,8 @@ import io.github.valerait.ghostlink.core.ui.resources.chats_empty_title
 import io.github.valerait.ghostlink.core.ui.resources.chats_mute
 import io.github.valerait.ghostlink.core.ui.resources.chats_muted
 import io.github.valerait.ghostlink.core.ui.resources.chats_no_messages
+import io.github.valerait.ghostlink.core.ui.resources.chats_photo
+import io.github.valerait.ghostlink.core.ui.resources.chats_photo_caption
 import io.github.valerait.ghostlink.core.ui.resources.chats_pin
 import io.github.valerait.ghostlink.core.ui.resources.chats_pinned
 import io.github.valerait.ghostlink.core.ui.resources.chats_remove
@@ -416,12 +418,17 @@ private fun typingText(name: String?): String =
 
 @Composable
 private fun previewText(item: ChatSummary): String {
-    val last = item.lastMessage
+    val last = item.lastMessage ?: return stringResource(Res.string.chats_no_messages)
     val sender = item.lastSenderName
+    val text =
+        when {
+            !last.photo -> last.text
+            last.text.isEmpty() -> stringResource(Res.string.chats_photo)
+            else -> stringResource(Res.string.chats_photo_caption, last.text)
+        }
     return when {
-        last == null -> stringResource(Res.string.chats_no_messages)
-        item.lastMessageIsMine -> stringResource(Res.string.chats_you_prefix, last.text)
-        sender != null -> stringResource(Res.string.chats_sender_prefix, sender, last.text)
-        else -> last.text
+        item.lastMessageIsMine -> stringResource(Res.string.chats_you_prefix, text)
+        sender != null -> stringResource(Res.string.chats_sender_prefix, sender, text)
+        else -> text
     }
 }

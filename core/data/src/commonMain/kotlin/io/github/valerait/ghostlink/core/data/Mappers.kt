@@ -1,14 +1,19 @@
+@file:Suppress("TooManyFunctions") // по мапперу на документ и вложенное поле
+
 package io.github.valerait.ghostlink.core.data
 
 import dev.gitlive.firebase.firestore.Timestamp
+import io.github.valerait.ghostlink.core.firebase.AttachmentDto
 import io.github.valerait.ghostlink.core.firebase.ChatDto
 import io.github.valerait.ghostlink.core.firebase.ChatPrefsDto
 import io.github.valerait.ghostlink.core.firebase.DeviceDto
 import io.github.valerait.ghostlink.core.firebase.GROUP_TYPE
 import io.github.valerait.ghostlink.core.firebase.LinkRequestDto
 import io.github.valerait.ghostlink.core.firebase.MessageDto
+import io.github.valerait.ghostlink.core.firebase.PHOTO_TYPE
 import io.github.valerait.ghostlink.core.firebase.ReplyToDto
 import io.github.valerait.ghostlink.core.firebase.UserDto
+import io.github.valerait.ghostlink.core.model.Attachment
 import io.github.valerait.ghostlink.core.model.Chat
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.ChatPrefs
@@ -19,6 +24,7 @@ import io.github.valerait.ghostlink.core.model.GroupInfo
 import io.github.valerait.ghostlink.core.model.LastMessage
 import io.github.valerait.ghostlink.core.model.LinkRequest
 import io.github.valerait.ghostlink.core.model.LinkRequestId
+import io.github.valerait.ghostlink.core.model.MediaKey
 import io.github.valerait.ghostlink.core.model.Message
 import io.github.valerait.ghostlink.core.model.MessageId
 import io.github.valerait.ghostlink.core.model.Platform
@@ -53,7 +59,13 @@ internal fun ChatDto.toChat(id: String): Chat? {
         members = members.map(::UserId),
         lastMessage =
             lastMessage?.let {
-                LastMessage(text = it.text, senderId = UserId(it.senderId), sentAt = it.sentAt?.instant, ttl = it.ttl?.seconds)
+                LastMessage(
+                    text = it.text,
+                    senderId = UserId(it.senderId),
+                    sentAt = it.sentAt?.instant,
+                    ttl = it.ttl?.seconds,
+                    photo = it.photo,
+                )
             },
         updatedAt = updatedAt?.instant,
         lastRead = lastRead.toInstantMap(),
@@ -77,13 +89,32 @@ internal fun MessageDto.toMessage(
     text = text,
     sentAt = sentAt?.instant,
     pending = pending,
-    replyTo = replyTo?.takeIf { it.id.isNotEmpty() }?.let { ReplyTo(MessageId(it.id), UserId(it.senderId), it.preview) },
+    replyTo = replyTo?.takeIf { it.id.isNotEmpty() }?.let { ReplyTo(MessageId(it.id), UserId(it.senderId), it.preview, it.photo) },
     editedAt = editedAt?.instant,
     deletedAt = deletedAt?.instant,
     ttl = ttl?.seconds,
+    attachment = attachment?.toAttachment(),
 )
 
-internal fun ReplyTo.toDto() = ReplyToDto(id = id.value, senderId = senderId.value, preview = preview)
+internal fun ReplyTo.toDto() = ReplyToDto(id = id.value, senderId = senderId.value, preview = preview, photo = photo)
+
+/** Вложение незнакомого типа (из будущей версии) или без файлов не показываем: сообщение остаётся текстом. */
+internal fun AttachmentDto.toAttachment(): Attachment? =
+    if (type != PHOTO_TYPE || key.isEmpty() || thumbKey.isEmpty()) {
+        null
+    } else {
+        Attachment(MediaKey(key), MediaKey(thumbKey), width.toInt(), height.toInt(), size.toInt())
+    }
+
+internal fun Attachment.toDto() =
+    AttachmentDto(
+        type = PHOTO_TYPE,
+        key = key.value,
+        thumbKey = thumbKey.value,
+        size = size.toLong(),
+        width = width.toLong(),
+        height = height.toLong(),
+    )
 
 /** Заявка без срока считается истёкшей: подтвердить её всё равно не дадут правила. */
 internal fun LinkRequestDto.toLinkRequest(

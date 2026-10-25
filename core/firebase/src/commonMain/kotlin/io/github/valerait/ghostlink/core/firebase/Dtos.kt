@@ -63,6 +63,7 @@ class LastMessageDto(
     val senderId: String = "",
     val sentAt: Timestamp? = null,
     val ttl: Long? = null,
+    val photo: Boolean = false,
 )
 
 // Поле на каждое поле документа, поэтому параметров много.
@@ -102,7 +103,24 @@ class ReplyToDto(
     val id: String = "",
     val senderId: String = "",
     val preview: String = "",
+    val photo: Boolean = false,
 )
+
+/**
+ * Фото в сообщении: ключи файлов в хранилище медиа и размеры. Числа — Long: GitLive на iOS пишет их дробными,
+ * поэтому правила проверяют `is number`, а не `is int`.
+ */
+@Serializable
+class AttachmentDto(
+    val type: String = "",
+    val key: String = "",
+    val thumbKey: String = "",
+    val size: Long = 0,
+    val width: Long = 0,
+    val height: Long = 0,
+)
+
+const val PHOTO_TYPE = "photo"
 
 @Suppress("LongParameterList")
 @Serializable
@@ -114,16 +132,21 @@ class MessageDto(
     val editedAt: Timestamp? = null,
     val deletedAt: Timestamp? = null,
     val ttl: Long? = null,
+    val attachment: AttachmentDto? = null,
 )
 
-/** Пишется с `encodeDefaults = false`: правила не пускают поля replyTo и ttl со значением null. */
+/**
+ * Пишется с `encodeDefaults = false`: правила не пускают поля replyTo, ttl и attachment со значением null,
+ * а пустой text у фото без подписи просто не пишется.
+ */
 @Serializable
 class MessageWrite(
     val senderId: String,
-    val text: String,
+    val text: String = "",
     val sentAt: BaseTimestamp,
     val replyTo: ReplyToDto? = null,
     val ttl: Long? = null,
+    val attachment: AttachmentDto? = null,
 )
 
 @Serializable

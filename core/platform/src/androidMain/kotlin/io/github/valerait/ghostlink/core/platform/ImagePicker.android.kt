@@ -26,8 +26,8 @@ import java.io.ByteArrayOutputStream
 
 @Composable
 actual fun rememberImagePicker(
-    request: ImageRequest,
-    onPicked: (ByteArray) -> Unit,
+    requests: List<ImageRequest>,
+    onPicked: (List<PickedImage>) -> Unit,
     onFailed: () -> Unit,
 ): () -> Unit {
     val resolver = LocalContext.current.contentResolver
@@ -38,25 +38,30 @@ actual fun rememberImagePicker(
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             if (uri == null) return@rememberLauncherForActivityResult
             scope.launch {
-                val jpeg =
+                val images =
                     withContext(Dispatchers.Default) {
-                        runCatching { resolver.readJpeg(uri, request) }
+                        runCatching { resolver.readJpegs(uri, requests) }
                             .onFailure { logWarning("ImagePicker", "Can't read $uri", it) }
                             .getOrNull()
                     }
-                if (jpeg != null) picked(jpeg) else failed()
+                if (images != null) picked(images) else failed()
             }
         }
     return remember(launcher) { { launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
 }
 
-private fun ContentResolver.readJpeg(
+private fun ContentResolver.readJpegs(
     uri: Uri,
-    request: ImageRequest,
-): ByteArray? {
-    val bitmap = decode(uri, request)
+    requests: List<ImageRequest>,
+): List<PickedImage>? {
+    // Декодируем один раз под самый большой запрос, остальные размеры рисуем из той же картинки.
+    val bitmap = decode(uri, requests.maxBy { it.maxSidePx })
     return try {
-        fitJpeg(request) { side, quality -> bitmap.render(side, request.square).toJpeg(quality) }
+        fitJpegs(
+            requests,
+            encode = { request, side, quality -> bitmap.render(side, request.square).toJpeg(quality) },
+            sizeOf = { request, side -> fitSize(bitmap.width, bitmap.height, side, request.square) },
+        )
     } finally {
         bitmap.recycle()
     }

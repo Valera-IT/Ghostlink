@@ -37,8 +37,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -50,6 +53,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
@@ -83,10 +87,15 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.core.designsystem.LocalChatStyle
+import io.github.valerait.ghostlink.core.domain.usecase.OutgoingPhoto
+import io.github.valerait.ghostlink.core.domain.usecase.PhotoDraft
+import io.github.valerait.ghostlink.core.model.Attachment
+import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.Message
 import io.github.valerait.ghostlink.core.model.MessageId
 import io.github.valerait.ghostlink.core.model.MessageStatus
@@ -107,6 +116,14 @@ import io.github.valerait.ghostlink.core.ui.resources.chat_edited
 import io.github.valerait.ghostlink.core.ui.resources.chat_editing
 import io.github.valerait.ghostlink.core.ui.resources.chat_empty
 import io.github.valerait.ghostlink.core.ui.resources.chat_input_hint
+import io.github.valerait.ghostlink.core.ui.resources.chat_photo
+import io.github.valerait.ghostlink.core.ui.resources.chat_photo_attach
+import io.github.valerait.ghostlink.core.ui.resources.chat_photo_discard
+import io.github.valerait.ghostlink.core.ui.resources.chat_photo_failed
+import io.github.valerait.ghostlink.core.ui.resources.chat_photo_not_sent
+import io.github.valerait.ghostlink.core.ui.resources.chat_photo_open
+import io.github.valerait.ghostlink.core.ui.resources.chat_photo_remove
+import io.github.valerait.ghostlink.core.ui.resources.chat_photo_retry
 import io.github.valerait.ghostlink.core.ui.resources.chat_reply_cancel
 import io.github.valerait.ghostlink.core.ui.resources.chat_reply_original_unavailable
 import io.github.valerait.ghostlink.core.ui.resources.chat_reply_you
@@ -133,6 +150,13 @@ fun ChatScreen(
     val snackbar = remember { SnackbarHostState() }
     var highlightedId by remember { mutableStateOf<MessageId?>(null) }
     var confirmDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
+    var viewing by remember { mutableStateOf<Attachment?>(null) }
+    val photoFailed = stringResource(Res.string.chat_photo_failed)
+    val pickPhoto =
+        rememberPhotoPicker(
+            onPicked = { viewModel.onAction(ChatAction.AttachPhoto(it)) },
+            onFailed = { scope.launch { snackbar.showSnackbar(photoFailed) } },
+        )
 
     val nameOf: (UserId?) -> String = { state.names[it].orEmpty() }
     val you = stringResource(Res.string.chat_reply_you)
@@ -200,6 +224,9 @@ fun ChatScreen(
             MessageInput(
                 replyingTo = state.replyingTo,
                 editing = state.editing,
+                attachedPhoto = state.attachedPhoto,
+                onPickPhoto = pickPhoto,
+                onRemovePhoto = { viewModel.onAction(ChatAction.RemoveAttachedPhoto) },
                 replyAuthor = { if (it.mine) you else nameOf(it.message.senderId) },
                 onCancelReply = { viewModel.onAction(ChatAction.CancelReply) },
                 onCancelEdit = { viewModel.onAction(ChatAction.CancelEdit) },
@@ -233,7 +260,9 @@ fun ChatScreen(
                         val message = row.item.message
                         MessageBubble(
                             item = row.item,
+                            chatId = state.chatId,
                             highlighted = message.id == highlightedId,
+                            onOpenPhoto = { viewing = it },
                             quoteAuthor = if (row.item.replyToMine) you else nameOf(message.replyTo?.senderId),
                             onQuoteClick = showOriginal,
                             actions =
@@ -244,10 +273,20 @@ fun ChatScreen(
                                 ),
                         )
                     }
+
+                    is ChatRow.Outgoing -> {
+                        OutgoingPhotoBubble(
+                            photo = row.photo,
+                            onRetry = { viewModel.onAction(ChatAction.RetryPhoto(row.photo.id)) },
+                            onDiscard = { viewModel.onAction(ChatAction.DiscardPhoto(row.photo.id)) },
+                        )
+                    }
                 }
             }
         }
     }
+
+    viewing?.let { PhotoViewer(state.chatId, it, onClose = { viewing = null }) }
 
     confirmDeleteId?.let { id ->
         DeleteMessageDialog(
@@ -279,7 +318,9 @@ private fun DayHeader(text: String) {
 @Composable
 private fun MessageBubble(
     item: MessageItem,
+    chatId: ChatId,
     highlighted: Boolean,
+    onOpenPhoto: (Attachment) -> Unit,
     quoteAuthor: String,
     onQuoteClick: (MessageId) -> Unit,
     actions: MessageActions,
@@ -328,17 +369,21 @@ private fun MessageBubble(
                     item.message.replyTo?.let { reply ->
                         ReplyQuote(
                             author = quoteAuthor,
-                            preview = if (item.replyToDeleted) stringResource(Res.string.chat_deleted) else reply.preview,
+                            preview = if (item.replyToDeleted) stringResource(Res.string.chat_deleted) else quotePreview(reply),
                             previewDeleted = item.replyToDeleted,
                             accent = LocalContentColor.current,
                             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp).clickable { onQuoteClick(reply.id) },
                         )
                     }
-                    if (item.message.deleted) {
-                        DeletedText()
-                    } else {
-                        Text(item.message.text, style = MaterialTheme.typography.bodyLarge)
-                    }
+                    MessageBody(
+                        message = item.message,
+                        chatId = chatId,
+                        onOpenPhoto = onOpenPhoto,
+                        onLongPress = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            menuOpen = true
+                        },
+                    )
                     Row(
                         modifier = Modifier.align(Alignment.End),
                         verticalAlignment = Alignment.CenterVertically,
@@ -369,6 +414,7 @@ private fun MessageBubble(
                 expanded = menuOpen,
                 mine = mine,
                 sent = !item.message.pending,
+                canCopy = item.message.text.isNotEmpty(),
                 onDismiss = { menuOpen = false },
                 actions =
                     actions.copy(
@@ -381,27 +427,13 @@ private fun MessageBubble(
     }
 }
 
-/** На месте удалённого сообщения — курсивная отметка, как в мессенджерах. */
 @Composable
-private fun DeletedText() {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Outlined.Block, contentDescription = null, tint = mutedContentColor(), modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text = stringResource(Res.string.chat_deleted),
-            style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
-            color = mutedContentColor(),
-        )
-    }
-}
-
-@Composable
-private fun mutedContentColor(): Color = LocalContentColor.current.copy(alpha = 0.6f)
+internal fun mutedContentColor(): Color = LocalContentColor.current.copy(alpha = 0.6f)
 
 private fun TextStyle.mono(): TextStyle = copy(fontFamily = FontFamily.Monospace)
 
 @Composable
-private fun StatusIcon(status: MessageStatus) {
+internal fun StatusIcon(status: MessageStatus) {
     val read = status == MessageStatus.READ || status == MessageStatus.READ_ALL
     val tint = if (read) LocalChatStyle.current.readTick else mutedContentColor()
     if (status == MessageStatus.READ_ALL) {
@@ -465,6 +497,9 @@ private fun ReplyQuote(
 private fun MessageInput(
     replyingTo: MessageItem?,
     editing: MessageItem?,
+    attachedPhoto: PhotoDraft?,
+    onPickPhoto: () -> Unit,
+    onRemovePhoto: () -> Unit,
     replyAuthor: (MessageItem) -> String,
     onCancelReply: () -> Unit,
     onCancelEdit: () -> Unit,
@@ -499,7 +534,7 @@ private fun MessageInput(
                     InputContextBar(
                         icon = Icons.Outlined.Edit,
                         title = stringResource(Res.string.chat_editing),
-                        preview = ReplyTo.previewOf(editing.message.text),
+                        preview = messagePreview(editing.message),
                         cancelLabel = stringResource(Res.string.chat_edit_cancel),
                         onCancel = onCancelEdit,
                     )
@@ -509,12 +544,13 @@ private fun MessageInput(
                     InputContextBar(
                         icon = Icons.AutoMirrored.Filled.Reply,
                         title = replyAuthor(replyingTo),
-                        preview = ReplyTo.previewOf(replyingTo.message.text),
+                        preview = messagePreview(replyingTo.message),
                         cancelLabel = stringResource(Res.string.chat_reply_cancel),
                         onCancel = onCancelReply,
                     )
                 }
             }
+            if (attachedPhoto != null && editing == null) AttachedPhotoBar(attachedPhoto, onRemovePhoto)
             Row(
                 modifier =
                     Modifier
@@ -522,6 +558,12 @@ private fun MessageInput(
                         .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
+                // Правка меняет только текст: фото к исправляемому сообщению не прикрепить.
+                if (editing == null) {
+                    IconButton(onClick = onPickPhoto, modifier = Modifier.size(56.dp)) {
+                        Icon(Icons.Outlined.AddPhotoAlternate, contentDescription = stringResource(Res.string.chat_photo_attach))
+                    }
+                }
                 TextField(
                     value = text,
                     onValueChange = {
@@ -548,7 +590,7 @@ private fun MessageInput(
                         onSend(text.text)
                         text = TextFieldValue()
                     },
-                    enabled = text.text.isNotBlank(),
+                    enabled = text.text.isNotBlank() || (attachedPhoto != null && editing == null),
                     modifier = Modifier.size(56.dp),
                 ) {
                     if (editing != null) {

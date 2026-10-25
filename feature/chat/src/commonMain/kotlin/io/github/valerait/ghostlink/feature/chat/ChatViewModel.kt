@@ -10,6 +10,9 @@ import io.github.valerait.ghostlink.core.domain.repository.requireUserId
 import io.github.valerait.ghostlink.core.domain.usecase.DeleteMessageUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.EditMessageUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.ObserveChatMessagesUseCase
+import io.github.valerait.ghostlink.core.domain.usecase.OutgoingPhoto
+import io.github.valerait.ghostlink.core.domain.usecase.PhotoDraft
+import io.github.valerait.ghostlink.core.domain.usecase.PhotoSender
 import io.github.valerait.ghostlink.core.domain.usecase.SendMessageUseCase
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.DisappearingTimer
@@ -68,6 +71,13 @@ sealed interface ChatRow {
     ) : ChatRow {
         override val key = item.message.id.value
     }
+
+    /** Фото, которое ещё загружается или не загрузилось: всегда новее сообщений чата. */
+    data class Outgoing(
+        val photo: OutgoingPhoto,
+    ) : ChatRow {
+        override val key = photo.id
+    }
 }
 
 data class ChatUiState(
@@ -92,6 +102,8 @@ data class ChatUiState(
     val partnerTypingUntil: Instant? = null,
     /** Таймер исчезающих сообщений чата; null — выключен. */
     val disappearing: DisappearingTimer? = null,
+    /** Фото, выбранное для отправки (плашка над полем ввода); уйдёт вместе с текстом как подписью. */
+    val attachedPhoto: PhotoDraft? = null,
 )
 
 sealed interface ChatAction {
@@ -130,9 +142,25 @@ sealed interface ChatAction {
     data class Delete(
         val messageId: MessageId,
     ) : ChatAction
+
+    /** Выбрано фото: оно ждёт над полем ввода и уйдёт по кнопке «Отправить». */
+    data class AttachPhoto(
+        val draft: PhotoDraft,
+    ) : ChatAction
+
+    data object RemoveAttachedPhoto : ChatAction
+
+    data class RetryPhoto(
+        val id: String,
+    ) : ChatAction
+
+    data class DiscardPhoto(
+        val id: String,
+    ) : ChatAction
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("LongParameterList") // экран переписки собирает все сценарии чата: текст, правку, удаление, фото
 class ChatViewModel(
     savedStateHandle: SavedStateHandle,
     auth: AuthRepository,
@@ -142,6 +170,7 @@ class ChatViewModel(
     private val sendMessage: SendMessageUseCase,
     private val editMessage: EditMessageUseCase,
     private val deleteMessage: DeleteMessageUseCase,
+    private val photos: PhotoSender,
 ) : ViewModel() {
     // Аргумент типобезопасного маршрута ChatRoute(chatId) лежит в SavedStateHandle под именем поля.
     private val chatId = ChatId(checkNotNull(savedStateHandle["chatId"]))
@@ -149,6 +178,7 @@ class ChatViewModel(
     private val visible = MutableStateFlow(false)
     private val replyingToId = MutableStateFlow<MessageId?>(null)
     private val editingId = MutableStateFlow<MessageId?>(null)
+    private val attachedPhoto = MutableStateFlow<PhotoDraft?>(null)
     private val typing = TypingNotifier(viewModelScope) { chats.setTyping(chatId, me, it) }
 
     private val chat =
@@ -167,8 +197,13 @@ class ChatViewModel(
             .flatMapLatest { users.observeUsers(it) }
             .onStart { emit(emptyMap()) }
 
+    // Всё, что ещё не стало сообщением: выбранное фото и фото в загрузке.
+    private val drafts = combine(attachedPhoto, photos.outgoing(chatId)) { attached, outgoing -> attached to outgoing }
+
+    private val selection = combine(replyingToId, editingId) { replyingTo, editing -> replyingTo to editing }
+
     val state: StateFlow<ChatUiState> =
-        combine(chat, messages, people, replyingToId, editingId) { chat, messages, people, replyingToId, editingId ->
+        combine(chat, messages, people, selection, drafts) { chat, messages, people, (replyingToId, editingId), (attached, outgoing) ->
             val readUpTo = chat?.othersReadUpTo(me)
             val allReadUpTo = chat?.allReadUpTo(me)
             val isGroup = chat?.isGroup == true
@@ -194,11 +229,12 @@ class ChatViewModel(
                 memberCount = chat?.members?.size ?: 0,
                 names = people.mapValues { it.value.name },
                 typingName = if (isGroup) typing?.let { people[it.first]?.name } else null,
-                rows = buildRows(items),
+                rows = outgoing.asReversed().map { ChatRow.Outgoing(it) } + buildRows(items),
                 replyingTo = replyingToId?.let { id -> items.firstOrNull { it.message.id == id && !it.message.deleted } },
                 editing = editingId?.let { id -> items.firstOrNull { it.message.id == id && it.mine && !it.message.deleted } },
                 partnerTypingUntil = typing?.second,
                 disappearing = chat?.disappearing,
+                attachedPhoto = attached,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChatUiState())
 
@@ -246,6 +282,7 @@ class ChatViewModel(
 
             is ChatAction.StartEdit -> {
                 replyingToId.value = null
+                attachedPhoto.value = null
                 editingId.value = action.messageId
             }
 
@@ -255,6 +292,23 @@ class ChatViewModel(
 
             is ChatAction.Delete -> {
                 delete(action.messageId)
+            }
+
+            is ChatAction.AttachPhoto -> {
+                editingId.value = null
+                attachedPhoto.value = action.draft
+            }
+
+            ChatAction.RemoveAttachedPhoto -> {
+                attachedPhoto.value = null
+            }
+
+            is ChatAction.RetryPhoto -> {
+                photos.retry(action.id)
+            }
+
+            is ChatAction.DiscardPhoto -> {
+                photos.discard(action.id)
             }
         }
     }
@@ -280,7 +334,14 @@ class ChatViewModel(
             editMessage(chatId, messages.replayCache.firstOrNull().orEmpty(), editing.message, text)
         } else {
             val timer = chat.replayCache.firstOrNull()?.disappearing
-            if (!sendMessage(chatId, me, text, state.value.replyingTo?.message, timer)) return
+            val replyTo = state.value.replyingTo?.message
+            val photo = attachedPhoto.value
+            if (photo != null) {
+                photos.send(chatId, me, photo, caption = text, replyTo = replyTo, timer = timer)
+                attachedPhoto.value = null
+            } else if (!sendMessage(chatId, me, text, replyTo, timer)) {
+                return
+            }
             typing.onSent()
             replyingToId.value = null
         }

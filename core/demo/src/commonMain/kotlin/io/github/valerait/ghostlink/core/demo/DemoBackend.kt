@@ -1,5 +1,6 @@
 package io.github.valerait.ghostlink.core.demo
 
+import io.github.valerait.ghostlink.core.model.Attachment
 import io.github.valerait.ghostlink.core.model.Chat
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.Device
@@ -43,20 +44,25 @@ class DemoBackend(
         text: String,
         replyTo: ReplyTo?,
         ttl: Duration?,
+        attachment: Attachment?,
     ) {
-        super.sendMessage(chatId, senderId, text, replyTo, ttl)
+        super.sendMessage(chatId, senderId, text, replyTo, ttl, attachment)
         val chat = chat(chatId) ?: return
-        if (BOT_ID in chat.members && senderId != BOT_ID) replyAsBot(chatId)
+        if (BOT_ID in chat.members && senderId != BOT_ID) replyAsBot(chatId, photo = attachment != null)
     }
 
-    private fun replyAsBot(chatId: ChatId) {
+    private fun replyAsBot(
+        chatId: ChatId,
+        photo: Boolean,
+    ) {
         scope.launch {
             delay(BOT_READ_DELAY)
             markRead(chatId, BOT_ID)
             setTyping(chatId, BOT_ID, true)
             delay(BOT_TYPING_DELAY)
             val ttl = chat(chatId)?.disappearing?.duration
-            post(chatId, BOT_ID, BOT_REPLIES[botReplyIndex++ % BOT_REPLIES.size], clock.now()) { it.copy(ttl = ttl) }
+            val reply = if (photo) BOT_PHOTO_REPLY else BOT_REPLIES[botReplyIndex++ % BOT_REPLIES.size]
+            post(chatId, BOT_ID, reply, clock.now()) { it.copy(ttl = ttl) }
         }
     }
 
@@ -90,6 +96,8 @@ class DemoBackend(
         private const val STRANGER_TAG_LENGTH = 4
         private val BOT_READ_DELAY = 700.milliseconds
         private val BOT_TYPING_DELAY = 1_200.milliseconds
+
+        private const val BOT_PHOTO_REPLY = "Красивое фото! В демо-режиме оно живёт только в памяти этого телефона 👻"
 
         private val BOT_REPLIES =
             listOf(

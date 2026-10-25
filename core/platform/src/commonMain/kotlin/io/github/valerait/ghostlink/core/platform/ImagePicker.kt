@@ -14,17 +14,33 @@ data class ImageRequest(
     val square: Boolean = false,
 )
 
+/** Готовый JPEG и его размер в пикселях. */
+class PickedImage(
+    val jpeg: ByteArray,
+    val width: Int,
+    val height: Int,
+)
+
 /**
  * Системный выбор одной фотографии: Photo Picker на Android, PHPicker на iOS, диалог файла на десктопе.
- * Разрешение на доступ к галерее не нужно. Возвращает функцию, открывающую выбор. [onPicked] получает готовый JPEG
- * по [request], [onFailed] — если фото не удалось прочитать или сжать. Отмена выбора ничего не вызывает.
+ * Разрешение на доступ к галерее не нужно. Возвращает функцию, открывающую выбор. [onPicked] получает по JPEG
+ * на каждый из [requests] в том же порядке (например, фото и его превью), [onFailed] — если фото не удалось
+ * прочитать или сжать. Отмена выбора ничего не вызывает.
  */
 @Composable
 expect fun rememberImagePicker(
+    requests: List<ImageRequest>,
+    onPicked: (List<PickedImage>) -> Unit,
+    onFailed: () -> Unit,
+): () -> Unit
+
+/** Выбор одной фотографии в одном размере. */
+@Composable
+fun rememberImagePicker(
     request: ImageRequest,
     onPicked: (ByteArray) -> Unit,
     onFailed: () -> Unit,
-): () -> Unit
+): () -> Unit = rememberImagePicker(listOf(request), { onPicked(it.first().jpeg) }, onFailed)
 
 /** Шкала качества JPEG, как у Bitmap.compress: 0–100. */
 internal const val MAX_JPEG_QUALITY = 100
@@ -55,6 +71,26 @@ internal inline fun fitJpeg(
     }
     return null
 }
+
+/**
+ * JPEG под каждый запрос из одной декодированной картинки; null — хоть один не влез.
+ * [encode] — как в [fitJpeg], [sizeOf] — размер картинки, нарисованной со стороной не больше sidePx.
+ */
+internal inline fun fitJpegs(
+    requests: List<ImageRequest>,
+    encode: (request: ImageRequest, sidePx: Int, quality: Int) -> ByteArray?,
+    sizeOf: (request: ImageRequest, sidePx: Int) -> Pair<Int, Int>,
+): List<PickedImage>? =
+    requests.map { request ->
+        var side = request.maxSidePx
+        val jpeg =
+            fitJpeg(request) { sidePx, quality ->
+                side = sidePx
+                encode(request, sidePx, quality)
+            } ?: return null
+        val (width, height) = sizeOf(request, side)
+        PickedImage(jpeg, width, height)
+    }
 
 /** Размер картинки [width]×[height] после [request]: обрезка в квадрат и уменьшение до [sidePx], но не увеличение. */
 internal fun fitSize(

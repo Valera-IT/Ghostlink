@@ -7,7 +7,8 @@ rules_version = '2';
 //   users/{uid}/chatPrefs/{a_b}    pinnedAt?, muted?, clearedAt?, hidden? — личные настройки чата
 //   linkRequests/{id}              owner, deviceName, platform, createdAt, expiresAt, payload, approvedBy
 //   chats/{a_b}                    members [a, b] (отсортированы), lastMessage, updatedAt, lastRead.{uid}
-//   chats/{a_b}/messages/{id}      senderId, text, sentAt, replyTo? {id, senderId, preview}, editedAt?, deletedAt?
+//   chats/{a_b}/messages/{id}      senderId, text?, sentAt, replyTo? {id, senderId, preview, photo?}, editedAt?, deletedAt?,
+//                                  attachment? {type, key, thumbKey, size, width, height} — фото в хранилище медиа (B2)
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -213,14 +214,51 @@ service cloud.firestore {
         }
 
         // Ответ ссылается на сообщение участника этого же чата; превью — первые 100 символов исходного текста.
+        // У ответа на фото без подписи превью пустое.
         function validReplyTo(data) {
           return !('replyTo' in data)
             || (data.replyTo is map
               && data.replyTo.keys().hasAll(['id', 'senderId', 'preview'])
-              && data.replyTo.keys().hasOnly(['id', 'senderId', 'preview'])
+              && data.replyTo.keys().hasOnly(['id', 'senderId', 'preview', 'photo'])
               && shortString(data.replyTo.id, 64)
               && data.replyTo.senderId in members()
-              && shortString(data.replyTo.preview, 100));
+              && data.replyTo.preview is string
+              && data.replyTo.preview.size() <= 100
+              && (!('photo' in data.replyTo) || data.replyTo.photo is bool)
+              && (data.replyTo.preview.size() > 0 || data.replyTo.get('photo', false) == true));
+        }
+
+        // Файл медиа, который Worker выдал автору для этого чата: {проект}/{chatId}/{uid}/{время}-{случайное}.jpg.
+        // Сослаться на чужой файл или файл другого чата нельзя.
+        function ownMediaKey(key) {
+          return key is string
+            && key.matches('[a-z0-9-]+/' + chatId + '/' + request.auth.uid + '/[0-9a-z]+-[0-9a-f]{16}[.]jpg');
+        }
+
+        // Размеры — `is number`: GitLive на iOS пишет целые числа дробными.
+        function validDimension(value, max) {
+          return value is number && value > 0 && value <= max;
+        }
+
+        // Фото: полный размер и превью — разные файлы автора, не больше лимита Worker (1 МБ).
+        function validAttachment(a) {
+          return a is map
+            && a.keys().hasAll(['type', 'key', 'thumbKey', 'size', 'width', 'height'])
+            && a.keys().hasOnly(['type', 'key', 'thumbKey', 'size', 'width', 'height'])
+            && a.type == 'photo'
+            && ownMediaKey(a.key)
+            && ownMediaKey(a.thumbKey)
+            && a.key != a.thumbKey
+            && validDimension(a.size, 1048576)
+            && validDimension(a.width, 4096)
+            && validDimension(a.height, 4096);
+        }
+
+        // Текст обязателен, если нет фото; у фото он — необязательная подпись.
+        function validContent(data) {
+          return 'attachment' in data
+            ? validAttachment(data.attachment) && (!('text' in data) || validText(data.text))
+            : validText(data.get('text', null));
         }
 
         allow read: if signedIn() && isMember();
@@ -228,10 +266,10 @@ service cloud.firestore {
         // Писать можно только от своего имени и только с серверным временем.
         allow create: if signedIn()
           && isMember()
-          && request.resource.data.keys().hasOnly(['senderId', 'text', 'sentAt', 'replyTo', 'ttl'])
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'sentAt', 'replyTo', 'ttl', 'attachment'])
           && validTtl(request.resource.data)
           && request.resource.data.senderId == request.auth.uid
-          && validText(request.resource.data.text)
+          && validContent(request.resource.data)
           && request.resource.data.sentAt == request.time
           && validReplyTo(request.resource.data);
 
@@ -243,7 +281,7 @@ service cloud.firestore {
         }
 
         // Удаление у обоих участников: от сообщения остаются автор, время и отметка deletedAt,
-        // чтобы в чате было видно «Сообщение удалено».
+        // чтобы в чате было видно «Сообщение удалено». Фото пропадает из сообщения вместе с текстом.
         function isSoftDelete() {
           return request.resource.data.keys().hasOnly(['senderId', 'sentAt', 'deletedAt', 'ttl'])
             && request.resource.data.senderId == resource.data.senderId

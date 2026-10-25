@@ -134,6 +134,7 @@ Use case заводится, только когда сценарий затра
 | `SendMessageUseCase` | проверка текста → ответ только на подтверждённое → TTL из таймера чата (позже → вызов push-worker) |
 | `EditMessageUseCase`, `DeleteMessageUseCase` | только свои сообщения; превью в списке чатов следует за последним неудалённым |
 | `LeaveGroupUseCase` | админ передаёт права следующему участнику → чат пропадает из своего списка |
+| `PhotoSender` | фото и превью → `MediaStore` → сообщение с `attachment`; пока грузится или не загрузилось, фото видно в чате, неудачное можно повторить или убрать |
 
 Шифрование при привязке спрятано за портом `LinkCipher` в `core:domain`: use case не знают, на чём оно сделано.
 
@@ -147,7 +148,7 @@ DTO повторяют документы Firestore один в один, име
 UserDto          name, online, lastSeen
 DeviceDto        name, platform, lastActiveAt, pushToken?
 ChatDto          members, lastMessage{text, senderId, sentAt}, updatedAt, lastRead{uid: ts}
-MessageDto       senderId, text, sentAt
+MessageDto       senderId, text, sentAt, attachment?{type, key, thumbKey, size, width, height}
 LinkRequestDto   owner, deviceName, platform, createdAt, expiresAt, payload?, approvedBy?
 ```
 

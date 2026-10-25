@@ -47,4 +47,25 @@ class ImagePickerTest {
         assertEquals(1280 to 960, fitSize(4000, 3000, 1280, square = false))
         assertEquals(800 to 600, fitSize(800, 600, 1280, square = false))
     }
+
+    @Test
+    fun severalSizesFromOnePictureReportTheirPixelSize() {
+        val photo = ImageRequest(maxSidePx = 1280, maxBytes = 1000)
+        val thumb = ImageRequest(maxSidePx = 320, maxBytes = 100)
+        val images =
+            fitJpegs(
+                listOf(photo, thumb),
+                // Полное фото влезает только уменьшенным до 960.
+                encode = { request, side, _ -> ByteArray(if (request == photo && side > 960) 5000 else side / 10) },
+                sizeOf = { _, side -> fitSize(4000, 3000, side, square = false) },
+            )!!
+        assertEquals(listOf(96, 32), images.map { it.jpeg.size })
+        assertEquals(listOf(960 to 720, 320 to 240), images.map { it.width to it.height })
+    }
+
+    @Test
+    fun severalSizesFailIfAnyDoesNotFit() {
+        val requests = listOf(ImageRequest(maxSidePx = 1280, maxBytes = 1000), ImageRequest(maxSidePx = 320, maxBytes = 1))
+        assertNull(fitJpegs(requests, encode = { _, _, _ -> ByteArray(10) }, sizeOf = { _, side -> side to side }))
+    }
 }

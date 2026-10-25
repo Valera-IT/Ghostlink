@@ -1,6 +1,7 @@
 package io.github.valerait.ghostlink.core.data
 
 import dev.gitlive.firebase.firestore.Timestamp
+import io.github.valerait.ghostlink.core.firebase.AttachmentDto
 import io.github.valerait.ghostlink.core.firebase.ChatDto
 import io.github.valerait.ghostlink.core.firebase.ChatPrefsDto
 import io.github.valerait.ghostlink.core.firebase.DeviceDto
@@ -9,9 +10,11 @@ import io.github.valerait.ghostlink.core.firebase.LinkRequestDto
 import io.github.valerait.ghostlink.core.firebase.MessageDto
 import io.github.valerait.ghostlink.core.firebase.ReplyToDto
 import io.github.valerait.ghostlink.core.firebase.UserDto
+import io.github.valerait.ghostlink.core.model.Attachment
 import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.DisappearingTimer
 import io.github.valerait.ghostlink.core.model.GroupInfo
+import io.github.valerait.ghostlink.core.model.MediaKey
 import io.github.valerait.ghostlink.core.model.MessageId
 import io.github.valerait.ghostlink.core.model.Platform
 import io.github.valerait.ghostlink.core.model.ReplyTo
@@ -119,5 +122,24 @@ class MappersTest {
         assertEquals(Platform.MacOs, request.platform)
         assertEquals(Instant.DISTANT_PAST, request.expiresAt)
         assertTrue(request.isExpired(at))
+    }
+
+    @Test
+    fun photoMessageAndUnknownAttachments() {
+        val photo = Attachment(MediaKey("p/c/a/1-x.jpg"), MediaKey("p/c/a/1-y.jpg"), width = 1280, height = 960, size = 200_000)
+        val message = MessageDto(senderId = "a", sentAt = ts, attachment = photo.toDto()).toMessage("m1", pending = false)
+        assertEquals(photo, message.attachment)
+        assertEquals("", message.text)
+
+        // Фото на ответе и в превью чата.
+        val reply = ReplyTo(MessageId("m1"), UserId("a"), "", photo = true)
+        assertEquals(reply, MessageDto(replyTo = reply.toDto()).toMessage("m2", pending = false).replyTo)
+        assertTrue(ChatDto(members = listOf("a", "b"), lastMessage = LastMessageDto(photo = true)).toChat("a_b")!!.lastMessage!!.photo)
+
+        // Вложение из будущей версии (видео) или без файлов — сообщение остаётся без него.
+        assertNull(
+            MessageDto(attachment = AttachmentDto(type = "video", key = "k", thumbKey = "t")).toMessage("m3", pending = false).attachment,
+        )
+        assertNull(MessageDto(attachment = AttachmentDto(type = "photo")).toMessage("m4", pending = false).attachment)
     }
 }
