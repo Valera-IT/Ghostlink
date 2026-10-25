@@ -33,6 +33,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -83,10 +85,13 @@ fun PickMembersScreen(
         },
         floatingActionButton = {
             if (canFinish) {
+                val label = stringResource(if (state.addingToGroup) Res.string.group_add else Res.string.group_create)
+                // Текст ExtendedFloatingActionButton не попадает в дерево доступности: подпись дублируем явно.
                 ExtendedFloatingActionButton(
                     onClick = { viewModel.onAction(PickMembersAction.Confirm(name)) },
                     icon = { Icon(Icons.Filled.Check, contentDescription = null) },
-                    text = { Text(stringResource(if (state.addingToGroup) Res.string.group_add else Res.string.group_create)) },
+                    text = { Text(label) },
+                    modifier = Modifier.semantics { contentDescription = label },
                 )
             }
         },
@@ -136,7 +141,7 @@ fun PickMembersScreen(
                             .clickable(enabled = checked || state.slotsLeft > 0) { viewModel.onAction(PickMembersAction.Toggle(friend.id)) }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    Avatar(friend.name, friend.id.value, size = 44.dp)
+                    Avatar(friend.name, friend.id.value, size = 44.dp, photoVersion = friend.avatarVersion)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(friend.name, style = MaterialTheme.typography.titleMedium)

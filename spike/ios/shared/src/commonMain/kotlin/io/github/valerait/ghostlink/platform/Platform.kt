@@ -2,6 +2,7 @@ package io.github.valerait.ghostlink.platform
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import dev.gitlive.firebase.firestore.DocumentReference
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import kotlin.time.Clock
@@ -53,6 +54,28 @@ fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 expect suspend fun DocumentReference.approveWithPayload(payload: ByteArray, approvedBy: String)
 
 expect fun DocumentSnapshot.payloadBytes(): ByteArray?
+
+/** Фото профиля avatars/{uid}: { data: bytes, version } — тоже через нативный SDK. */
+expect suspend fun DocumentReference.setAvatar(data: ByteArray, version: Long)
+
+expect fun DocumentSnapshot.avatarData(): ByteArray?
+
+/**
+ * Версия фото в users/{uid}. Через нативный SDK: GitLive на iOS пишет Long не целым числом,
+ * и правило `avatarVersion is int` запись отклоняет.
+ */
+expect suspend fun DocumentReference.setAvatarVersion(version: Long)
+
+/** JPEG → картинка для Compose; null — не картинка. */
+expect fun decodeImage(bytes: ByteArray): ImageBitmap?
+
+/**
+ * Системный выбор фото (PHPicker на iOS, диалог файла на десктопе) для аватара: фото обрезается по центру
+ * в квадрат [User.AVATAR_SIZE_PX] и сжимается в JPEG не больше [User.AVATAR_MAX_BYTES].
+ * Возвращает функцию, открывающую выбор; отмена ничего не вызывает.
+ */
+@Composable
+expect fun rememberAvatarPicker(onPicked: (ByteArray) -> Unit, onFailed: () -> Unit): () -> Unit
 
 /** Камера с распознаванием QR. [onScanned] может прийти несколько раз — дедупликация на вызывающем. */
 @Composable

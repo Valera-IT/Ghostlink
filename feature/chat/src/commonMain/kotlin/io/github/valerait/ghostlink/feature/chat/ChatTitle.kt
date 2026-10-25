@@ -39,6 +39,7 @@ fun ChatTitle(
             partner != null -> partner.name to partner.id.value
             else -> return
         }
+    val photoVersion = if (group == null) partner?.avatarVersion else null
     val subtitle =
         when {
             typing && state.typingName != null -> stringResource(Res.string.chat_typing_named, state.typingName)
@@ -51,7 +52,7 @@ fun ChatTitle(
         verticalAlignment = Alignment.CenterVertically,
         modifier = if (group != null) Modifier.clickable(onClick = onGroupInfo) else Modifier,
     ) {
-        Avatar(title, avatarId, size = 40.dp)
+        Avatar(title, avatarId, size = 40.dp, photoVersion = photoVersion)
         Spacer(Modifier.width(12.dp))
         Column {
             Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)

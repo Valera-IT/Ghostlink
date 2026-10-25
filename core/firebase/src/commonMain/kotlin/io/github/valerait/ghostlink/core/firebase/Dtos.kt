@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 // *Write пишут его, и серверное время в них — Timestamp.ServerTimestamp.
 //
 //  users/{uid}                    UserDto
+//  avatars/{uid}                  фото профиля: data — поле bytes, см. Avatars.kt
 //  users/{uid}/devices/{id}       DeviceDto
 //  users/{uid}/chatPrefs/{chatId} ChatPrefsDto — личные настройки, видны только владельцу
 //  chats/{a_b}                    ChatDto; группа — chats/{autoId} с type = "group", name, owner
@@ -17,6 +18,7 @@ import kotlinx.serialization.Serializable
 
 object Collections {
     const val USERS = "users"
+    const val AVATARS = "avatars"
     const val DEVICES = "devices"
     const val CHAT_PREFS = "chatPrefs"
     const val CHATS = "chats"
@@ -31,6 +33,7 @@ class UserDto(
     val name: String = "",
     val online: Boolean = false,
     val lastSeen: Timestamp? = null,
+    val avatarVersion: Long? = null,
 )
 
 @Serializable

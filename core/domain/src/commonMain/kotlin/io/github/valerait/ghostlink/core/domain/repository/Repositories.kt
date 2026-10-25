@@ -67,6 +67,20 @@ interface UserRepository {
         id: UserId,
         online: Boolean,
     )
+
+    /** JPEG фото профиля версии [version] (см. [User.avatarVersion]); null — фото нет или его уже сменили. */
+    suspend fun getAvatar(
+        id: UserId,
+        version: Long,
+    ): ByteArray?
+
+    /** Ставит фото профиля: квадратный JPEG не больше [User.AVATAR_MAX_BYTES]. */
+    suspend fun setAvatar(
+        id: UserId,
+        jpeg: ByteArray,
+    )
+
+    suspend fun removeAvatar(id: UserId)
 }
 
 /** Личные настройки чатов: видны и меняются только у самого пользователя, собеседник о них не знает. */

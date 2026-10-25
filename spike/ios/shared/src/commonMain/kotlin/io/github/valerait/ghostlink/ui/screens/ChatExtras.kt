@@ -88,7 +88,7 @@ fun ChatTitle(state: ChatUiState, now: Long, onGroupInfo: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = if (group != null) Modifier.clickable(onClick = onGroupInfo) else Modifier,
     ) {
-        Avatar(title, avatarId, size = 40.dp)
+        Avatar(title, avatarId, size = 40.dp, photoVersion = if (group == null) partner?.avatarVersion else null)
         Spacer(Modifier.width(12.dp))
         Column {
             Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)

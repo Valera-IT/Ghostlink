@@ -1,0 +1,69 @@
+# Xcode-проект генерируется из этого файла: `xcodegen generate` в apps/ios/iosApp (см. README, раздел «iOS»).
+# Ни .xcodeproj, ни Info.plist в git не хранятся: всё описано здесь.
+name: Ghostlink
+options:
+  bundleIdPrefix: io.github.valerait
+  deploymentTarget:
+    iOS: "16.0"
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    # GitLive 2.7.0 собран против заголовков Firebase iOS SDK 11.x: следующий мажор не берём.
+    majorVersion: "11.8.0"
+targets:
+  Ghostlink:
+    type: application
+    platform: iOS
+    sources:
+      - path: iosApp
+    info:
+      path: iosApp/Info.plist
+      properties:
+        CFBundleDisplayName: Ghostlink
+        CFBundleShortVersionString: "0.4.0" # x-release-please-version
+        CFBundleVersion: "1"
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        CADisableMinimumFrameDurationOnPhone: true
+        # Перевод — в iosApp/{en,ru}.lproj/InfoPlist.strings; системные диалоги берут язык устройства.
+        NSCameraUsageDescription: The camera is used to scan friends' QR codes and sign-in codes from your other devices.
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, ru]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UIViewControllerBasedStatusBarAppearance: false
+        CFBundleURLTypes:
+          - CFBundleURLName: io.github.valerait.ghostlink
+            CFBundleURLSchemes: [ghostlink]
+    dependencies:
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseFirestore
+    preBuildScripts:
+      - name: Build Kotlin framework
+        basedOnDependencyAnalysis: false
+        script: |
+          cd "$SRCROOT/../../.."
+          ./gradlew :apps:ios:embedAndSignAppleFrameworkForXcode
+    postBuildScripts:
+      # Конфиг Firebase не в git и в проект не входит: копируем, если он лежит рядом с project.yml.
+      # Без него приложение работает в демо-режиме, как Android без google-services.json.
+      - name: Copy Firebase config
+        basedOnDependencyAnalysis: false
+        script: |
+          config="$SRCROOT/GoogleService-Info.plist"
+          target="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/GoogleService-Info.plist"
+          if [ -f "$config" ]; then cp "$config" "$target"; else rm -f "$target"; fi
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.valerait.ghostlink
+        DEVELOPMENT_TEAM: FRUVCH4G48
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        # Kotlin-фреймворк собирается только для arm64 (iosArm64, iosSimulatorArm64).
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
+        FRAMEWORK_SEARCH_PATHS: $(SRCROOT)/../build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
+        OTHER_LDFLAGS: [-framework, GhostlinkKit, -ObjC]

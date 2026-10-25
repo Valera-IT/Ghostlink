@@ -8,11 +8,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.valerait.ghostlink.core.designsystem.GhostlinkTheme
 import io.github.valerait.ghostlink.core.platform.DeepLinks
+import io.github.valerait.ghostlink.core.ui.AvatarPhotos
+import io.github.valerait.ghostlink.core.ui.LocalAvatarPhotos
 import io.github.valerait.ghostlink.data.settings.LanguagePreferences
 import io.github.valerait.ghostlink.data.settings.ThemePreferences
 import io.github.valerait.ghostlink.ui.navigation.GhostlinkRoot
@@ -25,6 +28,7 @@ class MainActivity : ComponentActivity() {
     private val rootViewModel: RootViewModel by viewModel()
     private val themePreferences: ThemePreferences by inject()
     private val deepLinks: DeepLinks by inject()
+    private val avatarPhotos: AvatarPhotos by inject()
 
     // Koin уже поднят в GhostlinkApp.onCreate — он идёт раньше создания Activity.
     override fun attachBaseContext(newBase: Context) {
@@ -47,7 +51,9 @@ class MainActivity : ComponentActivity() {
                 if (language != startLanguage) recreate()
             }
             GhostlinkTheme(theme = theme) {
-                GhostlinkRoot(rootViewModel)
+                CompositionLocalProvider(LocalAvatarPhotos provides avatarPhotos) {
+                    GhostlinkRoot(rootViewModel)
+                }
             }
         }
     }

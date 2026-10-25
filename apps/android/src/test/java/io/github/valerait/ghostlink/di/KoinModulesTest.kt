@@ -37,9 +37,10 @@ import org.koin.test.verify.verify
 class KoinModulesTest {
     // verify() смотрит на конструктор каждого типа в графе, даже если объект создаёт лямбда.
     // Context и SavedStateHandle даёт платформа (androidContext() и навигация),
-    // остальное — значения, которые лямбды вычисляют сами: AppConfig(demoMode, versionName), androidThisDevice(context).
+    // остальное — значения, которые лямбды вычисляют сами: AppConfig(demoMode, versionName), androidThisDevice(context),
+    // загрузка фото в AvatarPhotos(load) — suspend-лямбда с двумя параметрами, то есть Function3.
     private val extraTypes =
-        listOf(Context::class, SavedStateHandle::class, Boolean::class, String::class, DeviceId::class, Platform::class)
+        listOf(Context::class, SavedStateHandle::class, Boolean::class, String::class, DeviceId::class, Platform::class, Function3::class)
 
     @After
     fun tearDown() = stopKoin()

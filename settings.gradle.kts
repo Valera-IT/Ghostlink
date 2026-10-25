@@ -16,6 +16,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "Ghostlink"
 include(":apps:android")
+include(":apps:ios")
 include(":core:model")
 include(":core:domain")
 include(":core:crypto")
