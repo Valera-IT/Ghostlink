@@ -21,5 +21,5 @@ fun dataModule(emulatorHost: String? = null): Module =
         single { get<FirebaseBackend>().media }
     }
 
-/** Адрес Worker из worker/README.md, раздел «Развёртывание»; null — фото в чатах не работают. */
-internal val MEDIA_WORKER_URL: String? = "https://ghostlink.rangervalera.workers.dev"
+/** Адрес Worker из worker/README.md, раздел «Развёртывание». */
+internal const val MEDIA_WORKER_URL = "https://ghostlink.rangervalera.workers.dev"
