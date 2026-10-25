@@ -39,6 +39,7 @@ feature/*      экраны по модулям: onboarding, chats, chat, friend
 apps/android/ui  корневой граф навигации: соединяет фичи между собой
 apps/android/data  выбранные тема и язык
 apps/android/di  Koin: собирает модули core:* и feature:*, выбирает Firebase или демо в зависимости от наличия конфига
+apps/ios        то же для iPhone: фреймворк GhostlinkKit (корневой граф, Koin, тема и язык) и Xcode-проект на SwiftUI
 ```
 
 Целевая модульная архитектура (KMP, Clean Architecture, модели по слоям) описана в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), план — в [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -119,6 +120,17 @@ npx firebase-tools emulators:start --only auth,firestore --project demo-ghostlin
 ```
 
 `10.0.2.2` — это адрес Mac из Android-эмулятора. Правила из `firestore.rules` эмулятор подхватывает сам, а интерфейс эмулятора открывается на http://localhost:4000.
+
+### iOS
+
+Kotlin-часть живёт в модуле `apps/ios` и собирается в статический фреймворк `GhostlinkKit` поверх тех же `core:*` и `feature:*`, что у Android. Xcode-проект описан в `apps/ios/iosApp/project.yml` и генерируется [XcodeGen](https://github.com/yonaskolb/XcodeGen); сам `.xcodeproj` в git не хранится. Firebase iOS SDK (11.x, под него собран GitLive) Xcode подтягивает через SPM.
+
+```bash
+brew install xcodegen
+cd apps/ios/iosApp && xcodegen generate && open Ghostlink.xcodeproj
+```
+
+Фреймворк собирает Gradle из build phase Xcode, отдельно запускать его не нужно. Без `GoogleService-Info.plist` приложение работает в демо-режиме. Чтобы подключить Firebase, нужно добавить в проект iOS-приложение с bundle id `io.github.valerait.ghostlink` и положить его `GoogleService-Info.plist` в `apps/ios/iosApp/` (файл в `.gitignore`).
 
 ## Тесты
 

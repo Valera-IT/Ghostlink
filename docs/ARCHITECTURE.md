@@ -42,7 +42,7 @@ feature/
 apps/
   android                  Activity, манифест, google-services.json, Koin start
   desktop                  main(), окно, трей, упаковка .dmg / .msi
-  ios                      Xcode-проект + shared-фреймворк (umbrella над core и feature)
+  ios                      Kotlin-фреймворк GhostlinkKit (umbrella над core и feature) + Xcode-проект в iosApp/ (XcodeGen)
 push-worker/               Cloudflare Worker (этап 6), TypeScript
 firebase/                  firestore.rules, firestore.indexes.json, тесты правил
 ```

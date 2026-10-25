@@ -17,6 +17,11 @@ captures/
 apps/android/google-services.json
 apps/android/src/*/google-services.json
 
+# iOS: конфиг Firebase и всё, что xcodegen генерирует из project.yml
+apps/ios/iosApp/GoogleService-Info.plist
+apps/ios/iosApp/*.xcodeproj/
+apps/ios/iosApp/iosApp/Info.plist
+
 # Конфиг Firebase для iOS-разведки
 spike/ios/iosApp/GoogleService-Info.plist
 spike/ios/iosApp/*.xcodeproj/

@@ -50,6 +50,33 @@ jobs:
             build/reports/
           retention-days: 7
 
+  # iOS-приложение в демо-режиме (без GoogleService-Info.plist): Kotlin-фреймворк, Firebase через SPM, Swift.
+  ios:
+    name: Сборка iOS
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ hashFiles('gradle/libs.versions.toml') }}
+      - run: brew install xcodegen
+      - run: xcodegen generate
+        working-directory: apps/ios/iosApp
+      - run: >-
+          xcodebuild -project Ghostlink.xcodeproj -scheme Ghostlink -configuration Debug
+          -sdk iphonesimulator -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath ../build/xcode CODE_SIGNING_ALLOWED=NO build
+        working-directory: apps/ios/iosApp
+
   # Сквозные сценарии на demo-флейворе в эмуляторе: регистрация, чат, друг, привязка, ключ восстановления.
   maestro:
     name: Maestro-сценарии
