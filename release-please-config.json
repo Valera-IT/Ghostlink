@@ -17,7 +17,8 @@
         { "type": "chore", "section": "Прочее", "hidden": true }
       ],
       "extra-files": [
-        { "type": "generic", "path": "apps/android/build.gradle.kts" }
+        { "type": "generic", "path": "apps/android/build.gradle.kts" },
+        { "type": "generic", "path": "apps/ios/iosApp/project.yml" }
       ]
     }
   }
