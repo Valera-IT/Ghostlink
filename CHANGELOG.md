@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.0](https://github.com/Valera-IT/Ghostlink/compare/ghostlink-v0.4.0...ghostlink-v0.5.0) (2026-10-25)
+
+
+### Новое
+
+* **chat:** photos in chats and groups (stages 6.7–6.8) ([#69](https://github.com/Valera-IT/Ghostlink/issues/69)) ([c676946](https://github.com/Valera-IT/Ghostlink/commit/c6769461e957bfbe0c37908434d254af2681e1bf))
+* **data:** MediaStore for chat files via the Worker and B2 (stage 6.5) ([#68](https://github.com/Valera-IT/Ghostlink/issues/68)) ([52b6768](https://github.com/Valera-IT/Ghostlink/commit/52b676878d6b5c418343f3efe474640a47e4fe06))
+* **icon:** pixel ghost app icon on Android and iOS ([#63](https://github.com/Valera-IT/Ghostlink/issues/63)) ([ca689fe](https://github.com/Valera-IT/Ghostlink/commit/ca689fe8b457447e33f11780a6068b57179fc8c4))
+* **ios:** apps:ios on the shared modules with an Xcode project (stage 4.1) ([#64](https://github.com/Valera-IT/Ghostlink/issues/64)) ([0c5d3be](https://github.com/Valera-IT/Ghostlink/commit/0c5d3bea413f1cc18a1f520a7080e4eb086b5f8e))
+* **ios:** local-only expiring clipboard for secrets, native iOS checks (stage 4.3) ([#66](https://github.com/Valera-IT/Ghostlink/issues/66)) ([9e6eda4](https://github.com/Valera-IT/Ghostlink/commit/9e6eda4da38393ed635e4721c728156d6aa8b2f2))
+* **ios:** QR scanner on AVFoundation and SecureStore on Keychain (stage 4.2) ([#65](https://github.com/Valera-IT/Ghostlink/issues/65)) ([6e00ef1](https://github.com/Valera-IT/Ghostlink/commit/6e00ef1bf4c955c070616cc0c6b78abadba7e078))
+* **profile:** profile photos on Android and iOS (stage 6.9) ([#62](https://github.com/Valera-IT/Ghostlink/issues/62)) ([0c4c4f0](https://github.com/Valera-IT/Ghostlink/commit/0c4c4f02e9d419d3ada5ab61241af8c6dbfd29d5))
+* **worker:** signed Backblaze B2 links for chat photos (stage 6.6) ([#67](https://github.com/Valera-IT/Ghostlink/issues/67)) ([a4005d2](https://github.com/Valera-IT/Ghostlink/commit/a4005d2381d5b32a35aa272b7c25c94d81ebe38c))
+
+
+### Документация
+
+* **roadmap:** iOS becomes stage 4, desktop moves to stage 5 ([#52](https://github.com/Valera-IT/Ghostlink/issues/52)) ([bd57cac](https://github.com/Valera-IT/Ghostlink/commit/bd57cac556c073bd91cd7fc9b049b3bf342ed50f))
+* **roadmap:** media via Backblaze B2 instead of R2 in stage 6 ([#60](https://github.com/Valera-IT/Ghostlink/issues/60)) ([ed5110e](https://github.com/Valera-IT/Ghostlink/commit/ed5110e64b019edd374c28e89e7ea2d8417ab104))
+* **roadmap:** store readiness stage 6.5 and E2E stage 8 ([#56](https://github.com/Valera-IT/Ghostlink/issues/56)) ([fd103f1](https://github.com/Valera-IT/Ghostlink/commit/fd103f1f43de6446d72a5a882a70e3971e107e91))
+
 ## [0.4.0](https://github.com/Valera-IT/Ghostlink/compare/ghostlink-v0.3.0...ghostlink-v0.4.0) (2026-10-24)
 
 
