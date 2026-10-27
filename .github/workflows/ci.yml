@@ -178,6 +178,9 @@ jobs:
           xcrun simctl install "$udid" build/ios/Ghostlink.app
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
       - run: maestro --device "$SIMULATOR_UDID" test .maestro --format junit --output build/maestro-ios-report.xml
+        env:
+          # XCTest-драйвер Maestro на свежем симуляторе раннера поднимается дольше стандартных двух минут.
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: 600000
       - if: always()
         uses: actions/upload-artifact@v4
         with:
