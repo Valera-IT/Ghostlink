@@ -31,12 +31,19 @@ name: Друг
                 commands:
                   - tapOn: "Just once"
 # iOS спрашивает «Open in “Ghostlink Demo”?», пока ссылку этого приложения ни разу не разрешили на симуляторе.
+# Диалог появляется не сразу: сначала ждём либо его, либо экран приглашения.
 - runFlow:
     when:
       platform: iOS
-      visible: "Open"
     commands:
-      - tapOn: "Open"
+      - extendedWaitUntil:
+          visible: "Open|Призрак #maes"
+          timeout: 15000
+      - runFlow:
+          when:
+            visible: "Open"
+          commands:
+            - tapOn: "Open"
 - assertVisible: "Призрак #maes"
 - tapOn: "Add and message"
 - tapOn: "Message"
