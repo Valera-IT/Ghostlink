@@ -40,6 +40,8 @@ targets:
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseCrashlytics
     preBuildScripts:
       - name: Build Kotlin framework
         basedOnDependencyAnalysis: false
@@ -55,6 +57,19 @@ targets:
           config="$SRCROOT/GoogleService-Info.plist"
           target="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/GoogleService-Info.plist"
           if [ -f "$config" ]; then cp "$config" "$target"; else rm -f "$target"; fi
+      # Символы для отчётов Crashlytics, в том числе кадров Kotlin: фреймворк статический и живёт в бинарнике приложения.
+      # Только когда есть конфиг Firebase: без него приложение в демо-режиме и падения никуда не уходят.
+      - name: Upload dSYM to Crashlytics
+        basedOnDependencyAnalysis: false
+        inputFiles:
+          - ${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}
+          - ${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}
+          - ${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist
+          - $(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)
+        script: |
+          [ -f "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/GoogleService-Info.plist" ] || exit 0
+          "${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.valerait.ghostlink
@@ -67,3 +82,5 @@ targets:
         "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
         FRAMEWORK_SEARCH_PATHS: $(SRCROOT)/../build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
         OTHER_LDFLAGS: [-framework, GhostlinkKit, -ObjC]
+        # dSYM и в отладочной сборке: падения dev-сборок тоже приходят в Crashlytics с символами.
+        DEBUG_INFORMATION_FORMAT: dwarf-with-dsym

@@ -27,12 +27,15 @@ import platform.UIKit.UIViewController
 
 /**
  * Поднимает граф приложения. Вызывать один раз, на главном потоке и после FirebaseApp.configure():
- * [demoMode] — в бандле нет GoogleService-Info.plist, тогда работаем на DemoBackend.
+ * [demoMode] — в бандле нет GoogleService-Info.plist, тогда работаем на DemoBackend;
+ * [crashReporter] — есть Firebase, падения Kotlin уходят в Crashlytics.
  */
 fun start(
     demoMode: Boolean,
     versionName: String,
+    crashReporter: CrashReporter?,
 ) {
+    crashReporter?.let(::reportUnhandledExceptions)
     val koin = startKoin { modules(appModules(AppConfig(demoMode = demoMode, versionName = versionName))) }.koin
     koin.get<PresenceTracker>().start()
     koin.get<DeviceRegistry>().start()
