@@ -18,6 +18,7 @@ appId: io.github.valerait.ghostlink.demo
       platform: iOS
     commands:
       - pressKey: Enter
+# Первый сценарий на свежем iOS-симуляторе CI ждёт этот экран почти 20 секунд, следующие — меньше секунды.
 - extendedWaitUntil:
     visible: "My code"
-    timeout: 10000
+    timeout: 30000
