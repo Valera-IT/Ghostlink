@@ -18,6 +18,7 @@ appId: io.github.valerait.ghostlink.demo
       platform: iOS
     commands:
       - pressKey: Enter
+# Первый запуск на холодном симуляторе CI рисует список чатов не сразу.
 - extendedWaitUntil:
     visible: "My code"
-    timeout: 10000
+    timeout: 30000

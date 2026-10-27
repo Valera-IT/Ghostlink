@@ -30,10 +30,11 @@ name: Друг
                   visible: "Just once"
                 commands:
                   - tapOn: "Just once"
-# iOS всегда спрашивает «Open in “Ghostlink Demo”?» для ссылки не из приложения.
+# iOS спрашивает «Open in “Ghostlink Demo”?», пока ссылку этого приложения ни разу не разрешили на симуляторе.
 - runFlow:
     when:
       platform: iOS
+      visible: "Open"
     commands:
       - tapOn: "Open"
 - assertVisible: "Призрак #maes"
