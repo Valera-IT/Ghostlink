@@ -132,7 +132,7 @@ brew install xcodegen
 cd apps/ios/iosApp && xcodegen generate && open Ghostlink.xcodeproj
 ```
 
-Фреймворк собирает Gradle из build phase Xcode, отдельно запускать его не нужно. Без `GoogleService-Info.plist` приложение работает в демо-режиме. Чтобы подключить Firebase, нужно добавить в проект iOS-приложение с bundle id `io.github.valerait.ghostlink` и положить его `GoogleService-Info.plist` в `apps/ios/iosApp/` (файл в `.gitignore`).
+Фреймворк собирает Gradle из build phase Xcode, отдельно запускать его не нужно. Без `GoogleService-Info.plist` приложение работает в демо-режиме; конфигурация `Demo` всегда собирает демо-сборку (`io.github.valerait.ghostlink.demo`, ставится рядом с основной) — на ней идут Maestro-сценарии. Чтобы подключить Firebase, нужно добавить в проект iOS-приложение с bundle id `io.github.valerait.ghostlink` и положить его `GoogleService-Info.plist` в `apps/ios/iosApp/` (файл в `.gitignore`).
 
 ## Тесты
 
@@ -161,11 +161,20 @@ cd firebase && npm ci && npm test
 
 На каждую коллекцию есть разрешённые и запрещённые случаи: чужой профиль, чужое устройство, повторное подтверждение заявки, просроченная заявка, сообщение от чужого имени, клиентское время вместо серверного.
 
-**Сквозные сценарии [Maestro](https://maestro.mobile.dev)** в `.maestro/` гоняют demo-сборку в эмуляторе (локаль en-US): регистрация, чат с ботом, друг по ссылке-приглашению, экран входа нового устройства и удаление устройства, выход и вход по ключу восстановления. Подтверждение входа камерой в них не входит: сканер на эмуляторе не работает, а код входа приложение намеренно не принимает из ссылки.
+**Сквозные сценарии [Maestro](https://maestro.mobile.dev)** в `.maestro/` гоняют demo-сборку в эмуляторе Android и симуляторе iPhone (локаль en-US): регистрация, чат с ботом, друг по ссылке-приглашению, экран входа нового устройства и удаление устройства, выход и вход по ключу восстановления. Подтверждение входа камерой в них не входит: сканер на эмуляторе и симуляторе не работает, а код входа приложение намеренно не принимает из ссылки.
 
 ```bash
 ./gradlew :apps:android:installDemoDebug
 maestro test .maestro
+```
+
+На iOS — сборка `Demo` на запущенном симуляторе с английским языком:
+
+```bash
+cd apps/ios/iosApp && xcodegen generate
+xcodebuild -project Ghostlink.xcodeproj -scheme Ghostlink -configuration Demo -sdk iphonesimulator -derivedDataPath ../build/xcode CODE_SIGNING_ALLOWED=NO build
+xcrun simctl install booted ../build/xcode/Build/Products/Demo-iphonesimulator/Ghostlink.app
+cd ../../.. && maestro test .maestro
 ```
 
 **Статический анализ:** `./gradlew spotlessCheck detekt` (форматирование — `./gradlew spotlessApply`). **Покрытие:** `./gradlew :apps:android:koverHtmlReportCi`. Всё это и сборка запускаются в CI на каждый PR; зависимости обновляет Renovate, CHANGELOG собирает release-please из заголовков PR (Conventional Commits).

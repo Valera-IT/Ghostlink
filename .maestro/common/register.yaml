@@ -5,8 +5,19 @@ appId: io.github.valerait.ghostlink.demo
 - assertVisible: "Demo mode.*"
 - tapOn: "What's your name?"
 - inputText: ${NAME || 'Maestro'}
-- hideKeyboard
-- tapOn: "Get started"
+# На iOS hideKeyboard ненадёжен, и нажатие на кнопку под клавиатурой попадает в подсказки.
+# Там форму отправляет «✓» на клавиатуре, как и у человека.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - tapOn: "Get started"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
 - extendedWaitUntil:
     visible: "My code"
     timeout: 10000
