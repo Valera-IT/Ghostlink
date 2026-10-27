@@ -164,9 +164,10 @@ jobs:
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
       - name: Симулятор
         run: |
-          runtime=$(xcrun simctl list runtimes iOS available -j | jq -r '.runtimes | last | .identifier')
-          type=$(xcrun simctl list devicetypes -j | jq -r '[.devicetypes[] | select(.name | test("^iPhone [0-9]+$"))] | last | .identifier')
-          udid=$(xcrun simctl create Maestro "$type" "$runtime")
+          # Готовый iPhone самого свежего рантайма на раннере: не каждый новый тип устройства подходит к рантайму.
+          udid=$(xcrun simctl list devices available -j | jq -r '
+            .devices | to_entries | map(select(.key | contains("iOS"))) | sort_by(.key | sub(".*iOS-"; "") | split("-") | map(tonumber))
+            | last | .value | map(select(.name | test("^iPhone [0-9]+"))) | first | .udid')
           xcrun simctl boot "$udid"
           xcrun simctl spawn "$udid" defaults write -g AppleLanguages -array en
           xcrun simctl spawn "$udid" defaults write -g AppleLocale en_US
