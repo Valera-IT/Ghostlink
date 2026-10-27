@@ -20,7 +20,12 @@ name: Ключ восстановления
 - tapOn: "Enter recovery key"
 - tapOn: "Key"
 - pasteText
-- hideKeyboard
+# На iOS hideKeyboard ненадёжен, а «Sign in» и так видна над клавиатурой.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - tapOn: "Sign in"
 - extendedWaitUntil:
     visible: "My code"
