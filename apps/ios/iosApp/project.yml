@@ -1,6 +1,12 @@
 # Xcode-проект генерируется из этого файла: `xcodegen generate` в apps/ios/iosApp (см. README, раздел «iOS»).
 # Ни .xcodeproj, ни Info.plist в git не хранятся: всё описано здесь.
 name: Ghostlink
+# Demo — отладочная сборка без Firebase для Maestro-сценариев (как флейвор demo на Android):
+# свой bundle id рядом с основной сборкой, GoogleService-Info.plist в бандл не кладётся.
+configs:
+  Debug: debug
+  Release: release
+  Demo: debug
 options:
   bundleIdPrefix: io.github.valerait
   deploymentTarget:
@@ -19,7 +25,7 @@ targets:
     info:
       path: iosApp/Info.plist
       properties:
-        CFBundleDisplayName: Ghostlink
+        CFBundleDisplayName: $(APP_DISPLAY_NAME)
         CFBundleShortVersionString: "0.5.0" # x-release-please-version
         CFBundleVersion: "1"
         UILaunchScreen:
@@ -48,13 +54,13 @@ targets:
           ./gradlew :apps:ios:embedAndSignAppleFrameworkForXcode
     postBuildScripts:
       # Конфиг Firebase не в git и в проект не входит: копируем, если он лежит рядом с project.yml.
-      # Без него приложение работает в демо-режиме, как Android без google-services.json.
+      # Без него (и всегда в конфигурации Demo) приложение работает в демо-режиме, как Android без google-services.json.
       - name: Copy Firebase config
         basedOnDependencyAnalysis: false
         script: |
           config="$SRCROOT/GoogleService-Info.plist"
           target="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/GoogleService-Info.plist"
-          if [ -f "$config" ]; then cp "$config" "$target"; else rm -f "$target"; fi
+          if [ -f "$config" ] && [ "$CONFIGURATION" != Demo ]; then cp "$config" "$target"; else rm -f "$target"; fi
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.valerait.ghostlink
@@ -67,3 +73,10 @@ targets:
         "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
         FRAMEWORK_SEARCH_PATHS: $(SRCROOT)/../build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
         OTHER_LDFLAGS: [-framework, GhostlinkKit, -ObjC]
+        APP_DISPLAY_NAME: Ghostlink
+      configs:
+        Demo:
+          PRODUCT_BUNDLE_IDENTIFIER: io.github.valerait.ghostlink.demo
+          APP_DISPLAY_NAME: Ghostlink Demo
+          # Gradle сам не знает конфигурацию Demo: фреймворк для неё отладочный.
+          KOTLIN_FRAMEWORK_BUILD_TYPE: debug

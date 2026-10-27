@@ -50,7 +50,8 @@ jobs:
             build/reports/
           retention-days: 7
 
-  # iOS-приложение в демо-режиме (без GoogleService-Info.plist): Kotlin-фреймворк, Firebase через SPM, Swift.
+  # iOS-приложение в конфигурации Demo (без GoogleService-Info.plist): Kotlin-фреймворк, Firebase через SPM, Swift.
+  # Готовый .app уходит в job maestro-ios.
   ios:
     name: Сборка iOS
     runs-on: macos-26
@@ -72,14 +73,22 @@ jobs:
       - run: xcodegen generate
         working-directory: apps/ios/iosApp
       - run: >-
-          xcodebuild -project Ghostlink.xcodeproj -scheme Ghostlink -configuration Debug
+          xcodebuild -project Ghostlink.xcodeproj -scheme Ghostlink -configuration Demo
           -sdk iphonesimulator -destination 'generic/platform=iOS Simulator'
           -derivedDataPath ../build/xcode CODE_SIGNING_ALLOWED=NO build
         working-directory: apps/ios/iosApp
+      # zip сохраняет симлинки и права внутри бандла, которые upload-artifact теряет.
+      - run: ditto -c -k --keepParent Ghostlink.app "$GITHUB_WORKSPACE/ghostlink-ios-demo.zip"
+        working-directory: apps/ios/build/xcode/Build/Products/Demo-iphonesimulator
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-demo-app
+          path: ghostlink-ios-demo.zip
+          retention-days: 1
 
   # Сквозные сценарии на demo-флейворе в эмуляторе: регистрация, чат, друг, привязка, ключ восстановления.
   maestro:
-    name: Maestro-сценарии
+    name: Maestro-сценарии Android
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
@@ -128,6 +137,56 @@ jobs:
           name: maestro-reports
           path: |
             build/maestro-report.xml
+            ~/.maestro/tests/
+          retention-days: 7
+
+  # Те же сценарии на iOS-симуляторе: сборка Demo из job ios, английская локаль, как у эмулятора Android.
+  maestro-ios:
+    name: Maestro-сценарии iOS
+    needs: ios
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/download-artifact@v4
+        with:
+          name: ios-demo-app
+      - run: ditto -x -k ghostlink-ios-demo.zip build/ios
+      - name: Установка Maestro
+        env:
+          MAESTRO_VERSION: 2.11.0
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Симулятор
+        run: |
+          # Готовый iPhone самого свежего рантайма на раннере: не каждый новый тип устройства подходит к рантайму.
+          udid=$(xcrun simctl list devices available -j | jq -r '
+            .devices | to_entries | map(select(.key | contains("iOS"))) | sort_by(.key | sub(".*iOS-"; "") | split("-") | map(tonumber))
+            | last | .value | map(select(.name | test("^iPhone [0-9]+"))) | first | .udid')
+          xcrun simctl boot "$udid"
+          xcrun simctl spawn "$udid" defaults write -g AppleLanguages -array en
+          xcrun simctl spawn "$udid" defaults write -g AppleLocale en_US
+          # Язык система читает при загрузке: перезагружаем симулятор с новой локалью.
+          xcrun simctl shutdown "$udid"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid"
+          xcrun simctl install "$udid" build/ios/Ghostlink.app
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
+      - run: maestro --device "$SIMULATOR_UDID" test .maestro --format junit --output build/maestro-ios-report.xml
+        env:
+          # XCTest-драйвер Maestro на свежем симуляторе раннера поднимается дольше стандартных двух минут.
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: 600000
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-ios-reports
+          path: |
+            build/maestro-ios-report.xml
             ~/.maestro/tests/
           retention-days: 7
 
