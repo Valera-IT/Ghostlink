@@ -1,8 +1,11 @@
+import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
+
 plugins {
     alias(libs.plugins.ghostlink.android.app)
     alias(libs.plugins.ghostlink.android.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
     alias(libs.plugins.kover)
 }
 
@@ -28,6 +31,8 @@ android {
             dimension = "env"
             applicationIdSuffix = ".demo"
             resValue("string", "app_name", "Ghostlink Demo")
+            // Firebase в demo нет: падения никуда не уходят, и mapping-файл выгружать некуда.
+            configure<CrashlyticsExtension> { mappingFileUploadEnabled = false }
         }
         // Проект ghostlink-dev: ставится рядом с prod, для разработки и проверки PR.
         create("dev") {
@@ -141,6 +146,8 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    // Падения из dev и prod; стартует вместе с FirebaseApp, поэтому в demo молчит.
+    implementation(libs.firebase.crashlytics)
 
     testImplementation(project(":core:testing"))
     testImplementation(libs.junit)

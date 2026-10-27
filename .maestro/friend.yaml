@@ -8,34 +8,50 @@ name: Друг
 - assertVisible: "QR code for adding as a friend"
 - assertVisible: "Share link"
 - tapOn: "Back"
-- openLink: "ghostlink://add/maestro-friend"
-# Если рядом стоит другой флейвор Ghostlink, Android спросит, чем открыть ссылку:
-# либо предложит Ghostlink Demo сразу, либо покажет список приложений.
-- runFlow:
-    when:
-      platform: Android
+# На iOS нажатие «Open» в системном диалоге иногда проходит до конца его анимации: диалог закрывается,
+# а ссылка в приложение не попадает. Тогда открываем ссылку ещё раз.
+- retry:
+    maxRetries: 2
     commands:
+      - openLink: "ghostlink://add/maestro-friend"
+      # Если рядом стоит другой флейвор Ghostlink, Android спросит, чем открыть ссылку:
+      # либо предложит Ghostlink Demo сразу, либо покажет список приложений.
       - runFlow:
           when:
-            visible: "Open with Ghostlink Demo"
+            platform: Android
           commands:
-            - tapOn: "Just once"
-      - runFlow:
-          when:
-            visible: "Ghostlink Demo"
-          commands:
-            - tapOn: "Ghostlink Demo"
             - runFlow:
                 when:
-                  visible: "Just once"
+                  visible: "Open with Ghostlink Demo"
                 commands:
                   - tapOn: "Just once"
-# iOS всегда спрашивает «Open in “Ghostlink Demo”?» для ссылки не из приложения.
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - tapOn: "Open"
+            - runFlow:
+                when:
+                  visible: "Ghostlink Demo"
+                commands:
+                  - tapOn: "Ghostlink Demo"
+                  - runFlow:
+                      when:
+                        visible: "Just once"
+                      commands:
+                        - tapOn: "Just once"
+      # iOS спрашивает «Open in “Ghostlink Demo”?», пока ссылку этого приложения ни разу не разрешили на симуляторе.
+      # Диалог появляется не сразу: сначала ждём либо его, либо экран приглашения.
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - extendedWaitUntil:
+                visible: "Open|Призрак #maes"
+                timeout: 15000
+            - runFlow:
+                when:
+                  visible: "Open"
+                commands:
+                  - tapOn: "Open"
+      - extendedWaitUntil:
+          visible: "Призрак #maes"
+          timeout: 10000
 - assertVisible: "Призрак #maes"
 - tapOn: "Add and message"
 - tapOn: "Message"
