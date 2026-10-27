@@ -176,6 +176,11 @@ jobs:
           xcrun simctl boot "$udid"
           xcrun simctl bootstatus "$udid"
           xcrun simctl install "$udid" build/ios/Ghostlink.app
+          # Прогрев: первый запуск приложения на свежем симуляторе в разы медленнее следующих,
+          # и без прогрева первый сценарий не укладывается в свои ожидания.
+          xcrun simctl launch "$udid" io.github.valerait.ghostlink.demo
+          sleep 30
+          xcrun simctl terminate "$udid" io.github.valerait.ghostlink.demo
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
       - run: maestro --device "$SIMULATOR_UDID" test .maestro --format junit --output build/maestro-ios-report.xml
         env:
