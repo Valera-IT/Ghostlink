@@ -13,19 +13,29 @@ name: Друг
 # либо предложит Ghostlink Demo сразу, либо покажет список приложений.
 - runFlow:
     when:
-      visible: "Open with Ghostlink Demo"
+      platform: Android
     commands:
-      - tapOn: "Just once"
-- runFlow:
-    when:
-      visible: "Ghostlink Demo"
-    commands:
-      - tapOn: "Ghostlink Demo"
       - runFlow:
           when:
-            visible: "Just once"
+            visible: "Open with Ghostlink Demo"
           commands:
             - tapOn: "Just once"
+      - runFlow:
+          when:
+            visible: "Ghostlink Demo"
+          commands:
+            - tapOn: "Ghostlink Demo"
+            - runFlow:
+                when:
+                  visible: "Just once"
+                commands:
+                  - tapOn: "Just once"
+# iOS всегда спрашивает «Open in “Ghostlink Demo”?» для ссылки не из приложения.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: "Open"
 - assertVisible: "Призрак #maes"
 - tapOn: "Add and message"
 - tapOn: "Message"

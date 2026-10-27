@@ -1,5 +1,6 @@
-# Сценарии на demo-флейворе: бэкенд в памяти с ботом, без Firebase и секретов.
-# Запуск: ./gradlew :apps:android:installDemoDebug && maestro test .maestro
-# Тексты интерфейса — английские: локаль эмулятора en-US.
+# Сценарии на demo-сборке: бэкенд в памяти с ботом, без Firebase и секретов.
+# Android: ./gradlew :apps:android:installDemoDebug && maestro test .maestro
+# iOS: конфигурация Demo в Xcode (bundle id тот же, …ghostlink.demo) на симуляторе, затем maestro test .maestro
+# Тексты интерфейса — английские: локаль эмулятора и симулятора en-US.
 flows:
   - "*.yaml"
