@@ -181,5 +181,5 @@ cd ../../.. && maestro test .maestro
 
 ## Дальше
 
-- Push-уведомления (FCM + Cloud Function).
+- Push-уведомления: FCM через Cloudflare Worker на Android, фоновое обновление на iOS (этап 6).
 - Индикатор «печатает…».
