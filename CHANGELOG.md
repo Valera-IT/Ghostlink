@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.0](https://github.com/Valera-IT/Ghostlink/compare/ghostlink-v0.5.0...ghostlink-v0.6.0) (2026-10-28)
+
+
+### Новое
+
+* **crash:** Crashlytics on Android and iOS (stage 4.5) ([#71](https://github.com/Valera-IT/Ghostlink/issues/71)) ([1542b10](https://github.com/Valera-IT/Ghostlink/commit/1542b105a851adfb421148f7c464459383bf4ef7))
+
+
+### Документация
+
+* **roadmap:** integer stages 1–10, one Worker section, done items marked ([#75](https://github.com/Valera-IT/Ghostlink/issues/75)) ([126e455](https://github.com/Valera-IT/Ghostlink/commit/126e45521c652a50b0800c87217e68f26e5ebf9f))
+* **roadmap:** messenger features, monitoring and cleanup ([#72](https://github.com/Valera-IT/Ghostlink/issues/72)) ([10c9f30](https://github.com/Valera-IT/Ghostlink/commit/10c9f3000a7ef78dc5f21e46cc4603e5b67960e9))
+
 ## [0.5.0](https://github.com/Valera-IT/Ghostlink/compare/ghostlink-v0.4.0...ghostlink-v0.5.0) (2026-10-25)
 
 
