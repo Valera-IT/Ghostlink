@@ -1,7 +1,7 @@
 name: Release Please
 
 # Из Conventional Commits в main собирает CHANGELOG.md и держит открытым PR следующего выпуска.
-# Сборки по тегу — этап 7.
+# Сборки по тегу — этап 9.
 on:
   push:
     branches: [main]

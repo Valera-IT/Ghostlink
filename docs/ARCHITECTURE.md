@@ -43,7 +43,7 @@ apps/
   android                  Activity, манифест, google-services.json, Koin start
   desktop                  main(), окно, трей, упаковка .dmg / .msi
   ios                      Kotlin-фреймворк GhostlinkKit (umbrella над core и feature) + Xcode-проект в iosApp/ (XcodeGen)
-worker/                    Cloudflare Worker (этап 6): подписанные ссылки B2 на фото чатов, позже push; JavaScript без зависимостей
+worker/                    Cloudflare Worker (этап 6): подписанные ссылки B2 на файлы чатов, позже push; JavaScript без зависимостей
 firebase/                  firestore.rules, firestore.indexes.json, тесты правил
 ```
 
@@ -220,7 +220,7 @@ UI-модели (`ContactUi`, `MessageItem`, `ChatSummaryUi`) отличаютс
 - **Ветки:** trunk-based. Короткие ветки `feat/3.2-core-model`, `fix/…`, `chore/…`; один пункт плана — один PR. Слияние через squash, в `main` нельзя пушить напрямую.
 - **Коммиты:** [Conventional Commits](https://www.conventionalcommits.org) (`feat(link): …`, `fix(chat): …`), из них собирается CHANGELOG.
 - **PR:** шаблон с полями «что / зачем / как проверено / скриншоты». CI должен быть зелёным. Каждый PR проходит самопроверку по чеклисту и code review.
-- **CI (GitHub Actions):** detekt и ktlint (spotless), unit-тесты, тесты правил на эмуляторе, сборка Android, отчёт покрытия Kover. На этапе 7 добавляются сборки `.dmg`, `.msi` и iOS. Зависимости обновляет Renovate.
+- **CI (GitHub Actions):** detekt и ktlint (spotless), unit-тесты, тесты правил на эмуляторе, сборка Android, отчёт покрытия Kover. На этапе 9 добавляются сборки `.dmg`, `.msi` и iOS. Зависимости обновляет Renovate.
 - **Версии:** SemVer, теги `v0.x.y`, релиз собирается в GitHub Actions по тегу.
 - **Документация:** README (что это и как запустить), этот файл (как устроено), ADR (почему так) и ROADMAP (что дальше).
 - **Ошибки в проде:** Crashlytics (бесплатно на Spark) на Android и iOS, на десктопе логи в файл. Analytics не подключаем: это часть идеи приложения.
