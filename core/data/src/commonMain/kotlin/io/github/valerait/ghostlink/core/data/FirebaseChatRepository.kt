@@ -5,6 +5,7 @@ import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.FieldPath
 import dev.gitlive.firebase.firestore.FieldValue
 import dev.gitlive.firebase.firestore.FirebaseFirestore
+import dev.gitlive.firebase.firestore.Source
 import dev.gitlive.firebase.firestore.Timestamp
 import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
 import io.github.valerait.ghostlink.core.firebase.ChatCreate
@@ -61,6 +62,13 @@ class FirebaseChatRepository internal constructor(
             .snapshots
             .map { qs -> qs.documents.mapNotNull { it.toChat() }.sortedByDescending { it.updatedAt ?: Instant.DISTANT_FUTURE } }
             .logErrors("chats of $userId")
+
+    // Ответ сервера Firestore кладёт в кэш, и слушатель observeChats сразу видит свежие чаты.
+    override suspend fun refreshChats(userId: UserId) =
+        firebaseCall {
+            chats.where { "members" contains userId.value }.get(Source.SERVER)
+            Unit
+        }
 
     override fun observeChat(chatId: ChatId): Flow<Chat?> =
         chats

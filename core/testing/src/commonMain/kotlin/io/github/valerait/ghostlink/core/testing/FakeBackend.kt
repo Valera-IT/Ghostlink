@@ -186,6 +186,9 @@ open class FakeBackend(
                 all.values.filter { userId in it.members }.sortedByDescending { it.updatedAt ?: Instant.DISTANT_FUTURE }
             }.distinctUntilChanged()
 
+    // Кэша у фейка нет: всё и так «с сервера».
+    override suspend fun refreshChats(userId: UserId) = Unit
+
     override fun observeChat(chatId: ChatId): Flow<Chat?> = chats.map { it[chatId] }.distinctUntilChanged()
 
     override fun observeMessages(chatId: ChatId): Flow<List<Message>> = messages.map { it[chatId].orEmpty() }.distinctUntilChanged()

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.valerait.ghostlink.core.domain.repository.AuthRepository
 import io.github.valerait.ghostlink.core.domain.repository.UserRepository
+import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.core.platform.DeepLinks
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -49,4 +50,9 @@ class RootViewModel(
     val pendingInvite: StateFlow<UserId?> = deepLinks.pendingInvite
 
     fun onInviteHandled() = deepLinks.inviteHandled()
+
+    // Нажатое уведомление: чат откроется, как только будет готов главный экран.
+    val pendingChat: StateFlow<ChatId?> = deepLinks.pendingChat
+
+    fun onChatHandled() = deepLinks.chatHandled()
 }
