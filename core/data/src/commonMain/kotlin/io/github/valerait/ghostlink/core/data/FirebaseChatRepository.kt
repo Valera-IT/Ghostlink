@@ -31,9 +31,10 @@ import kotlin.time.Instant
 
 /** Схема документов — в core:firebase (Dtos.kt) и в firestore.rules. */
 @Suppress("TooManyFunctions") // по функции на метод ChatRepository
-class FirebaseChatRepository(
+class FirebaseChatRepository internal constructor(
     private val db: FirebaseFirestore,
     private val scope: CoroutineScope,
+    private val push: MessagePush = MessagePush { _, _ -> },
 ) : ChatRepository {
     private val chats = db.collection(Collections.CHATS)
 
@@ -100,6 +101,8 @@ class FirebaseChatRepository(
                     // Сообщение отправлено — «печатает…» снимаем той же записью.
                     FieldPath("typing", senderId.value) to FieldValue.delete
                 }.commit()
+            // Worker читает сообщение с сервера, поэтому зовём его только после записи.
+            push.sent(chatId, MessageId(messageRef.id))
         }
     }
 

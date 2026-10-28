@@ -89,7 +89,7 @@ core:model  → ничего
 | `Chat` | `id`, `members`, `lastMessage?`, `updatedAt?`, `lastRead: Map<UserId, Instant>` | `partnerId()`, `isUnreadFor()` |
 | `Message` | `id`, `chatId`, `senderId`, `text: MessageText`, `sentAt?`, `pending` | `status(partnerLastRead)` → `MessageStatus` |
 | `MessageStatus` | `Sending`, `Sent`, `Read` | позже `Failed` |
-| `Device` | `id`, `name`, `platform: Platform`, `lastActiveAt?`, `pushToken?` | `pushToken` с этапа 6 |
+| `Device` | `id`, `name`, `platform: Platform`, `lastActiveAt?`, `pushToken?` | `pushToken` — токен FCM, null у платформ без push |
 | `Platform` | `Android`, `Ios`, `MacOs`, `Windows`, `Unknown` | enum вместо строки |
 | `LinkRequest` | `id`, `deviceName`, `platform`, `expiresAt`, `payload?` | `isExpired(now)` |
 | `LinkCode` | `requestId`, `publicKey` | QR `ghostlink://link/…` |
@@ -131,7 +131,7 @@ Use case заводится, только когда сценарий затра
 | `AddFriendUseCase` | не сам себя → `startChat` |
 | `ObserveChatListUseCase` | чаты + профили + личные настройки → `List<ChatSummary>`, закреплённые сверху, исчезнувшие превью гаснут в срок |
 | `ObserveChatMessagesUseCase` | сообщения без удалённых вместе с чатом и исчезнувших; исчезнувшие стирает из базы |
-| `SendMessageUseCase` | проверка текста → ответ только на подтверждённое → TTL из таймера чата (позже → вызов push-worker) |
+| `SendMessageUseCase` | проверка текста → ответ только на подтверждённое → TTL из таймера чата; push после записи шлёт `core:data` (`WorkerPush`) |
 | `EditMessageUseCase`, `DeleteMessageUseCase` | только свои сообщения; превью в списке чатов следует за последним неудалённым |
 | `LeaveGroupUseCase` | админ передаёт права следующему участнику → чат пропадает из своего списка |
 | `PhotoSender` | фото и превью → `MediaStore` → сообщение с `attachment`; пока грузится или не загрузилось, фото видно в чате, неудачное можно повторить или убрать |
@@ -183,6 +183,7 @@ UI-модели (`ContactUi`, `MessageItem`, `ChatSummaryUi`) отличаютс
 |---|---|---|---|
 | `SecureStore` — ключ аккаунта | Keystore (AES-GCM) + SharedPreferences | Keychain (4.2), пока в памяти | `java-keyring` (5.3), пока в памяти |
 | `ThisDevice` — id, имя, платформа | `Settings.Global.DEVICE_NAME` / `Build.MODEL` | `UIDevice` | `hostname`, `os.name` |
+| `PushTokens` — токен для push | FCM (в `apps:android`, кроме demo) | нет (APNs нужен Apple Developer) | нет |
 | `AppLifecycle` — foreground для присутствия | `ProcessLifecycleOwner` | `UIApplication` notifications | фокус окна (этап 5), пока всегда на экране |
 | `QrScanner` | CameraX + ML Kit | AVFoundation (4.2) | нет (только показ QR) |
 | `DeepLinks` — приглашения `ghostlink://` | intent-filter → `open()` | URL scheme (4.3) | регистрация схемы в ОС (5.4) |
