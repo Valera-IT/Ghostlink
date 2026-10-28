@@ -48,10 +48,12 @@ service cloud.firestore {
         allow read, delete: if signedIn() && request.auth.uid == uid;
         allow create, update: if signedIn()
           && request.auth.uid == uid
-          && request.resource.data.keys().hasOnly(['name', 'platform', 'lastActiveAt'])
+          && request.resource.data.keys().hasOnly(['name', 'platform', 'lastActiveAt', 'pushToken'])
           && shortString(request.resource.data.name, 60)
           && shortString(request.resource.data.platform, 20)
-          && request.resource.data.lastActiveAt == request.time;
+          && request.resource.data.lastActiveAt == request.time
+          // Токен FCM; по нему Worker сервис-аккаунтом шлёт push (этап 6).
+          && (!('pushToken' in request.resource.data) || shortString(request.resource.data.pushToken, 512));
       }
     }
 

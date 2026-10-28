@@ -31,6 +31,8 @@ data class Device(
     val name: String,
     val platform: Platform,
     val lastActiveAt: Instant? = null,
+    /** Куда слать push этому устройству; null — push у него нет. */
+    val pushToken: String? = null,
 )
 
 /** Заявка нового устройства на вход: linkRequests/{id}. */

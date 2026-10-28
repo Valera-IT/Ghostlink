@@ -1,13 +1,16 @@
-// Worker Ghostlink: выдаёт подписанные ссылки на фото чатов в приватном бакете Backblaze B2.
-// Ключ B2 лежит только в секретах Worker; приложение получает ссылки на один файл, живущие минуты.
+// Worker Ghostlink: выдаёт подписанные ссылки на фото чатов в приватном бакете Backblaze B2 и шлёт push.
+// Ключ B2 и сервис-аккаунт лежат только в секретах Worker; приложение получает ссылки на один файл, живущие минуты.
 //
 //   POST /media/upload    { chatId, sizes: [байты, …] }  → { files: [{ key, url, headers }] }
 //   POST /media/download  { chatId, keys: [key, …] }     → { urls: { key: url } }
+//   POST /push            { chatId, messageId }          → { sent } — см. push.js
 //
 // Заголовок Authorization: Bearer <Firebase ID-токен>. Пускаем только участников чата: Worker читает
 // chats/{chatId} через REST Firestore тем же токеном, и правила Firestore отдают документ только участнику.
 
 import { AuthError, verifyIdToken } from './auth.js';
+import { NotConfiguredError } from './google.js';
+import { push } from './push.js';
 import { presign } from './sigv4.js';
 
 /** Совпадают с ограничениями в приложении (MediaLimits) и в firestore.rules. */
@@ -33,6 +36,7 @@ export default {
       return await route(request, env);
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.message }, e.status);
+      if (e instanceof NotConfiguredError) return json({ error: 'Push is not configured' }, 503);
       console.error(e);
       return json({ error: 'Internal error' }, 500);
     }
@@ -44,6 +48,7 @@ async function route(request, env) {
   if (request.method !== 'POST') throw new HttpError(405, 'Method not allowed');
   if (pathname === '/media/upload') return upload(request, env);
   if (pathname === '/media/download') return download(request, env);
+  if (pathname === '/push') return pushMessage(request, env);
   throw new HttpError(404, 'Not found');
 }
 
@@ -80,8 +85,22 @@ async function download(request, env) {
   return json({ urls });
 }
 
+async function pushMessage(request, env) {
+  // Членство проверяет само чтение сообщения токеном автора, отдельный запрос чата не нужен.
+  const { user, chatId, body, token } = await authenticate(request, env);
+  await limit(env.PUSH_LIMITER, user.uid);
+  return json(await push({ env, user, chatId, body, token, HttpError }));
+}
+
 /** Токен, тело запроса и членство в чате из него. */
 async function authorize(request, env) {
+  const { user, chatId, body, token } = await authenticate(request, env);
+  if (!(await isMember(env, user, chatId, token))) throw new HttpError(403, 'Not a member of this chat');
+  return { user, chatId, body };
+}
+
+/** Пользователь из токена и chatId из тела запроса. */
+async function authenticate(request, env) {
   const token = /^Bearer (.+)$/.exec(request.headers.get('authorization') ?? '')?.[1];
   let user;
   try {
@@ -93,8 +112,7 @@ async function authorize(request, env) {
   const body = await request.json().catch(() => null);
   const chatId = body?.chatId;
   if (typeof chatId !== 'string' || !CHAT_ID.test(chatId)) throw new HttpError(400, 'Bad chatId');
-  if (!(await isMember(env, user, chatId, token))) throw new HttpError(403, 'Not a member of this chat');
-  return { user, chatId, body };
+  return { user, chatId, body, token };
 }
 
 async function isMember(env, user, chatId, token) {

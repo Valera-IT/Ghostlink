@@ -148,6 +148,8 @@ dependencies {
     implementation(libs.firebase.firestore)
     // Падения из dev и prod; стартует вместе с FirebaseApp, поэтому в demo молчит.
     implementation(libs.firebase.crashlytics)
+    // Push о новых сообщениях (этап 6): токен устройства и data-сообщения от Worker.
+    implementation(libs.firebase.messaging)
 
     testImplementation(project(":core:testing"))
     testImplementation(libs.junit)

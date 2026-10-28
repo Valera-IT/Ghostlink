@@ -38,6 +38,9 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIStatusBarStyle: UIStatusBarStyleLightContent
         UIViewControllerBasedStatusBarAppearance: false
+        # Фоновое обновление вместо push (этап 6.12): идентификатор — BackgroundRefresh.taskId в GhostlinkApp.swift.
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [io.github.valerait.ghostlink.refresh]
         CFBundleURLTypes:
           - CFBundleURLName: io.github.valerait.ghostlink
             CFBundleURLSchemes: [ghostlink]

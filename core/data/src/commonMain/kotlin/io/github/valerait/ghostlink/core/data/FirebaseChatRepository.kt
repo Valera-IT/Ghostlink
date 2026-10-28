@@ -5,6 +5,7 @@ import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.FieldPath
 import dev.gitlive.firebase.firestore.FieldValue
 import dev.gitlive.firebase.firestore.FirebaseFirestore
+import dev.gitlive.firebase.firestore.Source
 import dev.gitlive.firebase.firestore.Timestamp
 import io.github.valerait.ghostlink.core.domain.repository.ChatRepository
 import io.github.valerait.ghostlink.core.firebase.ChatCreate
@@ -31,9 +32,10 @@ import kotlin.time.Instant
 
 /** Схема документов — в core:firebase (Dtos.kt) и в firestore.rules. */
 @Suppress("TooManyFunctions") // по функции на метод ChatRepository
-class FirebaseChatRepository(
+class FirebaseChatRepository internal constructor(
     private val db: FirebaseFirestore,
     private val scope: CoroutineScope,
+    private val push: MessagePush = MessagePush { _, _ -> },
 ) : ChatRepository {
     private val chats = db.collection(Collections.CHATS)
 
@@ -60,6 +62,13 @@ class FirebaseChatRepository(
             .snapshots
             .map { qs -> qs.documents.mapNotNull { it.toChat() }.sortedByDescending { it.updatedAt ?: Instant.DISTANT_FUTURE } }
             .logErrors("chats of $userId")
+
+    // Ответ сервера Firestore кладёт в кэш, и слушатель observeChats сразу видит свежие чаты.
+    override suspend fun refreshChats(userId: UserId) =
+        firebaseCall {
+            chats.where { "members" contains userId.value }.get(Source.SERVER)
+            Unit
+        }
 
     override fun observeChat(chatId: ChatId): Flow<Chat?> =
         chats
@@ -100,6 +109,8 @@ class FirebaseChatRepository(
                     // Сообщение отправлено — «печатает…» снимаем той же записью.
                     FieldPath("typing", senderId.value) to FieldValue.delete
                 }.commit()
+            // Worker читает сообщение с сервера, поэтому зовём его только после записи.
+            push.sent(chatId, MessageId(messageRef.id))
         }
     }
 

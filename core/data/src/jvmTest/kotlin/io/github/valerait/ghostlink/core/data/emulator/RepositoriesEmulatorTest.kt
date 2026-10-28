@@ -95,6 +95,18 @@ class RepositoriesEmulatorTest {
                 }
             assertEquals(Platform.MacOs, registered.platform)
 
+            // Push-токен: регистрация без токена не стирает записанный раньше.
+            laptop.devices.registerDevice(phoneId, Device(DeviceId("laptop"), "MacBook", Platform.MacOs, pushToken = "fcm-token"))
+            laptop.devices.registerDevice(phoneId, Device(DeviceId("laptop"), "MacBook", Platform.MacOs))
+            assertEquals(
+                "fcm-token",
+                laptop.devices
+                    .observeDevice(phoneId, DeviceId("laptop"))
+                    .filterNotNull()
+                    .first()
+                    .pushToken,
+            )
+
             // Чат: друг пишет — ноутбук получает, и обратно; сообщения ждём уже с серверным временем.
             val chatId = friend.chats.startChat(friendId, phoneId)
             friend.chats.sendMessage(chatId, friendId, "Привет, ноутбук")

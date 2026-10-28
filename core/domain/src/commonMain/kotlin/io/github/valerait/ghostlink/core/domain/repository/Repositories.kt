@@ -162,6 +162,9 @@ interface ChatRepository :
     GroupRepository {
     fun observeChats(userId: UserId): Flow<List<Chat>>
 
+    /** Загружает чаты [userId] с сервера в локальный кэш, откуда их отдаёт [observeChats]; без сети — ошибка Offline. */
+    suspend fun refreshChats(userId: UserId)
+
     fun observeChat(chatId: ChatId): Flow<Chat?>
 
     fun observeMessages(chatId: ChatId): Flow<List<Message>>
@@ -232,7 +235,7 @@ interface DeviceRepository {
         deviceId: DeviceId,
     ): Flow<Device?>
 
-    /** Создаёт или обновляет запись и время последней активности. */
+    /** Создаёт или обновляет запись и время последней активности; push-токен null оставляет прежний. */
     suspend fun registerDevice(
         userId: UserId,
         device: Device,

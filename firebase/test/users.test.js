@@ -116,6 +116,16 @@ describe('users/{uid}/devices/{id}', () => {
     const ref = doc(account('alice'), 'users/alice/devices/d1');
     await assertFails(setDoc(ref, { ...device(), name: 'x'.repeat(61) }));
     await assertFails(setDoc(ref, { ...device(), platform: '' }));
-    await assertFails(setDoc(ref, { ...device(), pushToken: 'abc' }));
+    await assertFails(setDoc(ref, { ...device(), pushToken: '' }));
+    await assertFails(setDoc(ref, { ...device(), pushToken: 'x'.repeat(513) }));
+    await assertFails(setDoc(ref, { ...device(), pushToken: 42 }));
+    await assertFails(setDoc(ref, { ...device(), token: 'abc' }));
+  });
+
+  test('push-токен пишет только сам аккаунт', async () => {
+    const ref = doc(account('alice'), 'users/alice/devices/d1');
+    await assertSucceeds(setDoc(ref, { ...device(), pushToken: 'fcm-token' }));
+    await assertSucceeds(updateDoc(ref, { lastActiveAt: serverTimestamp(), pushToken: 'new-token' }));
+    await assertFails(setDoc(doc(account('bob'), 'users/alice/devices/d2'), { ...device(), pushToken: 'fcm-token' }));
   });
 });

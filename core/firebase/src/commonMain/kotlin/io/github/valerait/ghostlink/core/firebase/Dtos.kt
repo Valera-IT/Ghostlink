@@ -48,6 +48,7 @@ class DeviceDto(
     val name: String = "",
     val platform: String = "",
     val lastActiveAt: Timestamp? = null,
+    val pushToken: String? = null,
 )
 
 @Serializable
@@ -55,6 +56,8 @@ class DeviceWrite(
     val name: String,
     val platform: String,
     val lastActiveAt: BaseTimestamp,
+    // Пишется без значений по умолчанию: null не стирает токен, записанный раньше.
+    val pushToken: String? = null,
 )
 
 @Serializable

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Призрак из иконки приложения одним цветом: строка состояния берёт только прозрачность. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M4,11 A8,8 0 0,1 20,11 L20,21 Q18.67,22.8 17.33,21 Q16,19.2 14.67,21 Q13.33,22.8 12,21 Q10.67,19.2 9.33,21 Q8,22.8 6.67,21 Q5.33,19.2 4,21 Z M8,11.5 a1.5,1.75 0 1,0 3,0 a1.5,1.75 0 1,0 -3,0 Z M13,11.5 a1.5,1.75 0 1,0 3,0 a1.5,1.75 0 1,0 -3,0 Z" />
+</vector>

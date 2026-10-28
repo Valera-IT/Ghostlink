@@ -9,6 +9,7 @@ actual val platformModule =
         single<SecureStore> { AndroidSecureStore(androidContext()) }
         single<AppLifecycle> { AndroidAppLifecycle() }
         single { androidThisDevice(androidContext()) }
+        single<PushTokens> { NoPushTokens }
         singleOf(::DeepLinks)
         single { CacheDirectory(androidContext().cacheDir.absolutePath) }
     }
