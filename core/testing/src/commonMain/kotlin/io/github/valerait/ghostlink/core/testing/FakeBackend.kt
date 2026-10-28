@@ -397,7 +397,11 @@ open class FakeBackend(
         userId: UserId,
         device: Device,
     ) {
-        devices.update { all -> all + (userId to all[userId].orEmpty() + (device.id to device.copy(lastActiveAt = clock.now()))) }
+        devices.update { all ->
+            val mine = all[userId].orEmpty()
+            val token = device.pushToken ?: mine[device.id]?.pushToken
+            all + (userId to mine + (device.id to device.copy(lastActiveAt = clock.now(), pushToken = token)))
+        }
     }
 
     override suspend fun removeDevice(

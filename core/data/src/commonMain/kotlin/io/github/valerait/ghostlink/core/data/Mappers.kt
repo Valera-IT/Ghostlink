@@ -49,7 +49,7 @@ internal fun UserDto.toUser(id: String) =
     User(id = UserId(id), name = name, online = online, lastSeen = lastSeen?.instant, avatarVersion = avatarVersion?.takeIf { it > 0 })
 
 internal fun DeviceDto.toDevice(id: String) =
-    Device(id = DeviceId(id), name = name, platform = platformOf(platform), lastActiveAt = lastActiveAt?.instant)
+    Device(id = DeviceId(id), name = name, platform = platformOf(platform), lastActiveAt = lastActiveAt?.instant, pushToken = pushToken)
 
 /** Документ без участников — битый или чужой формат: такой чат не показываем. */
 internal fun ChatDto.toChat(id: String): Chat? {

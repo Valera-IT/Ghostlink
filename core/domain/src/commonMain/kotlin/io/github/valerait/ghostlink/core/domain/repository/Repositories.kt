@@ -232,7 +232,7 @@ interface DeviceRepository {
         deviceId: DeviceId,
     ): Flow<Device?>
 
-    /** Создаёт или обновляет запись и время последней активности. */
+    /** Создаёт или обновляет запись и время последней активности; push-токен null оставляет прежний. */
     suspend fun registerDevice(
         userId: UserId,
         device: Device,
