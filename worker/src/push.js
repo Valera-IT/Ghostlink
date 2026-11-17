@@ -16,7 +16,6 @@ const MAX_MESSAGE_AGE_MS = 5 * 60 * 1000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const CACHE_SIZE = 1000;
 const names = new Map();
-const chats = new Map();
 const pushed = new Map();
 
 const MESSAGE_ID = /^[A-Za-z0-9_-]{1,128}$/;
@@ -32,9 +31,8 @@ export async function push({ env, user, chatId, body, token, HttpError }) {
   if (!message) throw new HttpError(404, 'No such message');
   if (message.senderId !== user.uid) throw new HttpError(403, 'Not your message');
   if (message.deletedAt || !(Date.now() - Date.parse(message.sentAt) < MAX_MESSAGE_AGE_MS)) return { sent: 0 };
-  remember(pushed, pushKey, true);
 
-  const chat = await cachedFetch(chats, `${user.projectId}/${chatId}`, () => firestore.get(`chats/${chatId}`, token));
+  const chat = await firestore.get(`chats/${chatId}`, token);
   const sender = await cachedFetch(names, `${user.projectId}/${user.uid}`, () => firestore.get(`users/${user.uid}`, token));
   const data = {
     chatId,
@@ -42,28 +40,33 @@ export async function push({ env, user, chatId, body, token, HttpError }) {
     senderId: user.uid,
     senderName: sender?.name ?? '',
     chatName: chat?.type === 'group' ? (chat.name ?? '') : '',
-    text: (message.text ?? '').slice(0, PREVIEW_LENGTH),
+    text: (message.text || recordingPreview(message.attachment)).slice(0, PREVIEW_LENGTH),
     photo: String(message.attachment?.type === 'photo'),
   };
 
   const admin = await accessToken(env, user.projectId);
   const recipients = (chat?.members ?? []).filter((uid) => uid !== user.uid);
-  const results = await Promise.all(recipients.map((uid) => notify(env, firestore, admin, uid, chatId, data)));
+  const results = await settledDeliveries(recipients.map((uid) => notify(env, firestore, admin, uid, chatId, data, pushKey)));
+  remember(pushed, pushKey, true);
   return { sent: results.reduce((a, b) => a + b, 0) };
 }
 
 /** Все устройства получателя с push, если чат у него не заглушён; сколько сообщений принял FCM. */
-async function notify(env, firestore, admin, uid, chatId, data) {
+async function notify(env, firestore, admin, uid, chatId, data, pushKey) {
   const prefs = await firestore.get(`users/${uid}/chatPrefs/${chatId}`, admin);
   if (prefs?.muted === true) return 0;
   const devices = await firestore.list(`users/${uid}/devices`, admin, ['pushToken']);
-  const sent = await Promise.all(
+  const sent = await settledDeliveries(
     devices
       .filter((device) => typeof device.fields.pushToken === 'string')
       .map(async (device) => {
+        const deliveryKey = `${pushKey}/${device.path}`;
+        if (cached(pushed, deliveryKey)) return 0;
         const status = await sendFcm(env, firestore.projectId, admin, device.fields.pushToken, data);
         // Приложение удалили или токен сменился: стираем его, чтобы больше не слать впустую.
         if (status === 'unregistered') await firestore.deleteField(device.path, 'pushToken', admin);
+        if (status === 'failed') throw new Error('FCM temporarily unavailable');
+        remember(pushed, deliveryKey, true);
         return status === 'sent' ? 1 : 0;
       }),
   );
@@ -84,7 +87,7 @@ async function sendFcm(env, projectId, admin, token, data) {
   if (response.ok) return 'sent';
   const error = await response.json().catch(() => ({}));
   const code = error.error?.details?.find((d) => d.errorCode)?.errorCode;
-  if (response.status === 404 || code === 'UNREGISTERED' || code === 'INVALID_ARGUMENT') return 'unregistered';
+  if (code === 'UNREGISTERED') return 'unregistered';
   console.error(`FCM: HTTP ${response.status} ${code ?? ''}`);
   return 'failed';
 }
@@ -160,6 +163,19 @@ function remember(cache, key, value) {
 /** Для тестов: забыть кэши изолята. */
 export function resetPushCaches() {
   names.clear();
-  chats.clear();
   pushed.clear();
+}
+
+function recordingPreview(attachment) {
+  if (!['voice', 'video'].includes(attachment?.type)) return '';
+  const seconds = Math.floor((attachment.duration ?? 0) / 1000);
+  return `${attachment.type === 'voice' ? '🎤' : '🎥'} ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+// Дожидаемся всех устройств до ответа об ошибке: повтор не должен обогнать ещё идущую отправку.
+async function settledDeliveries(tasks) {
+  const results = await Promise.allSettled(tasks);
+  const failure = results.find(result => result.status === 'rejected');
+  if (failure) throw failure.reason;
+  return results.map(result => result.value);
 }

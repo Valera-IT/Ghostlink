@@ -13,6 +13,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.io.IOException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -36,29 +37,33 @@ internal class WorkerPush(
     private val idToken: suspend () -> String?,
     private val http: HttpClient,
 ) : MessagePush {
-    @Suppress("TooGenericExceptionCaught") // push — необязательная часть отправки, его ошибка не должна её ронять
+    @Suppress("TooGenericExceptionCaught", "ReturnCount") // push — необязательная часть отправки, его ошибка не должна её ронять
     override suspend fun sent(
         chatId: ChatId,
         messageId: MessageId,
     ) {
         val base = workerUrl?.trimEnd('/') ?: return
-        try {
-            val token = idToken() ?: return
-            val response =
-                http.post("$base/push") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
-                    contentType(ContentType.Application.Json)
-                    setBody(JSON.encodeToString(PushRequest(chatId.value, messageId.value)))
-                }
-            if (!response.status.isSuccess()) {
+        repeat(MAX_ATTEMPTS) { attempt ->
+            try {
+                val token = idToken() ?: return
+                val response =
+                    http.post("$base/push") {
+                        header(HttpHeaders.Authorization, "Bearer $token")
+                        contentType(ContentType.Application.Json)
+                        setBody(JSON.encodeToString(PushRequest(chatId.value, messageId.value)))
+                    }
+                if (response.status.isSuccess()) return
                 logWarning(TAG, "Push for $messageId: HTTP ${response.status.value} ${response.bodyAsText().take(ERROR_BODY_LIMIT)}")
+                if (response.status != io.ktor.http.HttpStatusCode.TooManyRequests && response.status.value < SERVER_ERROR_STATUS) return
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                logWarning(TAG, "Push for $messageId: offline", e)
+            } catch (e: Exception) {
+                logWarning(TAG, "Push for $messageId failed", e)
+                return
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: IOException) {
-            logWarning(TAG, "Push for $messageId: offline", e)
-        } catch (e: Exception) {
-            logWarning(TAG, "Push for $messageId failed", e)
+            if (attempt < MAX_ATTEMPTS - 1) delay(RETRY_DELAY_MS * (attempt + 1))
         }
     }
 
@@ -71,6 +76,9 @@ internal class WorkerPush(
     private companion object {
         const val TAG = "Push"
         val JSON = Json
+        const val SERVER_ERROR_STATUS = 500
+        const val MAX_ATTEMPTS = 3
+        const val RETRY_DELAY_MS = 1000L
         const val ERROR_BODY_LIMIT = 200
     }
 }

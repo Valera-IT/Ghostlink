@@ -190,3 +190,29 @@ test('bad input and missing service account', async () => {
   );
   assert.equal(response.status, 503);
 });
+
+ test('retry after missing configuration still sends the message', async () => {
+  const request = new Request('https://worker.example/push', {
+    method: 'POST', headers: { authorization: `Bearer ${await idToken('alice')}` },
+    body: JSON.stringify({ chatId: 'alice_bob', messageId: 'm1' }),
+  });
+  assert.equal((await worker.fetch(request, { FIREBASE_PROJECTS: PROJECT })).status, 503);
+  assert.equal((await call({ chatId: 'alice_bob', messageId: 'm1' })).body.sent, 1);
+});
+
+test('temporary FCM error can be retried without duplicating successful devices', async () => {
+  docs['users/bob/devices/b3'] = { pushToken: 'token-bob-tablet' };
+  const original = globalThis.fetch;
+  let fail = true;
+  globalThis.fetch = async (url, init) => {
+    if (url.startsWith('https://fcm.googleapis.com/') && JSON.parse(init.body).message.token === 'token-bob-tablet' && fail) {
+      return Response.json({ error: { status: 'UNAVAILABLE' } }, { status: 503 });
+    }
+    return original(url, init);
+  };
+  assert.equal((await call({ chatId: 'alice_bob', messageId: 'm1' })).status, 500);
+  fail = false;
+  assert.equal((await call({ chatId: 'alice_bob', messageId: 'm1' })).body.sent, 1);
+  assert.equal(fcm.filter(m => m.token === 'token-bob-phone').length, 1);
+  assert.equal(fcm.filter(m => m.token === 'token-bob-tablet').length, 1);
+});

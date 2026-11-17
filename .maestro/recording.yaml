@@ -1,0 +1,18 @@
+# Настоящая запись микрофоном: локальное вложение → отправка → проигрыватель.
+appId: io.github.valerait.ghostlink.demo
+name: Голосовое сообщение
+---
+- runFlow: common/register.yaml
+- tapOn: "Призрак"
+- longPressOn:
+    text: "Hold to record.*"
+    index: 0
+- assertVisible: "Voice message.*"
+- tapOn: "Send"
+- extendedWaitUntil:
+    visible: "Play recording"
+    timeout: 10000
+- tapOn: "Play recording"
+- assertVisible: "Playback progress"
+- assertNotVisible: "Stop video"
+- assertVisible: "Message"

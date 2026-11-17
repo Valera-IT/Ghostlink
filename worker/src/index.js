@@ -14,7 +14,7 @@ import { push } from './push.js';
 import { presign } from './sigv4.js';
 
 /** Совпадают с ограничениями в приложении (MediaLimits) и в firestore.rules. */
-export const MAX_FILE_BYTES = 1024 * 1024;
+export const MAX_FILE_BYTES = 12 * 1024 * 1024;
 export const MAX_FILES_PER_UPLOAD = 2;
 export const MAX_KEYS_PER_DOWNLOAD = 100;
 
@@ -28,7 +28,7 @@ const MEMBERSHIP_CACHE_SIZE = 1000;
 const membership = new Map();
 
 const CHAT_ID = /^[A-Za-z0-9_-]{1,128}$/;
-const FILE_NAME = /^[0-9a-z]+-[0-9a-f]{16}\.jpg$/;
+const FILE_NAME = /^[0-9a-z]+-[0-9a-f]{16}\.(jpg|m4a|mp4)$/;
 
 export default {
   async fetch(request, env) {
@@ -60,12 +60,18 @@ async function upload(request, env) {
   if (!sizes.every((size) => Number.isInteger(size) && size > 0 && size <= MAX_FILE_BYTES)) {
     throw new HttpError(413, 'File too large');
   }
+  const types = body.contentTypes ?? sizes.map(() => 'image/jpeg');
+  const extensions = { 'image/jpeg': 'jpg', 'audio/mp4': 'm4a', 'video/mp4': 'mp4' };
+  if (!Array.isArray(types) || types.length !== sizes.length || !types.every(type => Object.hasOwn(extensions, type))) {
+    throw new HttpError(400, 'Bad content types');
+  }
+  if (sizes.some((size, i) => size > (types[i] === 'image/jpeg' ? 1024 * 1024 : MAX_FILE_BYTES))) throw new HttpError(413, 'File too large');
   // Имя файла начинается со времени: по нему клиентский кэш выбрасывает старые фото первыми.
   const stamp = Date.now().toString(36);
   const files = await Promise.all(
-    sizes.map(async (size) => {
-      const key = `${user.projectId}/${chatId}/${user.uid}/${stamp}-${randomHex(8)}.jpg`;
-      const headers = { 'content-type': 'image/jpeg', 'content-length': String(size) };
+    sizes.map(async (size, i) => {
+      const key = `${user.projectId}/${chatId}/${user.uid}/${stamp}-${randomHex(8)}.${extensions[types[i]]}`;
+      const headers = { 'content-type': types[i], 'content-length': String(size) };
       const url = await sign(env, 'PUT', key, UPLOAD_URL_TTL_SECONDS, headers);
       return { key, url, headers };
     }),

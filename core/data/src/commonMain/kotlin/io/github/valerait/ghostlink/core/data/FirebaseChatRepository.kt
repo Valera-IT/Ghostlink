@@ -98,7 +98,15 @@ class FirebaseChatRepository internal constructor(
         val messageRef = messages(chatId).document
         val message =
             MessageWrite(senderId.value, text, Timestamp.ServerTimestamp, replyTo?.toDto(), ttl?.inWholeSeconds, attachment?.toDto())
-        val last = lastMessageFields(text, senderId, FieldValue.serverTimestamp, ttl, photo = attachment != null)
+        val last =
+            lastMessageFields(
+                text.ifEmpty { attachment?.recordingPreview().orEmpty() },
+                senderId,
+                FieldValue.serverTimestamp,
+                ttl,
+                photo =
+                    attachment?.type == "photo",
+            )
         write("Send") {
             db
                 .batch()
@@ -150,11 +158,11 @@ class FirebaseChatRepository internal constructor(
             val last: Any =
                 previous?.let {
                     lastMessageFields(
-                        it.text,
+                        it.text.ifEmpty { it.attachment?.recordingPreview().orEmpty() },
                         it.senderId,
                         it.sentAt?.toTimestamp() ?: FieldValue.serverTimestamp,
                         it.ttl,
-                        photo = it.attachment != null,
+                        photo = it.attachment?.type == "photo",
                     )
                 } ?: FieldValue.delete
             batch.updateFields(chats.document(chatId.value)) { "lastMessage" to last }

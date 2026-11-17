@@ -91,7 +91,7 @@ private class ImagePickerDelegate(
 }
 
 /** Рисует фото в пикселях: обрезка в квадрат по центру, уменьшение, белый фон. drawInRect учитывает поворот фото. */
-private fun UIImage.render(
+internal fun UIImage.render(
     sidePx: Int,
     square: Boolean,
 ): UIImage {
@@ -116,10 +116,11 @@ private fun UIImage.render(
 /** Размер в пикселях с учётом поворота из EXIF: size у UIImage уже повёрнут. */
 private fun UIImage.pixelSize(): Pair<Int, Int> = size.useContents { (width * scale).toInt() to (height * scale).toInt() }
 
-private fun UIImage.toJpeg(quality: Int): ByteArray? = UIImageJPEGRepresentation(this, quality / MAX_JPEG_QUALITY.toDouble())?.toByteArray()
+internal fun UIImage.toJpeg(quality: Int): ByteArray? =
+    UIImageJPEGRepresentation(this, quality / MAX_JPEG_QUALITY.toDouble())?.toByteArray()
 
 /** Верхний экран, поверх которого показать выбор фото. keyWindow в приложении со сценами бывает null — ищем окно сцены. */
-private fun topViewController(): UIViewController? {
+internal fun topViewController(): UIViewController? {
     val window =
         UIApplication.sharedApplication.connectedScenes
             .filterIsInstance<UIWindowScene>()

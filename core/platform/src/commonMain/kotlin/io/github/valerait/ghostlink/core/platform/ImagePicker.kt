@@ -106,3 +106,11 @@ internal fun fitSize(
     val scale = minOf(1.0, sidePx.toDouble() / maxOf(width, height))
     return maxOf(1, (width * scale).toInt()) to maxOf(1, (height * scale).toInt())
 }
+
+/** Съёмка фото с тем же сжатием, что у галереи; null, если камера не поддерживается платформой. */
+@Composable
+expect fun rememberPhotoCamera(
+    requests: List<ImageRequest>,
+    onPicked: (List<PickedImage>) -> Unit,
+    onFailed: () -> Unit,
+): (() -> Unit)?

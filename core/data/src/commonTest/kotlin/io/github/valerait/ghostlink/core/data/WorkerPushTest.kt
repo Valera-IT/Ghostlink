@@ -53,7 +53,15 @@ class WorkerPushTest {
             push().sent(ChatId("alice_bob"), MessageId("m1"))
             offline = true
             push().sent(ChatId("alice_bob"), MessageId("m2"))
-            assertEquals(2, requests.size)
+            assertEquals(6, requests.size)
+        }
+
+    @Test
+    fun `permanent permission failures are not retried`() =
+        runTest {
+            status = HttpStatusCode.Forbidden
+            push().sent(ChatId("alice_bob"), MessageId("m1"))
+            assertEquals(1, requests.size)
         }
 
     @Test

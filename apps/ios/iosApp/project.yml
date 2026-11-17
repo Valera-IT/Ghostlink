@@ -32,7 +32,8 @@ targets:
           UIColorName: LaunchBackground
         CADisableMinimumFrameDurationOnPhone: true
         # Перевод — в iosApp/{en,ru}.lproj/InfoPlist.strings; системные диалоги берут язык устройства.
-        NSCameraUsageDescription: The camera is used to scan friends' QR codes and sign-in codes from your other devices.
+        NSCameraUsageDescription: The camera is used to scan QR codes, take photos and record video messages.
+        NSMicrophoneUsageDescription: The microphone is used to record voice and video messages.
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ru]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]

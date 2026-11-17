@@ -273,10 +273,14 @@ interface LinkRepository {
  * Ошибки — [GhostlinkError]: нет сети — Offline, не участник чата — PermissionDenied.
  */
 interface MediaStore {
-    /** Загружает JPEG-файлы (не больше [MAX_FILE_BYTES] каждый, не больше [MAX_FILES] за раз) и возвращает их ключи в том же порядке. */
+    /**
+     * Загружает файлы с указанными MIME-типами (до [MAX_FILE_BYTES] каждый, до [MAX_FILES] за раз).
+     * Возвращает ключи в том же порядке.
+     */
     suspend fun upload(
         chatId: ChatId,
         files: List<ByteArray>,
+        contentTypes: List<String> = files.map { "image/jpeg" },
     ): List<MediaKey>
 
     /** Файл чата. Однажды скачанный или загруженный с этого устройства берётся из кэша на диске. */
@@ -287,7 +291,7 @@ interface MediaStore {
 
     companion object {
         /** Совпадают с ограничениями Worker (worker/src/index.js). */
-        const val MAX_FILE_BYTES = 1024 * 1024
+        const val MAX_FILE_BYTES = Attachment.RECORDING_MAX_BYTES
         const val MAX_FILES = 2
     }
 }

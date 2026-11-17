@@ -234,7 +234,7 @@ service cloud.firestore {
         // Сослаться на чужой файл или файл другого чата нельзя.
         function ownMediaKey(key) {
           return key is string
-            && key.matches('[a-z0-9-]+/' + chatId + '/' + request.auth.uid + '/[0-9a-z]+-[0-9a-f]{16}[.]jpg');
+            && key.matches('[a-z0-9-]+/' + chatId + '/' + request.auth.uid + '/[0-9a-z]+-[0-9a-f]{16}[.](jpg|m4a|mp4)');
         }
 
         // Размеры — `is number`: GitLive на iOS пишет целые числа дробными.
@@ -246,14 +246,16 @@ service cloud.firestore {
         function validAttachment(a) {
           return a is map
             && a.keys().hasAll(['type', 'key', 'thumbKey', 'size', 'width', 'height'])
-            && a.keys().hasOnly(['type', 'key', 'thumbKey', 'size', 'width', 'height'])
-            && a.type == 'photo'
-            && ownMediaKey(a.key)
-            && ownMediaKey(a.thumbKey)
-            && a.key != a.thumbKey
-            && validDimension(a.size, 1048576)
-            && validDimension(a.width, 4096)
-            && validDimension(a.height, 4096);
+            && a.keys().hasOnly(['type', 'key', 'thumbKey', 'size', 'width', 'height', 'duration', 'waveform'])
+            && ownMediaKey(a.key) && ownMediaKey(a.thumbKey)
+            && validDimension(a.width, 4096) && validDimension(a.height, 4096)
+            && (a.type == 'photo'
+              ? a.key != a.thumbKey && validDimension(a.size, 1048576)
+                && a.get('duration', 0) == 0 && a.get('waveform', '') == ''
+              : a.type in ['voice', 'video'] && validDimension(a.size, 12582912)
+                && validDimension(a.duration, 120000)
+                && a.get('waveform', '') is string && a.get('waveform', '').matches('[0-9]{0,120}')
+                && (a.type == 'voice' ? a.key == a.thumbKey : a.key != a.thumbKey));
         }
 
         // Текст обязателен, если нет фото; у фото он — необязательная подпись.

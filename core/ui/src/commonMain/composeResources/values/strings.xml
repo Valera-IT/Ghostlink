@@ -227,4 +227,17 @@
 
     <string name="platform_web">Browser</string>
     <string name="platform_unknown">Device</string>
+    <string name="chat_voice">Voice message</string>
+    <string name="chat_video">Video message</string>
+    <string name="chat_record_hold">Hold to record · up to 2 min</string>
+    <string name="chat_record_failed">Could not record. Check camera and microphone permissions. Maximum: 2 min, 12 MB.</string>
+    <string name="chat_record_cancel">Cancel recording</string>
+    <string name="chat_record_play">Play recording</string>
+    <string name="chat_record_unavailable">Recording temporarily unavailable</string>
+    <string name="chat_record_close">Stop video</string>
+    <string name="chat_record_pause">Pause playback</string>
+    <string name="chat_record_progress">Playback progress</string>
+    <string name="chat_photo_source">Add photo</string>
+    <string name="chat_photo_gallery">Choose from gallery</string>
+    <string name="chat_photo_camera">Take photo</string>
 </resources>

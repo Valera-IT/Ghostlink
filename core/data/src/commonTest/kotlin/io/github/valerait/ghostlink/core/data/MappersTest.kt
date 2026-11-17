@@ -138,7 +138,7 @@ class MappersTest {
 
         // Вложение из будущей версии (видео) или без файлов — сообщение остаётся без него.
         assertNull(
-            MessageDto(attachment = AttachmentDto(type = "video", key = "k", thumbKey = "t")).toMessage("m3", pending = false).attachment,
+            MessageDto(attachment = AttachmentDto(type = "future", key = "k", thumbKey = "t")).toMessage("m3", pending = false).attachment,
         )
         assertNull(MessageDto(attachment = AttachmentDto(type = "photo")).toMessage("m4", pending = false).attachment)
     }

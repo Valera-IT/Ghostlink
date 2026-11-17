@@ -490,7 +490,14 @@ open class FakeBackend(
     }
 
     private fun lastMessageOf(message: Message) =
-        LastMessage(message.text, message.senderId, message.sentAt, message.ttl, photo = message.attachment != null)
+        LastMessage(
+            message.text.ifEmpty { message.attachment?.recordingPreview().orEmpty() },
+            message.senderId,
+            message.sentAt,
+            message.ttl,
+            photo =
+                message.attachment?.type == "photo",
+        )
 
     // endregion
 

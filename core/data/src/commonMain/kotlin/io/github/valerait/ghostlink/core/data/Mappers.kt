@@ -100,20 +100,41 @@ internal fun ReplyTo.toDto() = ReplyToDto(id = id.value, senderId = senderId.val
 
 /** Вложение незнакомого типа (из будущей версии) или без файлов не показываем: сообщение остаётся текстом. */
 internal fun AttachmentDto.toAttachment(): Attachment? =
-    if (type != PHOTO_TYPE || key.isEmpty() || thumbKey.isEmpty()) {
+    if (type !in listOf(PHOTO_TYPE, "voice", "video") || key.isEmpty() || thumbKey.isEmpty()) {
         null
     } else {
-        Attachment(MediaKey(key), MediaKey(thumbKey), width.toInt(), height.toInt(), size.toInt())
+        Attachment(
+            MediaKey(key),
+            MediaKey(thumbKey),
+            width.toInt(),
+            height.toInt(),
+            size.toInt(),
+            type,
+            duration,
+            waveform
+                .filter {
+                    it in
+                        '0'..'9'
+                }.map { it.digitToInt() * WAVEFORM_AMPLITUDE / WAVEFORM_DIGIT },
+        )
     }
 
 internal fun Attachment.toDto() =
     AttachmentDto(
-        type = PHOTO_TYPE,
+        type = type,
         key = key.value,
         thumbKey = thumbKey.value,
         size = size.toLong(),
         width = width.toLong(),
         height = height.toLong(),
+        duration = duration,
+        waveform =
+            waveform.take(WAVEFORM_SAMPLES).joinToString("") {
+                (
+                    (it.coerceIn(0, WAVEFORM_AMPLITUDE) * WAVEFORM_DIGIT) /
+                        WAVEFORM_AMPLITUDE
+                ).toString()
+            },
     )
 
 /** Заявка без срока считается истёкшей: подтвердить её всё равно не дадут правила. */
@@ -127,3 +148,7 @@ internal fun LinkRequestDto.toLinkRequest(
     expiresAt = expiresAt?.instant ?: Instant.DISTANT_PAST,
     payload = payload,
 )
+
+private const val WAVEFORM_AMPLITUDE = 100
+private const val WAVEFORM_DIGIT = 9
+private const val WAVEFORM_SAMPLES = 120
