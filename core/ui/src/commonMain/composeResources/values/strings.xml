@@ -230,7 +230,7 @@
     <string name="chat_voice">Voice message</string>
     <string name="chat_video">Video message</string>
     <string name="chat_record_hold">Hold to record · up to 2 min</string>
-    <string name="chat_record_failed">Could not record. Check camera and microphone permissions. Maximum: 2 min, 12 MB.</string>
+    <string name="chat_record_failed">Could not record. Please try again. Maximum: 2 min, 12 MB.</string>
     <string name="chat_record_cancel">Cancel recording</string>
     <string name="chat_record_play">Play recording</string>
     <string name="chat_record_unavailable">Recording temporarily unavailable</string>

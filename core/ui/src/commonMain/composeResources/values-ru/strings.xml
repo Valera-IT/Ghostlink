@@ -222,7 +222,7 @@
     <string name="chat_voice">Голосовое сообщение</string>
     <string name="chat_video">Видеокружок</string>
     <string name="chat_record_hold">Удерживайте для записи · до 2 мин</string>
-    <string name="chat_record_failed">Не удалось записать. Проверьте доступ к камере и микрофону. Максимум: 2 мин, 12 МБ.</string>
+    <string name="chat_record_failed">Не удалось записать. Повторите попытку. Максимум: 2 мин, 12 МБ.</string>
     <string name="chat_record_cancel">Отменить запись</string>
     <string name="chat_record_play">Воспроизвести запись</string>
     <string name="chat_record_unavailable">Запись временно недоступна</string>

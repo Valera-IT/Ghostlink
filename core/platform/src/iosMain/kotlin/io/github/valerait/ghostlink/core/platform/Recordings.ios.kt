@@ -12,15 +12,20 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitViewController
 import io.github.valerait.ghostlink.core.model.Attachment
+import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
 import kotlinx.cinterop.useContents
+import kotlinx.cinterop.value
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import platform.AVFAudio.AVAudioFormat
 import platform.AVFAudio.AVAudioRecorder
 import platform.AVFAudio.AVAudioSession
 import platform.AVFAudio.AVAudioSessionCategoryPlayAndRecord
 import platform.AVFAudio.AVAudioSessionCategoryPlayback
-import platform.AVFAudio.AVEncoderBitRateKey
 import platform.AVFAudio.AVFormatIDKey
 import platform.AVFAudio.AVNumberOfChannelsKey
 import platform.AVFAudio.AVSampleRateKey
@@ -41,7 +46,9 @@ import platform.CoreGraphics.CGImageRelease
 import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMTimeMake
 import platform.Foundation.NSData
+import platform.Foundation.NSError
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSLog
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
 import platform.Foundation.NSUUID
@@ -80,24 +87,44 @@ actual fun rememberAudioRecorder(
                     if (!wanted || media != null) return
                     try {
                         val session = AVAudioSession.sharedInstance()
-                        check(session.setCategory(AVAudioSessionCategoryPlayAndRecord, error = null))
-                        check(session.setActive(true, error = null))
+                        memScoped {
+                            val error = alloc<ObjCObjectVar<NSError?>>()
+                            check(session.setCategory(AVAudioSessionCategoryPlayAndRecord, error = error.ptr)) {
+                                "Audio category: ${error.value?.localizedDescription} (${error.value?.code})"
+                            }
+                            check(session.setActive(true, error = error.ptr)) {
+                                "Audio activation: ${error.value?.localizedDescription} (${error.value?.code})"
+                            }
+                        }
                         url = NSURL.fileURLWithPath(NSTemporaryDirectory() + NSUUID().UUIDString + ".m4a")
                         media =
-                            AVAudioRecorder(
-                                url!!,
-                                mapOf<Any?, Any>(
-                                    AVFormatIDKey to kAudioFormatMPEG4AAC.toLong(),
-                                    AVSampleRateKey to 44100.0,
-                                    AVNumberOfChannelsKey to 1,
-                                    AVEncoderBitRateKey to 24000,
-                                ),
-                                null,
-                            ).apply {
-                                meteringEnabled = true
-                                check(prepareToRecord())
-                                check(recordForDuration(120.0))
+                            memScoped {
+                                val error = alloc<ObjCObjectVar<NSError?>>()
+                                // Формат передаём явно; битрейт AAC выбирает системный кодировщик.
+                                val format =
+                                    AVAudioFormat(
+                                        settings =
+                                            mapOf<Any?, Any>(
+                                                AVFormatIDKey to kAudioFormatMPEG4AAC.toLong(),
+                                                AVSampleRateKey to 44100.0,
+                                                AVNumberOfChannelsKey to 1,
+                                            ),
+                                    )
+                                val native = AVAudioRecorder(uRL = url!!, format = format, error = error.ptr)
+                                check(error.value == null) {
+                                    "Audio creation: ${error.value?.localizedDescription} (${error.value?.code})"
+                                }
+                                native.apply {
+                                    meteringEnabled = true
+                                    check(prepareToRecord()) {
+                                        "Audio prepare: settings=$settings, permission=${session.recordPermission}"
+                                    }
+                                    check(recordForDuration(120.0)) {
+                                        "Audio start: permission=${session.recordPermission}"
+                                    }
+                                }
                             }
+                        NSLog("I/Audio: Recording started")
                         waveform.clear()
                         meter =
                             scope.launch {
@@ -144,6 +171,7 @@ actual fun rememberAudioRecorder(
                     try {
                         val bytes = checkNotNull(NSData.dataWithContentsOfURL(url!!)).toByteArray()
                         if (duration >= 300 && bytes.size <= Attachment.RECORDING_MAX_BYTES) {
+                            NSLog("I/Audio: Recording ready, durationMs=$duration, bytes=${bytes.size}")
                             recorded(Recording(bytes, duration, waveform.toList()))
                         }
                     } catch (e: Exception) {
