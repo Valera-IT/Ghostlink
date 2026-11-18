@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -44,6 +45,25 @@ class RepositoriesEmulatorTest {
 
     @AfterTest
     fun tearDown() = scope.cancel()
+
+    @Test
+    fun emptyHistoryRequiresServerConfirmation() =
+        emulatorTest {
+            val phone = client()
+            val friend = client()
+            val phoneId = phone.auth.createAccount().id
+            val friendId = friend.auth.createAccount().id
+            val chatId = phone.chats.startChat(phoneId, friendId)
+
+            phone.db.disableNetwork()
+            try {
+                assertNull(withTimeoutOrNull(1.seconds) { phone.chats.observeMessages(chatId).first() })
+            } finally {
+                phone.db.enableNetwork()
+            }
+
+            assertEquals(emptyList(), withTimeout(TIMEOUT) { phone.chats.observeMessages(chatId).first() })
+        }
 
     /** Вход на новом устройстве целиком через use case: заявка, подтверждение, payload в поле bytes, вход по ключу. */
     @Suppress("LongMethod") // сценарий целиком: каждый шаг опирается на предыдущий
