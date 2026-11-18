@@ -246,13 +246,17 @@ fun ChatScreen(
             }
         },
     ) { padding ->
-        if (!state.loading && state.rows.isEmpty()) {
+        if (state.rows.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text(
-                    text = stringResource(Res.string.chat_empty),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (state.loading) {
+                    CircularProgressIndicator()
+                } else {
+                    Text(
+                        text = stringResource(Res.string.chat_empty),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
         LazyColumn(

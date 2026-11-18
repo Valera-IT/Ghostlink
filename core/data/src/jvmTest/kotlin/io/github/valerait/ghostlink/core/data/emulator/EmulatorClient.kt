@@ -40,7 +40,7 @@ internal class EmulatorClient(
 
     // Свойство auth ниже перекрыло бы расширение Firebase.auth, поэтому оно импортировано под другим именем.
     private val authClient = Firebase.firebaseAuth(app).apply { useEmulator(HOST, AUTH_PORT) }
-    private val db = Firebase.firestore(app).apply { useEmulator(HOST, FIRESTORE_PORT) }
+    val db = Firebase.firestore(app).apply { useEmulator(HOST, FIRESTORE_PORT) }
 
     val auth = FirebaseAuthRepository(authClient, InMemoryAccountKeyStore(), scope)
     val users = FirebaseUserRepository(db, scope)
