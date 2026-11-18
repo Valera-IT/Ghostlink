@@ -2,6 +2,7 @@ package io.github.valerait.ghostlink.feature.chat
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +28,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,6 +93,8 @@ internal fun OutgoingPhotoBubble(
     onDiscard: () -> Unit,
 ) {
     val chatStyle = LocalChatStyle.current
+    var viewing by remember(photo.id) { mutableStateOf(false) }
+    if (viewing) LocalPhotoViewer(photo.draft.photo, onClose = { viewing = false })
     val (width, height) = photoSize(photo.draft.width, photo.draft.height)
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp), horizontalArrangement = Arrangement.End) {
         Surface(
@@ -97,7 +104,19 @@ internal fun OutgoingPhotoBubble(
         ) {
             Column(Modifier.width(width + 22.dp).padding(start = 12.dp, end = 10.dp, top = 8.dp, bottom = 6.dp)) {
                 Box(Modifier.size(width, height).clip(PHOTO_SHAPE), contentAlignment = Alignment.Center) {
-                    LocalPhoto(photo.draft.thumbnail, Modifier.fillMaxSize())
+                    if (photo.draft.type ==
+                        "voice"
+                    ) {
+                        RecordingLabel("voice", photo.draft.duration)
+                    } else {
+                        LocalPhoto(
+                            photo.draft.thumbnail,
+                            Modifier.fillMaxSize().clickable(
+                                enabled = photo.draft.type == "photo",
+                                onClickLabel = stringResource(Res.string.chat_photo_open),
+                            ) { viewing = true },
+                        )
+                    }
                     if (!photo.failed) CircularProgressIndicator(Modifier.size(32.dp), color = Color.White, strokeWidth = 3.dp)
                 }
                 if (photo.caption.isNotEmpty()) {
@@ -161,13 +180,23 @@ internal fun AttachedPhotoBar(
     photo: PhotoDraft,
     onRemove: () -> Unit,
 ) {
+    var viewing by remember(photo) { mutableStateOf(false) }
+    if (viewing) LocalPhotoViewer(photo.photo, onClose = { viewing = false })
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LocalPhoto(photo.thumbnail, Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)))
+        if (photo.type != "voice") {
+            LocalPhoto(
+                photo.thumbnail,
+                Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).clickable(
+                    enabled = photo.type == "photo",
+                    onClickLabel = stringResource(Res.string.chat_photo_open),
+                ) { viewing = true },
+            )
+        }
         Spacer(Modifier.width(12.dp))
-        Text(stringResource(Res.string.chat_photo), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+        Box(Modifier.weight(1f)) { RecordingLabel(photo.type, photo.duration) }
         IconButton(onClick = onRemove) {
             Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.chat_photo_remove))
         }
@@ -187,7 +216,13 @@ internal fun MessageBody(
         return
     }
     val attachment = message.attachment
-    if (attachment != null) MessagePhoto(chatId, attachment, onOpen = { onOpenPhoto(attachment) }, onLongPress = onLongPress)
+    if (attachment != null) {
+        if (attachment.type == "photo") {
+            MessagePhoto(chatId, attachment, onOpen = { onOpenPhoto(attachment) }, onLongPress = onLongPress)
+        } else {
+            RecordingMessage(chatId, attachment, onLongPress)
+        }
+    }
     if (message.text.isNotEmpty()) {
         if (attachment != null) Spacer(Modifier.height(4.dp))
         Text(message.text, style = MaterialTheme.typography.bodyLarge)

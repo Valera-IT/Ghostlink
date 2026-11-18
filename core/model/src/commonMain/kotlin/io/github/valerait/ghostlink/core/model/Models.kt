@@ -31,6 +31,8 @@ data class Device(
     val name: String,
     val platform: Platform,
     val lastActiveAt: Instant? = null,
+    /** Куда слать push этому устройству; null — push у него нет. */
+    val pushToken: String? = null,
 )
 
 /** Заявка нового устройства на вход: linkRequests/{id}. */
@@ -250,9 +252,21 @@ data class Attachment(
     val height: Int,
     /** Размер полного фото в байтах. */
     val size: Int,
+    val type: String = "photo",
+    val duration: Long = 0,
+    val waveform: List<Int> = emptyList(),
 ) {
+    @Suppress("MagicNumber") // Формат минут и секунд.
+    fun recordingPreview(): String? {
+        if (type == "photo") return null
+        val seconds = duration / 1000
+        return (if (type == "voice") "🎤 " else "🎥 ") + "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
+    }
+
     companion object {
         /** Полное фото: длинная сторона и потолок JPEG. Потолок ниже лимита Worker с запасом. */
+        const val RECORDING_MAX_MS = 120_000L
+        const val RECORDING_MAX_BYTES = 12 * 1024 * 1024
         const val PHOTO_SIDE_PX = 1280
         const val PHOTO_MAX_BYTES = 512 * 1024
 
@@ -285,7 +299,12 @@ data class ReplyTo(
         const val PREVIEW_MAX_LENGTH = 100
 
         fun of(message: Message): ReplyTo =
-            ReplyTo(message.id, message.senderId, previewOf(message.text), photo = message.attachment != null)
+            ReplyTo(
+                message.id,
+                message.senderId,
+                previewOf(message.text.ifEmpty { message.attachment?.recordingPreview().orEmpty() }),
+                photo = message.attachment?.type == "photo",
+            )
 
         /** Одна строка без лишних пробелов, не длиннее [PREVIEW_MAX_LENGTH] вместе с многоточием. */
         fun previewOf(text: String): String {

@@ -8,6 +8,7 @@ actual val platformModule =
         single<SecureStore> { KeychainSecureStore() }
         single<AppLifecycle> { IosAppLifecycle() }
         single { iosThisDevice() }
+        single<PushTokens> { NoPushTokens }
         singleOf(::DeepLinks)
         single { CacheDirectory(iosCachesDirectory()) }
     }

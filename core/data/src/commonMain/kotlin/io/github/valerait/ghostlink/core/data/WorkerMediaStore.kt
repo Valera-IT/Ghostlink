@@ -41,11 +41,16 @@ internal class WorkerMediaStore(
     override suspend fun upload(
         chatId: ChatId,
         files: List<ByteArray>,
+        contentTypes: List<String>,
     ): List<MediaKey> =
         mediaCall {
             require(files.size in 1..MediaStore.MAX_FILES) { "1..${MediaStore.MAX_FILES} files expected" }
             require(files.all { it.size in 1..MediaStore.MAX_FILE_BYTES }) { "File too large" }
-            val targets = callWorker<UploadRequest, UploadResponse>("upload", UploadRequest(chatId.value, files.map { it.size })).files
+            val targets =
+                callWorker<UploadRequest, UploadResponse>(
+                    "upload",
+                    UploadRequest(chatId.value, files.map { it.size }, contentTypes),
+                ).files
             check(targets.size == files.size) { "Worker returned ${targets.size} upload URLs for ${files.size} files" }
             targets.zip(files).map { (target, bytes) ->
                 // Тип и размер входят в подпись ссылки; Content-Length движок ставит сам по телу.
@@ -116,6 +121,7 @@ internal class WorkerMediaStore(
     private class UploadRequest(
         val chatId: String,
         val sizes: List<Int>,
+        val contentTypes: List<String>,
     )
 
     @Serializable

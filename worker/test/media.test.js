@@ -110,3 +110,18 @@ test('rate limit answers 429', async () => {
   });
   assert.equal((await worker.fetch(request, limited)).status, 429);
 });
+
+test('voice and video are signed with their MIME type and allow up to 12 MB', async () => {
+  for (const [type, extension] of [['audio/mp4', 'm4a'], ['video/mp4', 'mp4']]) {
+    const result = await call('/media/upload', { chatId: 'alice_bob', sizes: [MAX_FILE_BYTES], contentTypes: [type] });
+    assert.equal(result.status, 200);
+    const file = result.body.files[0];
+    assert.ok(file.key.endsWith(`.${extension}`));
+    assert.equal(file.headers['content-type'], type);
+    assert.equal((await call('/media/download', { chatId: 'alice_bob', keys: [file.key] })).status, 200);
+  }
+  assert.equal((await call('/media/upload', { chatId: 'alice_bob', sizes: [20], contentTypes: ['text/html'] })).status, 400);
+  assert.equal((await call('/media/upload', { chatId: 'alice_bob', sizes: [20], contentTypes: [] })).status, 400);
+  assert.equal((await call('/media/upload', { chatId: 'alice_bob', sizes: [MAX_FILE_BYTES + 1], contentTypes: ['video/mp4'] })).status, 413);
+  assert.equal((await call('/media/upload', { chatId: 'alice_bob', sizes: [MAX_FILE_BYTES] })).status, 413);
+});

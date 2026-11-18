@@ -7,6 +7,7 @@ import io.github.valerait.ghostlink.core.model.Device
 import io.github.valerait.ghostlink.core.model.ThisDevice
 import io.github.valerait.ghostlink.core.model.UserId
 import io.github.valerait.ghostlink.core.platform.AppLifecycle
+import io.github.valerait.ghostlink.core.platform.PushTokens
 import io.github.valerait.ghostlink.core.platform.logWarning
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -17,6 +18,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -26,7 +28,8 @@ import kotlinx.coroutines.launch
 /**
  * Держит это устройство в реестре users/{uid}/devices:
  * - аккаунту без ключа выдаёт ключ (так переезжают анонимные аккаунты старой версии);
- * - записывает устройство и время активности каждый раз, когда приложение выходит на экран;
+ * - записывает устройство и время активности каждый раз, когда приложение выходит на экран,
+ *   и push-токен, когда он появляется или меняется;
  * - если устройство удалили с другого устройства, выходит из аккаунта.
  *
  * Работает только для аккаунтов с профилем: временный аккаунт нового устройства в реестр не попадает.
@@ -38,6 +41,7 @@ class DeviceRegistry(
     private val devices: DeviceRepository,
     private val thisDevice: ThisDevice,
     private val lifecycle: AppLifecycle,
+    private val pushTokens: PushTokens,
     private val scope: CoroutineScope,
 ) {
     fun start() {
@@ -68,6 +72,13 @@ class DeviceRegistry(
                     if (register(id)) registered.complete(Unit)
                 }
             }
+            launch {
+                // Новый токен записываем сразу, не дожидаясь выхода на экран: FCM выдаёт его и в фоне.
+                var written: String? = null
+                pushTokens.token.filterNotNull().collect { token ->
+                    if (token != written && register(id)) written = token
+                }
+            }
             // Пока устройство не записано, его отсутствие в реестре ничего не значит.
             registered.await()
             devices.observeDevice(id, thisDevice.id).first { it == null }
@@ -78,7 +89,7 @@ class DeviceRegistry(
 
     private suspend fun register(id: UserId): Boolean =
         try {
-            devices.registerDevice(id, Device(thisDevice.id, thisDevice.name, thisDevice.platform))
+            devices.registerDevice(id, Device(thisDevice.id, thisDevice.name, thisDevice.platform, pushToken = pushTokens.token.value))
             true
         } catch (e: CancellationException) {
             throw e

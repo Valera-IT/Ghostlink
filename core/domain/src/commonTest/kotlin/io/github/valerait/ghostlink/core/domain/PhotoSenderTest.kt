@@ -42,6 +42,46 @@ class PhotoSenderTest {
     }
 
     @Test
+    fun voiceUsesOneFileAndPreservesDurationAndWaveform() =
+        runTest {
+            val s = setUp()
+            val voice = PhotoDraft(byteArrayOf(1, 2), byteArrayOf(), 1, 1, "voice", 120_000, listOf(10, 80))
+            s.sender.send(s.chat, s.me, voice, caption = "")
+            runCurrent()
+            val attachment =
+                s.backend
+                    .observeMessages(s.chat)
+                    .first()
+                    .single()
+                    .attachment!!
+            assertEquals("voice", attachment.type)
+            assertEquals(120_000L, attachment.duration)
+            assertEquals(listOf(10, 80), attachment.waveform)
+            assertEquals(attachment.key, attachment.thumbKey)
+            assertContentEquals(voice.photo, s.media.download(s.chat, attachment.key))
+        }
+
+    @Test
+    fun videoUploadsPreviewSeparatelyAndRejectsMoreThanTwoMinutes() =
+        runTest {
+            val s = setUp()
+            val video = PhotoDraft(byteArrayOf(1, 2), byteArrayOf(3), 384, 384, "video", 120_000)
+            s.sender.send(s.chat, s.me, video, caption = "")
+            runCurrent()
+            val attachment =
+                s.backend
+                    .observeMessages(s.chat)
+                    .first()
+                    .single()
+                    .attachment!!
+            assertEquals("video", attachment.type)
+            assertTrue(attachment.key != attachment.thumbKey)
+            kotlin.test.assertFailsWith<IllegalArgumentException> {
+                s.sender.send(s.chat, s.me, PhotoDraft(byteArrayOf(1), byteArrayOf(), 1, 1, "voice", 120_001), caption = "")
+            }
+        }
+
+    @Test
     fun photoIsShownWhileUploadingThenBecomesAMessage() =
         runTest {
             val s = setUp()

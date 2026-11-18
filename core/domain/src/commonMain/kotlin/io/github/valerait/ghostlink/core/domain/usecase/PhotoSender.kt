@@ -24,6 +24,9 @@ class PhotoDraft(
     val thumbnail: ByteArray,
     val width: Int,
     val height: Int,
+    val type: String = "photo",
+    val duration: Long = 0,
+    val waveform: List<Int> = emptyList(),
 )
 
 /** Фото, которое ещё загружается ([failed] = false) или не загрузилось. Сообщение с ним появится после загрузки. */
@@ -73,6 +76,9 @@ class PhotoSender(
         replyTo: Message? = null,
         timer: DisappearingTimer? = null,
     ) {
+        require(draft.type in listOf("photo", "voice", "video"))
+        require(draft.photo.size in 1..MediaStore.MAX_FILE_BYTES)
+        if (draft.type != "photo") require(draft.duration in 1..Attachment.RECORDING_MAX_MS)
         val photo = OutgoingPhoto("photo-${nextId++}", chatId, draft, normalizeMessageText(caption).orEmpty())
         val reply = replyTo?.takeUnless { it.pending }?.let(ReplyTo::of)
         val item = Pending(photo, sender, reply, timer)
@@ -95,13 +101,42 @@ class PhotoSender(
         scope.launch {
             val keys =
                 try {
-                    media.upload(photo.chatId, listOf(photo.draft.photo, photo.draft.thumbnail))
+                    media.upload(
+                        photo.chatId,
+                        if (photo.draft.type == "voice") listOf(photo.draft.photo) else listOf(photo.draft.photo, photo.draft.thumbnail),
+                        if (photo.draft.type ==
+                            "voice"
+                        ) {
+                            listOf("audio/mp4")
+                        } else {
+                            listOf(
+                                if (photo.draft.type ==
+                                    "video"
+                                ) {
+                                    "video/mp4"
+                                } else {
+                                    "image/jpeg"
+                                },
+                                "image/jpeg",
+                            )
+                        },
+                    )
                 } catch (_: GhostlinkError) {
                     // Причину уже записал MediaStore; пользователь видит «Не отправлено» и кнопку повтора.
                     setFailed(photo.id, true)
                     return@launch
                 }
-            val attachment = Attachment(keys[0], keys[1], photo.draft.width, photo.draft.height, photo.draft.photo.size)
+            val attachment =
+                Attachment(
+                    keys[0],
+                    keys.getOrElse(1) { keys[0] },
+                    photo.draft.width,
+                    photo.draft.height,
+                    photo.draft.photo.size,
+                    photo.draft.type,
+                    photo.draft.duration,
+                    photo.draft.waveform,
+                )
             chats.sendMessage(photo.chatId, item.sender, photo.caption, item.replyTo, item.timer?.duration, attachment)
             pending.update { list -> list.filterNot { it.photo.id == photo.id } }
         }

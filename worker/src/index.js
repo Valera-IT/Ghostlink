@@ -1,17 +1,20 @@
-// Worker Ghostlink: выдаёт подписанные ссылки на фото чатов в приватном бакете Backblaze B2.
-// Ключ B2 лежит только в секретах Worker; приложение получает ссылки на один файл, живущие минуты.
+// Worker Ghostlink: выдаёт подписанные ссылки на фото чатов в приватном бакете Backblaze B2 и шлёт push.
+// Ключ B2 и сервис-аккаунт лежат только в секретах Worker; приложение получает ссылки на один файл, живущие минуты.
 //
 //   POST /media/upload    { chatId, sizes: [байты, …] }  → { files: [{ key, url, headers }] }
 //   POST /media/download  { chatId, keys: [key, …] }     → { urls: { key: url } }
+//   POST /push            { chatId, messageId }          → { sent } — см. push.js
 //
 // Заголовок Authorization: Bearer <Firebase ID-токен>. Пускаем только участников чата: Worker читает
 // chats/{chatId} через REST Firestore тем же токеном, и правила Firestore отдают документ только участнику.
 
 import { AuthError, verifyIdToken } from './auth.js';
+import { NotConfiguredError } from './google.js';
+import { push } from './push.js';
 import { presign } from './sigv4.js';
 
 /** Совпадают с ограничениями в приложении (MediaLimits) и в firestore.rules. */
-export const MAX_FILE_BYTES = 1024 * 1024;
+export const MAX_FILE_BYTES = 12 * 1024 * 1024;
 export const MAX_FILES_PER_UPLOAD = 2;
 export const MAX_KEYS_PER_DOWNLOAD = 100;
 
@@ -25,7 +28,7 @@ const MEMBERSHIP_CACHE_SIZE = 1000;
 const membership = new Map();
 
 const CHAT_ID = /^[A-Za-z0-9_-]{1,128}$/;
-const FILE_NAME = /^[0-9a-z]+-[0-9a-f]{16}\.jpg$/;
+const FILE_NAME = /^[0-9a-z]+-[0-9a-f]{16}\.(jpg|m4a|mp4)$/;
 
 export default {
   async fetch(request, env) {
@@ -33,6 +36,7 @@ export default {
       return await route(request, env);
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.message }, e.status);
+      if (e instanceof NotConfiguredError) return json({ error: 'Push is not configured' }, 503);
       console.error(e);
       return json({ error: 'Internal error' }, 500);
     }
@@ -44,6 +48,7 @@ async function route(request, env) {
   if (request.method !== 'POST') throw new HttpError(405, 'Method not allowed');
   if (pathname === '/media/upload') return upload(request, env);
   if (pathname === '/media/download') return download(request, env);
+  if (pathname === '/push') return pushMessage(request, env);
   throw new HttpError(404, 'Not found');
 }
 
@@ -55,12 +60,18 @@ async function upload(request, env) {
   if (!sizes.every((size) => Number.isInteger(size) && size > 0 && size <= MAX_FILE_BYTES)) {
     throw new HttpError(413, 'File too large');
   }
+  const types = body.contentTypes ?? sizes.map(() => 'image/jpeg');
+  const extensions = { 'image/jpeg': 'jpg', 'audio/mp4': 'm4a', 'video/mp4': 'mp4' };
+  if (!Array.isArray(types) || types.length !== sizes.length || !types.every(type => Object.hasOwn(extensions, type))) {
+    throw new HttpError(400, 'Bad content types');
+  }
+  if (sizes.some((size, i) => size > (types[i] === 'image/jpeg' ? 1024 * 1024 : MAX_FILE_BYTES))) throw new HttpError(413, 'File too large');
   // Имя файла начинается со времени: по нему клиентский кэш выбрасывает старые фото первыми.
   const stamp = Date.now().toString(36);
   const files = await Promise.all(
-    sizes.map(async (size) => {
-      const key = `${user.projectId}/${chatId}/${user.uid}/${stamp}-${randomHex(8)}.jpg`;
-      const headers = { 'content-type': 'image/jpeg', 'content-length': String(size) };
+    sizes.map(async (size, i) => {
+      const key = `${user.projectId}/${chatId}/${user.uid}/${stamp}-${randomHex(8)}.${extensions[types[i]]}`;
+      const headers = { 'content-type': types[i], 'content-length': String(size) };
       const url = await sign(env, 'PUT', key, UPLOAD_URL_TTL_SECONDS, headers);
       return { key, url, headers };
     }),
@@ -80,8 +91,22 @@ async function download(request, env) {
   return json({ urls });
 }
 
+async function pushMessage(request, env) {
+  // Членство проверяет само чтение сообщения токеном автора, отдельный запрос чата не нужен.
+  const { user, chatId, body, token } = await authenticate(request, env);
+  await limit(env.PUSH_LIMITER, user.uid);
+  return json(await push({ env, user, chatId, body, token, HttpError }));
+}
+
 /** Токен, тело запроса и членство в чате из него. */
 async function authorize(request, env) {
+  const { user, chatId, body, token } = await authenticate(request, env);
+  if (!(await isMember(env, user, chatId, token))) throw new HttpError(403, 'Not a member of this chat');
+  return { user, chatId, body };
+}
+
+/** Пользователь из токена и chatId из тела запроса. */
+async function authenticate(request, env) {
   const token = /^Bearer (.+)$/.exec(request.headers.get('authorization') ?? '')?.[1];
   let user;
   try {
@@ -93,8 +118,7 @@ async function authorize(request, env) {
   const body = await request.json().catch(() => null);
   const chatId = body?.chatId;
   if (typeof chatId !== 'string' || !CHAT_ID.test(chatId)) throw new HttpError(400, 'Bad chatId');
-  if (!(await isMember(env, user, chatId, token))) throw new HttpError(403, 'Not a member of this chat');
-  return { user, chatId, body };
+  return { user, chatId, body, token };
 }
 
 async function isMember(env, user, chatId, token) {

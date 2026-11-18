@@ -162,6 +162,9 @@ interface ChatRepository :
     GroupRepository {
     fun observeChats(userId: UserId): Flow<List<Chat>>
 
+    /** Загружает чаты [userId] с сервера в локальный кэш, откуда их отдаёт [observeChats]; без сети — ошибка Offline. */
+    suspend fun refreshChats(userId: UserId)
+
     fun observeChat(chatId: ChatId): Flow<Chat?>
 
     fun observeMessages(chatId: ChatId): Flow<List<Message>>
@@ -232,7 +235,7 @@ interface DeviceRepository {
         deviceId: DeviceId,
     ): Flow<Device?>
 
-    /** Создаёт или обновляет запись и время последней активности. */
+    /** Создаёт или обновляет запись и время последней активности; push-токен null оставляет прежний. */
     suspend fun registerDevice(
         userId: UserId,
         device: Device,
@@ -270,10 +273,14 @@ interface LinkRepository {
  * Ошибки — [GhostlinkError]: нет сети — Offline, не участник чата — PermissionDenied.
  */
 interface MediaStore {
-    /** Загружает JPEG-файлы (не больше [MAX_FILE_BYTES] каждый, не больше [MAX_FILES] за раз) и возвращает их ключи в том же порядке. */
+    /**
+     * Загружает файлы с указанными MIME-типами (до [MAX_FILE_BYTES] каждый, до [MAX_FILES] за раз).
+     * Возвращает ключи в том же порядке.
+     */
     suspend fun upload(
         chatId: ChatId,
         files: List<ByteArray>,
+        contentTypes: List<String> = files.map { "image/jpeg" },
     ): List<MediaKey>
 
     /** Файл чата. Однажды скачанный или загруженный с этого устройства берётся из кэша на диске. */
@@ -284,7 +291,7 @@ interface MediaStore {
 
     companion object {
         /** Совпадают с ограничениями Worker (worker/src/index.js). */
-        const val MAX_FILE_BYTES = 1024 * 1024
+        const val MAX_FILE_BYTES = Attachment.RECORDING_MAX_BYTES
         const val MAX_FILES = 2
     }
 }

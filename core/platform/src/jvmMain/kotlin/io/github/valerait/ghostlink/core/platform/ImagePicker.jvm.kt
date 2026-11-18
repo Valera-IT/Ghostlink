@@ -103,3 +103,10 @@ private fun BufferedImage.toJpeg(quality: Int): ByteArray {
     }
     return out.toByteArray()
 }
+
+@Composable
+actual fun rememberPhotoCamera(
+    requests: List<ImageRequest>,
+    onPicked: (List<PickedImage>) -> Unit,
+    onFailed: () -> Unit,
+): (() -> Unit)? = null

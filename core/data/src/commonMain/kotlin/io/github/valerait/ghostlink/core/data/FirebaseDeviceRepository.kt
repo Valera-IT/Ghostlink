@@ -40,7 +40,9 @@ class FirebaseDeviceRepository(
     ) = firebaseCall {
         devices(userId)
             .document(device.id.value)
-            .set(DeviceWrite(device.name, device.platform.wireName, Timestamp.ServerTimestamp), merge = true)
+            .set(DeviceWrite(device.name, device.platform.wireName, Timestamp.ServerTimestamp, device.pushToken), merge = true) {
+                encodeDefaults = false
+            }
     }
 
     override suspend fun removeDevice(

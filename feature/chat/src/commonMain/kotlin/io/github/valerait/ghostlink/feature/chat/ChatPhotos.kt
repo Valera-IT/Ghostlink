@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -11,11 +12,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.BrokenImage
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,7 +37,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import io.github.valerait.ghostlink.core.domain.repository.MediaStore
 import io.github.valerait.ghostlink.core.domain.usecase.PhotoDraft
 import io.github.valerait.ghostlink.core.model.Attachment
@@ -41,10 +44,17 @@ import io.github.valerait.ghostlink.core.model.ChatId
 import io.github.valerait.ghostlink.core.model.GhostlinkError
 import io.github.valerait.ghostlink.core.model.MediaKey
 import io.github.valerait.ghostlink.core.platform.ImageRequest
+import io.github.valerait.ghostlink.core.platform.PickedImage
+import io.github.valerait.ghostlink.core.platform.fullScreenDialogProperties
 import io.github.valerait.ghostlink.core.platform.logWarning
 import io.github.valerait.ghostlink.core.platform.rememberImagePicker
+import io.github.valerait.ghostlink.core.platform.rememberPhotoCamera
 import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.action_cancel
+import io.github.valerait.ghostlink.core.ui.resources.chat_photo_camera
 import io.github.valerait.ghostlink.core.ui.resources.chat_photo_close
+import io.github.valerait.ghostlink.core.ui.resources.chat_photo_gallery
+import io.github.valerait.ghostlink.core.ui.resources.chat_photo_source
 import io.github.valerait.ghostlink.core.ui.resources.chat_photo_unavailable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -105,12 +115,43 @@ class ChatPhotos(
 internal fun rememberPhotoPicker(
     onPicked: (PhotoDraft) -> Unit,
     onFailed: () -> Unit,
-): () -> Unit =
-    rememberImagePicker(
-        requests = PHOTO_REQUESTS,
-        onPicked = { (photo, thumbnail) -> onPicked(PhotoDraft(photo.jpeg, thumbnail.jpeg, photo.width, photo.height)) },
-        onFailed = onFailed,
-    )
+): () -> Unit {
+    var choosingSource by remember { mutableStateOf(false) }
+    val picked: (List<PickedImage>) -> Unit = { (photo, thumbnail) ->
+        onPicked(PhotoDraft(photo.jpeg, thumbnail.jpeg, photo.width, photo.height))
+    }
+    val gallery = rememberImagePicker(PHOTO_REQUESTS, picked, onFailed)
+    val camera = rememberPhotoCamera(PHOTO_REQUESTS, picked, onFailed)
+    if (choosingSource) {
+        AlertDialog(
+            onDismissRequest = { choosingSource = false },
+            title = { Text(stringResource(Res.string.chat_photo_source)) },
+            text = {
+                Column {
+                    TextButton(onClick = {
+                        choosingSource = false
+                        gallery()
+                    }) {
+                        Text(stringResource(Res.string.chat_photo_gallery))
+                    }
+                    if (camera != null) {
+                        TextButton(onClick = {
+                            choosingSource = false
+                            camera()
+                        }) {
+                            Text(stringResource(Res.string.chat_photo_camera))
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { choosingSource = false }) { Text(stringResource(Res.string.action_cancel)) }
+            },
+        )
+    }
+    return { if (camera == null) gallery() else choosingSource = true }
+}
 
 private val PHOTO_REQUESTS =
     listOf(
@@ -153,13 +194,14 @@ internal fun ChatPhoto(
 internal fun LocalPhoto(
     jpeg: ByteArray,
     modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop,
 ) {
     var image by remember(jpeg) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(jpeg) {
         image = runCatching { withContext(Dispatchers.Default) { jpeg.decodeToImageBitmap() } }.getOrNull()
     }
     Box(modifier) {
-        image?.let { Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+        image?.let { Image(it, contentDescription = null, contentScale = contentScale, modifier = Modifier.fillMaxSize()) }
     }
 }
 
@@ -179,29 +221,58 @@ internal fun PhotoViewer(
     attachment: Attachment,
     onClose: () -> Unit,
 ) {
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    ZoomablePhotoViewer(onClose) { modifier ->
+        ChatPhoto(
+            chatId = chatId,
+            key = attachment.key,
+            placeholder = attachment.thumbKey,
+            contentScale = ContentScale.Fit,
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+internal fun LocalPhotoViewer(
+    jpeg: ByteArray,
+    onClose: () -> Unit,
+) {
+    ZoomablePhotoViewer(onClose) { modifier -> LocalPhoto(jpeg, modifier, contentScale = ContentScale.Fit) }
+}
+
+@Composable
+private fun ZoomablePhotoViewer(
+    onClose: () -> Unit,
+    photo: @Composable (Modifier) -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onClose,
+        properties = fullScreenDialogProperties(),
+    ) {
         var scale by remember { mutableFloatStateOf(1f) }
         var offset by remember { mutableStateOf(Offset.Zero) }
         Box(Modifier.fillMaxSize().background(Color.Black)) {
-            ChatPhoto(
-                chatId = chatId,
-                key = attachment.key,
-                placeholder = attachment.thumbKey,
-                contentScale = ContentScale.Fit,
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectTransformGestures { _, pan, zoom, _ ->
-                                scale = (scale * zoom).coerceIn(1f, MAX_ZOOM)
-                                offset = if (scale == 1f) Offset.Zero else offset + pan
-                            }
-                        }.graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                            translationX = offset.x
-                            translationY = offset.y
-                        },
+            photo(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTransformGestures { centroid, pan, zoom, _ ->
+                            val nextScale = (scale * zoom).coerceIn(1f, MAX_ZOOM)
+                            val center = Offset(size.width / 2f, size.height / 2f)
+                            val relative = centroid - center
+                            val ratio = nextScale / scale
+                            val moved = relative - (relative - offset) * ratio + pan
+                            val maxX = size.width * (nextScale - 1f) / 2f
+                            val maxY = size.height * (nextScale - 1f) / 2f
+                            offset = Offset(moved.x.coerceIn(-maxX, maxX), moved.y.coerceIn(-maxY, maxY))
+                            scale = nextScale
+                        }
+                    }.graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    },
             )
             IconButton(
                 onClick = onClose,

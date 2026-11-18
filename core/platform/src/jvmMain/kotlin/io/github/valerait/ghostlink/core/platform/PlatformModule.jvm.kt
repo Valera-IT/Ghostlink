@@ -16,6 +16,7 @@ actual val platformModule =
             }
         }
         single { jvmThisDevice() }
+        single<PushTokens> { NoPushTokens }
         singleOf(::DeepLinks)
         single { CacheDirectory(jvmCacheDirectory()) }
     }

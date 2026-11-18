@@ -50,7 +50,7 @@ actual fun rememberImagePicker(
     return remember(launcher) { { launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
 }
 
-private fun ContentResolver.readJpegs(
+internal fun ContentResolver.readJpegs(
     uri: Uri,
     requests: List<ImageRequest>,
 ): List<PickedImage>? {

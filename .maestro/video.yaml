@@ -1,0 +1,28 @@
+# CameraX: старт камеры, завершение записи, отправка MP4 и открытие проигрывателя.
+# В iOS-симуляторе нет камеры; iPhone проверяется отдельно.
+appId: io.github.valerait.ghostlink.demo
+name: Видеокружок Android
+---
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - runFlow: common/register.yaml
+      - tapOn: "Призрак"
+      - tapOn: "Video message"
+      - extendedWaitUntil:
+          visible: "0:0[1-9]"
+          timeout: 30000
+      - tapOn: "■"
+      - extendedWaitUntil:
+          visible: "Video message.*"
+          timeout: 30000
+      - tapOn: "Send"
+      - extendedWaitUntil:
+          visible: "Play recording"
+          timeout: 10000
+      - tapOn: "Play recording"
+      - assertVisible: "Message"
+      - assertVisible: "Stop video"
+      - tapOn: "Stop video"
+      - assertVisible: "Play recording"
