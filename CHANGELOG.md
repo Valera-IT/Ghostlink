@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/Valera-IT/Ghostlink/compare/ghostlink-v0.6.0...ghostlink-v0.6.1) (2026-11-18)
+
+
+### Исправления
+
+* **chat:** recover message history after Firestore errors ([#79](https://github.com/Valera-IT/Ghostlink/issues/79)) ([7ba9bf0](https://github.com/Valera-IT/Ghostlink/commit/7ba9bf03224beaa9bd627beefa85928a23b807ae))
+
 ## [0.6.0](https://github.com/Valera-IT/Ghostlink/compare/ghostlink-v0.5.0...ghostlink-v0.6.0) (2026-11-18)
 
 
