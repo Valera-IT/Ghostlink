@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_messages">Сообщения</string>
+    <string name="notification_photo">📷 Фото</string>
+    <string name="notification_photo_caption">📷 %1$s</string>
+    <string name="notification_group_line">%1$s: %2$s</string>
+</resources>

@@ -124,6 +124,7 @@ import io.github.valerait.ghostlink.core.ui.resources.chat_photo_not_sent
 import io.github.valerait.ghostlink.core.ui.resources.chat_photo_open
 import io.github.valerait.ghostlink.core.ui.resources.chat_photo_remove
 import io.github.valerait.ghostlink.core.ui.resources.chat_photo_retry
+import io.github.valerait.ghostlink.core.ui.resources.chat_record_failed
 import io.github.valerait.ghostlink.core.ui.resources.chat_reply_cancel
 import io.github.valerait.ghostlink.core.ui.resources.chat_reply_original_unavailable
 import io.github.valerait.ghostlink.core.ui.resources.chat_reply_you
@@ -151,6 +152,7 @@ fun ChatScreen(
     var highlightedId by remember { mutableStateOf<MessageId?>(null) }
     var confirmDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
     var viewing by remember { mutableStateOf<Attachment?>(null) }
+    val recordingFailed = stringResource(io.github.valerait.ghostlink.core.ui.resources.Res.string.chat_record_failed)
     val photoFailed = stringResource(Res.string.chat_photo_failed)
     val pickPhoto =
         rememberPhotoPicker(
@@ -201,10 +203,11 @@ fun ChatScreen(
         onPauseOrDispose { viewModel.onAction(ChatAction.VisibilityChanged(false)) }
     }
 
-    // Новое сообщение — прокручиваем вниз, если пользователь и так был внизу.
-    val newestKey = state.rows.firstOrNull()?.key
-    LaunchedEffect(newestKey) {
-        if (listState.firstVisibleItemIndex <= 1) listState.animateScrollToItem(0)
+    // Новое сообщение — показываем конец чата независимо от текущей позиции.
+    val newestKey = state.rows.firstOrNull { it is ChatRow.Msg }?.key
+    val newestOutgoingKey = state.rows.firstOrNull { it is ChatRow.Outgoing }?.key
+    LaunchedEffect(newestKey, newestOutgoingKey) {
+        if (state.rows.isNotEmpty()) listState.animateScrollToItem(0)
     }
 
     Scaffold(
@@ -221,18 +224,26 @@ fun ChatScreen(
         },
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            MessageInput(
-                replyingTo = state.replyingTo,
-                editing = state.editing,
-                attachedPhoto = state.attachedPhoto,
-                onPickPhoto = pickPhoto,
-                onRemovePhoto = { viewModel.onAction(ChatAction.RemoveAttachedPhoto) },
-                replyAuthor = { if (it.mine) you else nameOf(it.message.senderId) },
-                onCancelReply = { viewModel.onAction(ChatAction.CancelReply) },
-                onCancelEdit = { viewModel.onAction(ChatAction.CancelEdit) },
-                onDraftChanged = { viewModel.onAction(ChatAction.DraftChanged(it)) },
-                onSend = { viewModel.onAction(ChatAction.Send(it)) },
-            )
+            Column {
+                if (state.editing == null && state.attachedPhoto == null) {
+                    RecordingControls(
+                        onAttach = { viewModel.onAction(ChatAction.AttachPhoto(it)) },
+                        onFailed = { scope.launch { snackbar.showSnackbar(recordingFailed) } },
+                    )
+                }
+                MessageInput(
+                    replyingTo = state.replyingTo,
+                    editing = state.editing,
+                    attachedPhoto = state.attachedPhoto,
+                    onPickPhoto = pickPhoto,
+                    onRemovePhoto = { viewModel.onAction(ChatAction.RemoveAttachedPhoto) },
+                    replyAuthor = { if (it.mine) you else nameOf(it.message.senderId) },
+                    onCancelReply = { viewModel.onAction(ChatAction.CancelReply) },
+                    onCancelEdit = { viewModel.onAction(ChatAction.CancelEdit) },
+                    onDraftChanged = { viewModel.onAction(ChatAction.DraftChanged(it)) },
+                    onSend = { viewModel.onAction(ChatAction.Send(it)) },
+                )
+            }
         },
     ) { padding ->
         if (!state.loading && state.rows.isEmpty()) {

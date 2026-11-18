@@ -26,6 +26,7 @@ class FakeMediaStore : MediaStore {
     override suspend fun upload(
         chatId: ChatId,
         files: List<ByteArray>,
+        contentTypes: List<String>,
     ): List<MediaKey> {
         require(files.size in 1..MediaStore.MAX_FILES && files.all { it.size in 1..MediaStore.MAX_FILE_BYTES })
         gate?.await()

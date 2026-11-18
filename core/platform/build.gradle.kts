@@ -24,6 +24,7 @@ kotlin {
             implementation(libs.camera.camera2)
             implementation(libs.camera.lifecycle)
             implementation(libs.camera.view)
+            implementation(libs.camera.video)
             implementation(libs.concurrent.futures.ktx)
             implementation(libs.guava)
             implementation(libs.mlkit.barcode.scanning)

@@ -41,12 +41,13 @@ import io.github.valerait.ghostlink.feature.settings.settingsScreens
 fun GhostlinkRoot(viewModel: RootViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val pendingInvite by viewModel.pendingInvite.collectAsStateWithLifecycle()
+    val pendingChat by viewModel.pendingChat.collectAsStateWithLifecycle()
 
     Crossfade(targetState = state, label = "root") { current ->
         when (current) {
             RootState.Loading -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
             RootState.Onboarding -> OnboardingNavHost()
-            is RootState.Ready -> MainNavHost(pendingInvite, viewModel::onInviteHandled)
+            is RootState.Ready -> MainNavHost(pendingInvite, viewModel::onInviteHandled, pendingChat, viewModel::onChatHandled)
         }
     }
 }
@@ -67,8 +68,11 @@ private fun OnboardingNavHost() {
 private fun MainNavHost(
     pendingInvite: UserId?,
     onInviteHandled: () -> Unit,
+    pendingChat: ChatId?,
+    onChatHandled: () -> Unit,
 ) {
     val nav = rememberNavController()
+    MessageNotificationsEffect(nav)
 
     LaunchedEffect(pendingInvite) {
         if (pendingInvite != null) {
@@ -79,6 +83,13 @@ private fun MainNavHost(
 
     // Новый чат открываем поверх списка: «назад» из него ведёт к чатам, а не к экрану, который его создал.
     val openChatFromList = { chatId: ChatId -> nav.navigateToChat(chatId) { popUpTo<ChatsRoute>() } }
+
+    LaunchedEffect(pendingChat) {
+        if (pendingChat != null) {
+            openChatFromList(pendingChat)
+            onChatHandled()
+        }
+    }
 
     NavHost(navController = nav, startDestination = ChatsRoute) {
         chatsScreen(

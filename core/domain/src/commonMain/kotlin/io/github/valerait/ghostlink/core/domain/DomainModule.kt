@@ -2,6 +2,7 @@ package io.github.valerait.ghostlink.core.domain
 
 import io.github.valerait.ghostlink.core.domain.usecase.AddFriendUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.ApproveDeviceLinkUseCase
+import io.github.valerait.ghostlink.core.domain.usecase.CheckNewMessagesUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.CreateAccountUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.DeleteMessageUseCase
 import io.github.valerait.ghostlink.core.domain.usecase.EditMessageUseCase
@@ -39,6 +40,7 @@ val domainModule =
         factoryOf(::ApproveDeviceLinkUseCase)
         factoryOf(::AddFriendUseCase)
         factoryOf(::ObserveChatListUseCase)
+        factoryOf(::CheckNewMessagesUseCase)
         factoryOf(::ObserveChatMessagesUseCase)
         factoryOf(::SendMessageUseCase)
         factoryOf(::EditMessageUseCase)

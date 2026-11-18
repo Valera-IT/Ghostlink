@@ -108,3 +108,32 @@ describe('фото в сообщениях', () => {
     await assertFails(updateDoc(ref, { attachment: photo(CHAT, 'alice', { width: 10 }), editedAt: serverTimestamp() }));
   });
 });
+
+describe('голосовые и видеокружки', () => {
+  const recording = (type, extra = {}) => {
+    const file = key(CHAT, 'alice').replace('.jpg', type === 'voice' ? '.m4a' : '.mp4');
+    return { type, key: file, thumbKey: type === 'voice' ? file : key(CHAT, 'alice', 2),
+      size: 100000, width: 384, height: 384, duration: 120000, waveform: '182', ...extra };
+  };
+  const send = (a) => addDoc(messages('alice'), { senderId: 'alice', sentAt: serverTimestamp(), attachment: a });
+  test('участник отправляет голосовое и кружок до двух минут', async () => {
+    await seedChats();
+    await assertSucceeds(send(recording('voice')));
+    await assertSucceeds(send(recording('video', { size: 12582912 })));
+  });
+  test('нельзя превышать длительность, размер и длину волны, ссылаться на чужие файлы', async () => {
+    await seedChats();
+    for (const type of ['voice', 'video']) {
+      await assertFails(send(recording(type, { duration: 120001 })));
+      await assertFails(send(recording(type, { duration: 0 })));
+      await assertFails(send(recording(type, { size: 12582913 })));
+      await assertFails(send(recording(type, { waveform: '1'.repeat(121) })));
+      await assertFails(send(recording(type, { key: key(CHAT, 'bob') })));
+    }
+  });
+  test('посторонний не читает записи', async () => {
+    await seedChats();
+    const ref = await assertSucceeds(send(recording('voice')));
+    await assertFails(import('firebase/firestore').then(({ getDoc }) => getDoc(doc(account('stranger'), ref.path))));
+  });
+});

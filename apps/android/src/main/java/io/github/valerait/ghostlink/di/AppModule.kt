@@ -9,6 +9,7 @@ import io.github.valerait.ghostlink.core.demo.demoModule
 import io.github.valerait.ghostlink.core.domain.domainModule
 import io.github.valerait.ghostlink.core.domain.repository.UserRepository
 import io.github.valerait.ghostlink.core.model.UserId
+import io.github.valerait.ghostlink.core.platform.PushTokens
 import io.github.valerait.ghostlink.core.platform.platformModule
 import io.github.valerait.ghostlink.core.ui.AppConfig
 import io.github.valerait.ghostlink.core.ui.AvatarPhotos
@@ -24,6 +25,7 @@ import io.github.valerait.ghostlink.feature.link.linkModule
 import io.github.valerait.ghostlink.feature.onboarding.onboardingModule
 import io.github.valerait.ghostlink.feature.recovery.recoveryModule
 import io.github.valerait.ghostlink.feature.settings.settingsModule
+import io.github.valerait.ghostlink.push.FcmPushTokens
 import io.github.valerait.ghostlink.ui.navigation.RootViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,7 +44,17 @@ fun appModules(config: AppConfig): List<Module> =
         domainModule,
         cryptoModule,
         if (config.demoMode) demoModule else dataModule(BuildConfig.FIREBASE_EMULATOR_HOST),
-    ) + featureModules
+    ) + pushModule(config) + featureModules
+
+// После platformModule: заменяет его PushTokens без push. В демо и на эмуляторе FCM нет.
+private fun pushModule(config: AppConfig) =
+    listOfNotNull(
+        if (config.demoMode || BuildConfig.FIREBASE_EMULATOR_HOST != null) {
+            null
+        } else {
+            module { single<PushTokens> { FcmPushTokens() } }
+        },
+    )
 
 private val featureModules =
     listOf(onboardingModule, chatsModule, chatModule, friendsModule, devicesModule, linkModule, recoveryModule, settingsModule)

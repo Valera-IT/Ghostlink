@@ -186,6 +186,9 @@ open class FakeBackend(
                 all.values.filter { userId in it.members }.sortedByDescending { it.updatedAt ?: Instant.DISTANT_FUTURE }
             }.distinctUntilChanged()
 
+    // Кэша у фейка нет: всё и так «с сервера».
+    override suspend fun refreshChats(userId: UserId) = Unit
+
     override fun observeChat(chatId: ChatId): Flow<Chat?> = chats.map { it[chatId] }.distinctUntilChanged()
 
     override fun observeMessages(chatId: ChatId): Flow<List<Message>> = messages.map { it[chatId].orEmpty() }.distinctUntilChanged()
@@ -397,7 +400,11 @@ open class FakeBackend(
         userId: UserId,
         device: Device,
     ) {
-        devices.update { all -> all + (userId to all[userId].orEmpty() + (device.id to device.copy(lastActiveAt = clock.now()))) }
+        devices.update { all ->
+            val mine = all[userId].orEmpty()
+            val token = device.pushToken ?: mine[device.id]?.pushToken
+            all + (userId to mine + (device.id to device.copy(lastActiveAt = clock.now(), pushToken = token)))
+        }
     }
 
     override suspend fun removeDevice(
@@ -483,7 +490,14 @@ open class FakeBackend(
     }
 
     private fun lastMessageOf(message: Message) =
-        LastMessage(message.text, message.senderId, message.sentAt, message.ttl, photo = message.attachment != null)
+        LastMessage(
+            message.text.ifEmpty { message.attachment?.recordingPreview().orEmpty() },
+            message.senderId,
+            message.sentAt,
+            message.ttl,
+            photo =
+                message.attachment?.type == "photo",
+        )
 
     // endregion
 

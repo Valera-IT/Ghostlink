@@ -48,12 +48,12 @@ class DemoBackend(
     ) {
         super.sendMessage(chatId, senderId, text, replyTo, ttl, attachment)
         val chat = chat(chatId) ?: return
-        if (BOT_ID in chat.members && senderId != BOT_ID) replyAsBot(chatId, photo = attachment != null)
+        if (BOT_ID in chat.members && senderId != BOT_ID) replyAsBot(chatId, attachment?.type)
     }
 
     private fun replyAsBot(
         chatId: ChatId,
-        photo: Boolean,
+        attachmentType: String?,
     ) {
         scope.launch {
             delay(BOT_READ_DELAY)
@@ -61,7 +61,13 @@ class DemoBackend(
             setTyping(chatId, BOT_ID, true)
             delay(BOT_TYPING_DELAY)
             val ttl = chat(chatId)?.disappearing?.duration
-            val reply = if (photo) BOT_PHOTO_REPLY else BOT_REPLIES[botReplyIndex++ % BOT_REPLIES.size]
+            val reply =
+                when (attachmentType) {
+                    "photo" -> BOT_PHOTO_REPLY
+                    "voice" -> "Голосовое получил! В демо-режиме оно хранится только на этом устройстве 👻"
+                    "video" -> "Видеокружок получил! В демо-режиме он хранится только на этом устройстве 👻"
+                    else -> BOT_REPLIES[botReplyIndex++ % BOT_REPLIES.size]
+                }
             post(chatId, BOT_ID, reply, clock.now()) { it.copy(ttl = ttl) }
         }
     }

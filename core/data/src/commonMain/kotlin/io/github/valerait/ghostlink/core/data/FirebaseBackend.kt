@@ -20,7 +20,7 @@ import kotlinx.io.files.Path
  *
  * @param scope живёт до конца процесса: в нём идут записи без ожидания (отправка, «прочитано», присутствие).
  * @param emulatorHost адрес локального Firebase Emulator; null — настоящий проект.
- * @param mediaWorkerUrl адрес Worker с доступом к фото чатов; null — фото не работают.
+ * @param mediaWorkerUrl адрес Worker с доступом к фото чатов и push; null — фото и push не работают.
  */
 class FirebaseBackend(
     keys: AccountKeyStore,
@@ -39,16 +39,22 @@ class FirebaseBackend(
         }
     }
 
+    private val http = HttpClient()
+    private val idToken: suspend () -> String? = { firebaseAuth.currentUser?.getIdToken(false) }
+
     val auth: AuthRepository = FirebaseAuthRepository(firebaseAuth, keys, scope)
     val users: UserRepository = FirebaseUserRepository(db, scope)
-    val chats: ChatRepository = FirebaseChatRepository(db, scope)
+
+    // Сообщений из эмулятора Worker не видит: там push не шлём.
+    val chats: ChatRepository =
+        FirebaseChatRepository(db, scope, WorkerPush(mediaWorkerUrl.takeIf { emulatorHost == null }, idToken, http))
     val devices: DeviceRepository = FirebaseDeviceRepository(db)
     val links: LinkRepository = FirebaseLinkRepository(db, firebaseAuth)
     val media: MediaStore =
         WorkerMediaStore(
             workerUrl = mediaWorkerUrl,
-            idToken = { firebaseAuth.currentUser?.getIdToken(false) },
-            http = HttpClient(),
+            idToken = idToken,
+            http = http,
             cache = MediaCache(Path(cacheDirectory.path, "media")),
         )
 
