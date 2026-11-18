@@ -26,6 +26,7 @@ import io.github.valerait.ghostlink.core.model.ReplyTo
 import io.github.valerait.ghostlink.core.model.UserId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -75,16 +76,18 @@ class FirebaseChatRepository internal constructor(
             .document(chatId.value)
             .snapshots
             .map { it.toChat() }
-            .logErrors("chats/$chatId")
+            .retryChatListener("chats/$chatId")
 
-    // includeMetadataChanges — чтобы увидеть, как pending-сообщение подтвердилось сервером.
+    // Метаданные нужны для подтверждения как pending-сообщения, так и пустой истории.
     override fun observeMessages(chatId: ChatId): Flow<List<Message>> =
         messages(chatId)
             .orderBy("sentAt", Direction.ASCENDING)
             .limitToLast(MESSAGES_LIMIT)
             .snapshots(includeMetadataChanges = true)
+            // Пустой кэш не подтверждает, что история пуста. Оставляем последний результат до ответа сервера.
+            .filter { !it.metadata.isFromCache || it.documents.isNotEmpty() }
             .map { qs -> qs.documents.map { it.toMessage() } }
-            .logErrors("messages of $chatId")
+            .retryChatListener("messages of $chatId")
 
     override fun sendMessage(
         chatId: ChatId,
@@ -249,7 +252,7 @@ class FirebaseChatRepository internal constructor(
         prefs(userId)
             .snapshots
             .map { qs -> qs.documents.associate { ChatId(it.id) to it.toChatPrefs() } }
-            .logErrors("chatPrefs of $userId")
+            .retryChatListener("chatPrefs of $userId")
 
     override fun setPinned(
         userId: UserId,
