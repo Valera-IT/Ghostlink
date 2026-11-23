@@ -78,6 +78,7 @@
     <string name="chat_delete">Delete</string>
     <string name="chat_delete_title">Delete message?</string>
     <string name="chat_delete_body">The message will disappear for you and the other person, leaving a “Message deleted” note in its place.</string>
+    <string name="chat_attachment_expired">Attachment expired</string>
     <string name="chat_deleted">Message deleted</string>
     <string name="chat_photo">Photo</string>
     <string name="chat_photo_attach">Attach a photo</string>

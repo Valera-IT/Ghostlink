@@ -210,6 +210,7 @@ data class Message(
     val ttl: Duration? = null,
     /** Фото в сообщении; у удалённого сообщения пропадает вместе с текстом. */
     val attachment: Attachment? = null,
+    val attachmentExpired: Boolean = false,
 ) {
     val deleted: Boolean get() = deletedAt != null
 

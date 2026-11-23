@@ -123,6 +123,7 @@ class AttachmentDto(
     val height: Long = 0,
     val duration: Long = 0,
     val waveform: String = "",
+    val expired: Boolean = false,
 )
 
 const val PHOTO_TYPE = "photo"
