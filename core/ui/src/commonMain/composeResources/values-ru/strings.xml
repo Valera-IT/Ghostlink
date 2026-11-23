@@ -77,6 +77,7 @@
     <string name="chat_delete">Удалить</string>
     <string name="chat_delete_title">Удалить сообщение?</string>
     <string name="chat_delete_body">Сообщение исчезнет у вас и у собеседника, на его месте останется отметка «Сообщение удалено».</string>
+    <string name="chat_attachment_expired">Срок хранения вложения истёк</string>
     <string name="chat_deleted">Сообщение удалено</string>
     <string name="chat_photo">Фото</string>
     <string name="chat_photo_attach">Прикрепить фото</string>

@@ -48,6 +48,7 @@ import io.github.valerait.ghostlink.core.model.Message
 import io.github.valerait.ghostlink.core.model.MessageStatus
 import io.github.valerait.ghostlink.core.model.ReplyTo
 import io.github.valerait.ghostlink.core.ui.resources.Res
+import io.github.valerait.ghostlink.core.ui.resources.chat_attachment_expired
 import io.github.valerait.ghostlink.core.ui.resources.chat_deleted
 import io.github.valerait.ghostlink.core.ui.resources.chat_photo
 import io.github.valerait.ghostlink.core.ui.resources.chat_photo_discard
@@ -216,7 +217,9 @@ internal fun MessageBody(
         return
     }
     val attachment = message.attachment
-    if (attachment != null) {
+    if (message.attachmentExpired) {
+        Text(stringResource(Res.string.chat_attachment_expired), color = mutedContentColor())
+    } else if (attachment != null) {
         if (attachment.type == "photo") {
             MessagePhoto(chatId, attachment, onOpen = { onOpenPhoto(attachment) }, onLongPress = onLongPress)
         } else {

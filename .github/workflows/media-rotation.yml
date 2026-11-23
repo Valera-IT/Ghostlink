@@ -1,0 +1,30 @@
+name: Media rotation
+on:
+  schedule:
+    - cron: '17 0 * * *'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Освободить место в B2
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: media-rotation
+  cancel-in-progress: false
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install boto3==1.35.99 google-cloud-firestore==2.20.0
+      - run: python worker/maintenance/rotate.py $APPLY
+        env:
+          APPLY: ${{ (github.event_name == 'schedule' || inputs.apply) && '--apply' || '' }}
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APP_KEY: ${{ secrets.B2_APP_KEY }}
+          SERVICE_ACCOUNTS: ${{ secrets.SERVICE_ACCOUNTS }}

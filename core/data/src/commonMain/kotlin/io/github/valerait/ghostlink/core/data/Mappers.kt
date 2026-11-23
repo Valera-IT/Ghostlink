@@ -94,6 +94,7 @@ internal fun MessageDto.toMessage(
     deletedAt = deletedAt?.instant,
     ttl = ttl?.seconds,
     attachment = attachment?.toAttachment(),
+    attachmentExpired = attachment?.expired == true,
 )
 
 internal fun ReplyTo.toDto() = ReplyToDto(id = id.value, senderId = senderId.value, preview = preview, photo = photo)
